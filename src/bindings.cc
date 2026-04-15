@@ -237,6 +237,7 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
 
   /* Total advance and font metrics in font units. */
   unsigned len = hb_buffer_get_length (buf);
+  hb_glyph_info_t    *info = hb_buffer_get_glyph_infos (buf, nullptr);
   hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, nullptr);
   float total_x = 0.f;
   for (unsigned i = 0; i < len; i++) total_x += pos[i].x_advance;
@@ -248,6 +249,13 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
   /* Pixel-space buffer dimensions. */
   unsigned w = (unsigned) (total_x * scale + 0.999f);
   unsigned h = (unsigned) ((ascent + descent) * scale + 0.999f);
+  if (!w || !h)
+  {
+    hb_buffer_destroy (buf);
+    hb_font_destroy (font);
+    hb_face_destroy (face);
+    return nullptr;
+  }
 
   hb_bool_t is_color = hb_ot_color_has_paint (face) ||
                        hb_ot_color_has_layers (face) ||
@@ -255,75 +263,129 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
 
   hb_raster_paint_t *p = nullptr;
   hb_raster_draw_t  *d = nullptr;
-  /* Image origin is the BOTTOM-LEFT in glyph space.  Glyphs
-   * draw with ascender > 0 and descender < 0, baseline at 0.
-   * Bottom of image at y = -descent (just below the descender). */
-  hb_raster_extents_t ext = { 0,
-                              (int) -(descent * scale + 0.5f),
-                              w, h, 0 };
+  if (is_color) p = hb_raster_paint_create_or_fail ();
+  else          d = hb_raster_draw_create_or_fail ();
 
-  if (is_color)
-  {
-    p = hb_raster_paint_create_or_fail ();
-    hb_raster_paint_set_extents (p, &ext);
-    hb_raster_paint_set_scale_factor (p, scale, scale);
-  }
-  else
-  {
-    d = hb_raster_draw_create_or_fail ();
-    hb_raster_draw_set_extents (d, &ext);
-    hb_raster_draw_set_scale_factor (d, scale, scale);
-  }
-  if (!p && !d) goto fail;
+  /* Extents live in pixel space (Y-up): bottom edge at
+   * -descent_px places the descender row at row 0 of the buffer
+   * and the ascender row at the top.  pen_y stays at 0
+   * (baseline) and gets scaled by set_scale_factor below. */
+  unsigned stride = w * 4;
+  int descent_px = (int) (descent * scale);
+  hb_raster_extents_t ext = { 0, -descent_px, w, h, stride };
 
+  uint8_t *out = (p || d) ? (uint8_t *) calloc ((size_t) stride * h, 1)
+                          : nullptr;
+  if (!out)
   {
-    hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, nullptr);
-    float pen_x = 0.f, pen_y = 0.f;
-    for (unsigned i = 0; i < len; i++)
-    {
-      if (p)
-        hb_raster_paint_glyph (p, font, info[i].codepoint,
-                               pen_x + pos[i].x_offset,
-                               pen_y + pos[i].y_offset);
-      else
-        hb_raster_draw_glyph (d, font, info[i].codepoint,
-                              pen_x + pos[i].x_offset,
-                              pen_y + pos[i].y_offset);
-      pen_x += pos[i].x_advance;
-      pen_y += pos[i].y_advance;
-    }
-  }
-
-  {
-    hb_raster_image_t *img = p ? hb_raster_paint_render (p)
-                               : hb_raster_draw_render  (d);
-    if (!img) goto fail;
-    const uint8_t *src = hb_raster_image_get_buffer (img);
-    hb_raster_extents_t ie;
-    hb_raster_image_get_extents (img, &ie);
-    /* hb-raster guarantees tight stride for BGRA32. */
-    size_t bytes = (size_t) ie.width * 4 * ie.height;
-    uint8_t *out = (uint8_t *) malloc (bytes);
-    memcpy (out, src, bytes);
-    if (out_width)  *out_width  = ie.width;
-    if (out_height) *out_height = ie.height;
-    hb_raster_image_destroy (img);
-
     hb_raster_paint_destroy (p);
     hb_raster_draw_destroy (d);
     hb_buffer_destroy (buf);
     hb_font_destroy (font);
     hb_face_destroy (face);
-    return out;
+    return nullptr;
   }
 
-fail:
+  /* Per-glyph render + SRC_OVER composite onto out[].
+   * Color path: paint returns BGRA32 premultiplied.
+   * Mono path: draw returns A8 coverage; composite as black. */
+  float pen_x = 0.f, pen_y = 0.f;
+  for (unsigned i = 0; i < len; i++)
+  {
+    float gx = pen_x + pos[i].x_offset;
+    float gy = pen_y + pos[i].y_offset;
+    pen_x += pos[i].x_advance;
+    pen_y += pos[i].y_advance;
+
+    hb_raster_image_t *img;
+    if (p)
+    {
+      hb_raster_paint_set_extents (p, &ext);
+      hb_raster_paint_set_scale_factor (p, 1.f / scale, 1.f / scale);
+      hb_raster_paint_glyph (p, font, info[i].codepoint, gx, gy);
+      img = hb_raster_paint_render (p);
+    }
+    else
+    {
+      hb_raster_draw_reset (d);
+      hb_raster_draw_set_extents (d, &ext);
+      hb_raster_draw_set_scale_factor (d, 1.f / scale, 1.f / scale);
+      hb_raster_draw_glyph (d, font, info[i].codepoint, gx, gy);
+      img = hb_raster_draw_render (d);
+    }
+    if (!img) continue;
+
+    const uint8_t *src = hb_raster_image_get_buffer (img);
+    hb_raster_extents_t ie;
+    hb_raster_image_get_extents (img, &ie);
+
+    /* hb-raster buffer is Y-up (row 0 = bottom); canvas expects
+     * Y-down (row 0 = top), so flip src row y to out row (h-1-y). */
+    if (p)
+    {
+      for (unsigned y = 0; y < h; y++)
+      {
+        unsigned dy = h - 1 - y;
+        for (unsigned x = 0; x < w; x++)
+        {
+          uint32_t s;
+          memcpy (&s, src + y * ie.stride + x * 4, 4);
+          if (!s) continue;
+          uint8_t sa = (uint8_t) (s >> 24);
+          uint32_t dpx;
+          memcpy (&dpx, out + dy * stride + x * 4, 4);
+          if (sa == 255) { dpx = s; }
+          else
+          {
+            unsigned inv = 255 - sa;
+            uint8_t rb = (uint8_t) (((dpx & 0xFF) * inv + 127) / 255) + (uint8_t) (s & 0xFF);
+            uint8_t rg = (uint8_t) ((((dpx >> 8) & 0xFF) * inv + 127) / 255) + (uint8_t) ((s >> 8) & 0xFF);
+            uint8_t rr = (uint8_t) ((((dpx >> 16) & 0xFF) * inv + 127) / 255) + (uint8_t) ((s >> 16) & 0xFF);
+            uint8_t ra = (uint8_t) ((((dpx >> 24) & 0xFF) * inv + 127) / 255) + sa;
+            dpx = (uint32_t) rb | ((uint32_t) rg << 8) | ((uint32_t) rr << 16) | ((uint32_t) ra << 24);
+          }
+          memcpy (out + dy * stride + x * 4, &dpx, 4);
+        }
+      }
+      hb_raster_paint_recycle_image (p, img);
+    }
+    else
+    {
+      for (unsigned y = 0; y < h; y++)
+      {
+        unsigned dy = h - 1 - y;
+        for (unsigned x = 0; x < w; x++)
+        {
+          uint8_t cov = src[y * ie.stride + x];
+          if (!cov) continue;
+          uint32_t dpx;
+          memcpy (&dpx, out + dy * stride + x * 4, 4);
+          if (cov == 255) { dpx = 0xFF000000u; }
+          else
+          {
+            unsigned inv = 255 - cov;
+            uint8_t rb = (uint8_t) (((dpx & 0xFF) * inv + 127) / 255);
+            uint8_t rg = (uint8_t) ((((dpx >> 8) & 0xFF) * inv + 127) / 255);
+            uint8_t rr = (uint8_t) ((((dpx >> 16) & 0xFF) * inv + 127) / 255);
+            uint8_t ra = (uint8_t) ((((dpx >> 24) & 0xFF) * inv + 127) / 255) + cov;
+            dpx = (uint32_t) rb | ((uint32_t) rg << 8) | ((uint32_t) rr << 16) | ((uint32_t) ra << 24);
+          }
+          memcpy (out + dy * stride + x * 4, &dpx, 4);
+        }
+      }
+      hb_raster_draw_recycle_image (d, img);
+    }
+  }
+
+  if (out_width)  *out_width  = w;
+  if (out_height) *out_height = h;
+
   hb_raster_paint_destroy (p);
   hb_raster_draw_destroy (d);
   hb_buffer_destroy (buf);
   hb_font_destroy (font);
   hb_face_destroy (face);
-  return nullptr;
+  return out;
 }
 
 } /* extern "C" */
