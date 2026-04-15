@@ -79,6 +79,15 @@ header h1 {
   color: var(--accent);
   letter-spacing: 0.01em;
 }
+header h1 code {
+  font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+  font-size: 0.7em;
+  background: none;
+  color: var(--accent-lo);
+  padding: 0;
+  margin-left: 0.05em;
+  vertical-align: 0.05em;
+}
 .tagline {
   color: var(--muted);
   font-size: 1.2rem;
