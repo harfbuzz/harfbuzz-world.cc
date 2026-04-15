@@ -157,6 +157,7 @@
   const subsetNew     = document.getElementById ("subset-new-size");
   const subsetSaving  = document.getElementById ("subset-saving");
   const subsetDl      = document.getElementById ("subset-download");
+  const subsetDlSize  = document.getElementById ("subset-dl-size");
   const subsetPreview = document.getElementById ("subset-preview");
   const subsetBarFill = document.getElementById ("subset-bar-fill");
   const subsetHint    = document.getElementById ("subset-hint");
@@ -237,6 +238,7 @@
       const savedPct = (100 * savedBytes / fontBuf.length).toFixed (1);
       subsetSaving.textContent = fmtBytes (savedBytes) + " (" + savedPct + "%)";
       subsetBarFill.style.width = (100 * sublen / fontBuf.length).toFixed (2) + "%";
+      subsetDlSize.textContent = fmtBytes (sublen);
 
       /* Per-table breakdown + glyph/Unicode counts.  Allocate a
        * temp wasm buffer for the subset bytes since the existing
