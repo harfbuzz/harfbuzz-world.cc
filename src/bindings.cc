@@ -229,26 +229,25 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
   hb_buffer_t *buf = shape (font_bytes, font_len, utf8_text, &face, &font);
   if (!buf) return nullptr;
 
-  hb_font_set_scale (font, (int) font_size_px, (int) font_size_px);
-  hb_buffer_clear_contents (buf);
-  hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
-  hb_buffer_guess_segment_properties (buf);
-  hb_shape (font, buf, nullptr, 0);
+  /* Shape happened at the font's default upem scale; positions
+   * are in font units.  Convert to pixels via a scale factor on
+   * the raster context. */
+  unsigned upem = hb_face_get_upem (face);
+  float scale  = font_size_px / (float) upem;
 
-  /* Compute total advance so we can size the raster buffer. */
+  /* Total advance and font metrics in font units. */
   unsigned len = hb_buffer_get_length (buf);
   hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, nullptr);
   float total_x = 0.f;
   for (unsigned i = 0; i < len; i++) total_x += pos[i].x_advance;
-
-  /* Use font ascent/descent for vertical bounds (with a little
-   * padding).  Pixel dimensions: round up. */
   hb_font_extents_t fe;
   hb_font_get_h_extents (font, &fe);
   float ascent  = (float) fe.ascender;
   float descent = (float) -fe.descender;
-  unsigned w = (unsigned) (total_x + 0.999f);
-  unsigned h = (unsigned) (ascent + descent + 0.999f);
+
+  /* Pixel-space buffer dimensions. */
+  unsigned w = (unsigned) (total_x * scale + 0.999f);
+  unsigned h = (unsigned) ((ascent + descent) * scale + 0.999f);
 
   hb_bool_t is_color = hb_ot_color_has_paint (face) ||
                        hb_ot_color_has_layers (face) ||
@@ -256,17 +255,21 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
 
   hb_raster_paint_t *p = nullptr;
   hb_raster_draw_t  *d = nullptr;
-  hb_raster_extents_t ext = { 0, (int) -descent, w, h, 0 };
+  hb_raster_extents_t ext = { 0,
+                              (int) (-descent * scale),
+                              w, h, 0 };
 
   if (is_color)
   {
     p = hb_raster_paint_create_or_fail ();
     hb_raster_paint_set_extents (p, &ext);
+    hb_raster_paint_set_scale_factor (p, scale, scale);
   }
   else
   {
     d = hb_raster_draw_create_or_fail ();
     hb_raster_draw_set_extents (d, &ext);
+    hb_raster_draw_set_scale_factor (d, scale, scale);
   }
   if (!p && !d) goto fail;
 
