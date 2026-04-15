@@ -81,6 +81,7 @@ header h1 {
 }
 header h1 code {
   font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+  font-weight: 700;
   font-size: 1em;
   background: none;
   color: var(--accent);
