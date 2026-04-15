@@ -150,6 +150,23 @@ render (hb_vector_format_t format,
   hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, nullptr);
   hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, nullptr);
 
+  /* Seed extents with the logical line box so the viewBox covers
+   * the typographic rectangle (advance × ascender+descender),
+   * not just glyph ink.  Per-glyph EXPAND then unions ink that
+   * overshoots — italic LSBs, accents, deep descenders.
+   *
+   * hb-vector uses Y-down for the SVG/PDF output coordinate
+   * system, so the line box's top edge is at -ascender. */
+  float total_x = 0.f;
+  for (unsigned i = 0; i < len; i++) total_x += pos[i].x_advance;
+  hb_font_extents_t fe;
+  hb_font_get_h_extents (font, &fe);
+  float asc = (float) fe.ascender;   /* positive */
+  float desc = (float) fe.descender; /* negative */
+  hb_vector_extents_t logical = { 0.f, -asc, total_x, asc - desc };
+  if (p) hb_vector_paint_set_extents (p, &logical);
+  else   hb_vector_draw_set_extents  (d, &logical);
+
   float pen_x = 0.f;
   float pen_y = 0.f;
   for (unsigned i = 0; i < len; i++)
