@@ -209,6 +209,10 @@ nav.tabs .tab.active:visited { color: var(--accent); }
 body[data-active="embed"] #shared-controls,
 body[data-active="embed"] .presets { display: none; }
 
+/* GPU has no font-size concept -- zoom is a user gesture
+ * on the canvas -- so hide the Size input on the gpu tab. */
+body[data-active="gpu"] .size-label { display: none; }
+
 .controls {
   display: flex;
   gap: 1rem;

@@ -201,13 +201,17 @@
   function renderGpu () {
     if (!gpuLoaded) {
       gpuLoaded = true;
-      /* Wait one frame so the section has layout before
-       * hb-gpu-demo's GLFW canvas measures itself -- direct
-       * #gpu page loads were otherwise coming up blank with
-       * a 0x0 canvas. */
-      requestAnimationFrame (() => {
+      /* Two-frame delay so both visibility and layout have
+       * committed before hb-gpu-demo's GLFW canvas measures
+       * itself; on load, dispatch a synthetic resize into
+       * the iframe for hb-gpu-demo's resize handler to
+       * re-measure the canvas (belt + suspenders). */
+      gpuFrame.addEventListener ("load", () => {
+        try { gpuFrame.contentWindow.dispatchEvent (new Event ("resize")); } catch {}
+      }, { once: true });
+      requestAnimationFrame (() => requestAnimationFrame (() => {
         gpuFrame.src = gpuFrameUrl ();
-      });
+      }));
       return;
     }
     if (gpuReady)
