@@ -123,6 +123,8 @@
   const vectorRender = document.getElementById ("vector-render");
   const dlSvg        = document.getElementById ("vector-dl-svg");
   const dlPdf        = document.getElementById ("vector-dl-pdf");
+  const svgSizeEl    = document.getElementById ("vector-svg-size");
+  const pdfSizeEl    = document.getElementById ("vector-pdf-size");
   let svgUrl = null, pdfUrl = null;
   function renderVector () {
     withText ((textPtr) => {
@@ -132,8 +134,10 @@
       Module._web_free_string (svgPtr);
       vectorRender.innerHTML = svg;
       if (svgUrl) URL.revokeObjectURL (svgUrl);
-      svgUrl = URL.createObjectURL (new Blob ([svg], { type: "image/svg+xml" }));
+      const svgBlob = new Blob ([svg], { type: "image/svg+xml" });
+      svgUrl = URL.createObjectURL (svgBlob);
       dlSvg.href = svgUrl;
+      svgSizeEl.textContent = fmtBytes (svgBlob.size);
 
       const lenPtr = Module._malloc (4);
       const pdfPtr = Module._web_render_pdf (fontPtr, fontBuf.length,
@@ -145,6 +149,7 @@
       if (pdfUrl) URL.revokeObjectURL (pdfUrl);
       pdfUrl = URL.createObjectURL (new Blob ([pdfBytes], { type: "application/pdf" }));
       dlPdf.href = pdfUrl;
+      pdfSizeEl.textContent = fmtBytes (pdfLen);
     });
   }
 

@@ -566,6 +566,14 @@ pre.code {
   color: var(--accent-hi);
 }
 .subset-table { margin-top: 0; }
+
+/* Inline byte-size tag next to the Vector tab download links. */
+.size-tag {
+  font-size: 0.85em;
+  color: var(--muted);
+  font-weight: normal;
+  margin-left: 0.25rem;
+}
 .subset-table tr.subset-grew td { color: var(--danger, #c0392b); }
 .subset-table tr.subset-same td { color: var(--muted); }
 

@@ -327,8 +327,12 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
        needs no font.</p>
     <div id="vector-render" class="render"></div>
     <div class="controls demo-controls">
-      <a id="vector-dl-svg" href="#" download="text.svg">Download SVG</a>
-      <a id="vector-dl-pdf" href="#" download="text.pdf">Download PDF</a>
+      <a id="vector-dl-svg" href="#" download="text.svg">
+        Download SVG <span class="size-tag" id="vector-svg-size"></span>
+      </a>
+      <a id="vector-dl-pdf" href="#" download="text.pdf">
+        Download PDF <span class="size-tag" id="vector-pdf-size"></span>
+      </a>
     </div>
   </section>
 
@@ -338,9 +342,12 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
        <strong>click</strong> to toggle animation,
        <strong>drag</strong> to pan,
        <strong>scroll</strong> to zoom,
-       <strong>right-drag</strong> to rotate in 3D.  Full
+       <strong>right-drag</strong> to rotate in 3D.  The full
        standalone demo at
-       <a href="https://harfbuzz.github.io/hb-gpu-demo/">harfbuzz.github.io/hb-gpu-demo</a>.</p>
+       <a href="https://harfbuzz.github.io/hb-gpu-demo/">harfbuzz.github.io/hb-gpu-demo</a>
+       has more controls (preset texts, atlas inspector, FPS
+       counter) and a WebGPU build alongside the WebGL2 one
+       embedded here.</p>
     <iframe id="gpu-frame" class="render"
             title="hb-gpu live demo"></iframe>
   </section>
