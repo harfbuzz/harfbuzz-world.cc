@@ -101,6 +101,7 @@ header {
   width: 96px;
   height: 96px;
   display: block;
+  border-radius: 16px;
 }
 header h1 {
   font-family: "Anton", "Impact", sans-serif;
