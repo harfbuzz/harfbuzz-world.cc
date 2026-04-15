@@ -334,13 +334,24 @@
     clearTimeout (urlSyncTimer);
     urlSyncTimer = setTimeout (() => {
       const url = new URL (location.href);
-      if (textInput.value) url.searchParams.set ("text", textInput.value);
-      else                 url.searchParams.delete ("text");
+      const cur = url.searchParams.get ("preset");
+      const presetMatches = cur && PRESETS[cur] && PRESETS[cur].text === textInput.value;
+      /* Only emit ?text when it diverges from the preset's
+       * default -- otherwise leave the URL as just ?preset=X. */
+      if (textInput.value && !presetMatches)
+        url.searchParams.set ("text", textInput.value);
+      else
+        url.searchParams.delete ("text");
       if (sizeInput.value && sizeInput.value !== "48") url.searchParams.set ("size", sizeInput.value);
       else                                             url.searchParams.delete ("size");
-      url.searchParams.delete ("preset");
+      const v = variationsForUrl ();
+      if (v) url.searchParams.set ("variations", v);
+      else   url.searchParams.delete ("variations");
+      /* Drop ?preset only if the text no longer matches it. */
+      if (cur && !presetMatches)
+        url.searchParams.delete ("preset");
       history.replaceState (null, "", url);
-    reflectActivePreset ();
+      reflectActivePreset ();
     }, 200);
   }
   textInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
@@ -371,7 +382,19 @@
     Module._free (buf);
     if (gpuReady)
       postGpu ({ kind: "variations", value: s });
+    /* Reflect non-default variations in the URL so the
+     * view is shareable.  Skip when sliders are still at
+     * the font's defaults (no point cluttering URL). */
+    syncUrl ();
     renderActive ();
+  }
+  function variationsForUrl () {
+    /* Only include axes the user moved off the slider
+     * default we picked at refresh time. */
+    return currentAxes
+      .filter ((a) => a.value !== a.startValue)
+      .map ((a) => a.tag + "=" + a.value)
+      .join (",");
   }
   function refreshAxes () {
     const ptr = Module._web_font_axes (fontPtr, fontBuf.length);
@@ -402,7 +425,8 @@
       row.append (caption, slider, readout);
       axesEl.append (row);
       const entry = { tag: a.tag, name: a.name, min: a.min, def: a.def,
-                      max: a.max, slider, readout, value: startValue };
+                      max: a.max, slider, readout, value: startValue,
+                      startValue };
       slider.addEventListener ("input", () => {
         entry.value = parseFloat (slider.value);
         readout.textContent = (+slider.value).toFixed (2).replace (/\.?0+$/, "");
@@ -417,6 +441,21 @@
       axesEl.append (empty);
     }
     axesEl.hidden = false;
+    /* If the URL carries an explicit variations= setting,
+     * apply it to the sliders before pushing wasm + GPU
+     * state.  Lets a shared link reproduce the view. */
+    const urlVars = new URLSearchParams (location.search).get ("variations");
+    if (urlVars)
+      urlVars.split (",").forEach ((pair) => {
+        const [tag, val] = pair.split ("=");
+        const axis = currentAxes.find ((a) => a.tag === tag);
+        if (axis && val !== undefined) {
+          const v = parseFloat (val);
+          axis.value = v;
+          axis.slider.value = v;
+          axis.readout.textContent = String (v);
+        }
+      });
     updateVariations ();
   }
 
@@ -458,8 +497,7 @@
    * ?text / ?font overrides).  Gets called from syncUrl and
    * applyPreset so it stays in sync with location.search. */
   function reflectActivePreset () {
-    const p = new URLSearchParams (location.search);
-    const key = (!p.has ("text") && !p.has ("font")) ? p.get ("preset") : null;
+    const key = new URLSearchParams (location.search).get ("preset");
     presetButtons.forEach ((btn) => {
       btn.classList.toggle ("active", btn.dataset.preset === key);
     });

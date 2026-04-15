@@ -291,6 +291,7 @@ body[data-active="gpu"] .size-label { display: none; }
   border-color: var(--accent);
   background: var(--highlight);
   color: var(--accent);
+  font-weight: 700;
 }
 .controls label {
   display: flex;
