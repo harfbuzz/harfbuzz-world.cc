@@ -423,7 +423,7 @@ pre.code {
   line-height: 1.45;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   body {
     margin: 0;
     border-radius: 0;
@@ -431,7 +431,9 @@ pre.code {
   }
   header h1 { font-size: 2rem; }
   .attribution {
-    position: static;
+    position: static !important;
+    right: auto !important;
+    bottom: auto !important;
     text-align: center;
     background: none;
     box-shadow: none;
