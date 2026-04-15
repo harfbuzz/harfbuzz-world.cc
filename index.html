@@ -146,13 +146,23 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
           <code>HB_HAS_CAIRO</code>, etc. — opt into the
         matching system integration.</li>
     </ul>
+    <p>Under <code>HB_TINY</code>, a few subsystems are
+       stripped out that you may want back.  Undefine the
+       corresponding <code>HB_NO_*</code> flag in your
+       override header to opt them back in.  Notable one:
+       <code>HB_NO_AAT</code> — gates shaping for Apple
+       Advanced Typography tables (<code>morx</code>,
+       <code>kerx</code>, <code>trak</code>, …).  If your
+       input includes Mac system fonts, undefine it.</p>
 
     <h3>Building for the web (Emscripten)</h3>
     <p>The same amalgamation compiles to wasm via
        <code>em++</code>; this site's wasm bundle is built
-       exactly this way.  HarfBuzz World ships in roughly
-       <strong>400 KB</strong> of wasm with shape, subset,
-       raster, vector, and GPU all enabled.</p>
+       exactly this way.  This page ships in roughly
+       <strong>760 KB</strong> of wasm (uncompressed; the
+       wire size after gzip is roughly a third of that)
+       with shape, subset, raster, vector, and AAT all
+       enabled; the GPU tab embeds the separate hb-gpu demo.</p>
 <pre class="code">em++ -std=c++11 -Oz -flto \
      -I third_party/harfbuzz/src \
      -DHB_TINY -DHB_HAS_SUBSET -DHB_HAS_RASTER \
