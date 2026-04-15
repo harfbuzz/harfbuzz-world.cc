@@ -113,11 +113,69 @@ unsigned len;
 hb_glyph_info_t      *info = hb_buffer_get_glyph_infos     (buf, &amp;len);
 hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 /* …draw the glyphs… */</pre>
-    <p>Pick what you need at compile time with feature
-       defines: <code>HB_TINY</code> for a minimal core,
-       <code>HB_HAS_RASTER</code>, <code>HB_HAS_VECTOR</code>,
-       <code>HB_HAS_GPU</code>, <code>HB_HAS_SUBSET</code>
-       to opt into the matching subsystems.</p>
+
+    <h3>Customizing the build</h3>
+    <p>HarfBuzz reads a handful of compile-time
+       <code>#define</code>s when the amalgamation is
+       compiled.  Pass them on the command line
+       (<code>-DHB_TINY</code>) or via a small wrapper
+       header that <code>#define</code>s them and then
+       <code>#include</code>s
+       <code>harfbuzz-world.cc</code>.</p>
+    <ul>
+      <li><code>HB_TINY</code> — strip every optional
+        feature and shaper down to a small Latin-only core.
+        Combine with the <code>HB_HAS_*</code> flags below
+        to add back what you need.</li>
+      <li><code>HB_HAS_SUBSET</code> — pull in the
+        font-subsetting subsystem (<code>hb-subset</code>).</li>
+      <li><code>HB_HAS_RASTER</code> — pull in
+        <code>hb-raster</code> for software pixel
+        rendering.</li>
+      <li><code>HB_HAS_VECTOR</code> — pull in
+        <code>hb-vector</code> for SVG / PDF output.</li>
+      <li><code>HB_HAS_GPU</code> — pull in
+        <code>hb-gpu</code> for slug-based GPU shaders.</li>
+      <li><code>HB_HAS_FREETYPE</code>,
+          <code>HB_HAS_GLIB</code>,
+          <code>HB_HAS_ICU</code>,
+          <code>HB_HAS_GRAPHITE</code>,
+          <code>HB_HAS_CAIRO</code>, etc. — opt into the
+        matching system integration.</li>
+    </ul>
+
+    <h3>Building for the web (Emscripten)</h3>
+    <p>The same amalgamation compiles to wasm via
+       <code>em++</code>; this site's wasm bundle is built
+       exactly this way.  HarfBuzz World ships in roughly
+       <strong>400 KB</strong> of wasm with shape, raster,
+       vector, GPU, and subset all enabled.</p>
+<pre class="code">em++ -std=c++11 -Oz -flto \
+     -I third_party/harfbuzz/src \
+     -DHB_TINY -DHB_HAS_SUBSET -DHB_HAS_RASTER \
+     -DHB_HAS_VECTOR -DHB_HAS_GPU \
+     bindings.cc third_party/harfbuzz/src/harfbuzz-world.cc \
+     -sMODULARIZE=1 -sALLOW_MEMORY_GROWTH=1 \
+     -sEXPORTED_FUNCTIONS='["_my_shape_export","_malloc","_free"]' \
+     -o myhb.js</pre>
+    <p>See this site's <code>scripts/build.sh</code> and
+       <code>src/bindings.cc</code> for a complete working
+       example.</p>
+
+    <h3>Other languages</h3>
+    <p>If C/C++ isn't where you live, there are first-class
+       HarfBuzz bindings for several other ecosystems:</p>
+    <ul>
+      <li><a href="https://github.com/harfbuzz/uharfbuzz">uharfbuzz</a>
+        — Python bindings, used by fontTools and friends.</li>
+      <li><a href="https://github.com/harfbuzz/harfbuzzjs">harfbuzzjs</a>
+        — pure JS / wasm wrapper exposing the full HarfBuzz
+        API to web pages and Node.</li>
+      <li><a href="https://github.com/harfbuzz/harfrust">harfrust</a>
+        — pure-Rust port (formerly rustybuzz), no C
+        dependency.</li>
+    </ul>
+
     <p>Source for this site:
        <a href="https://github.com/harfbuzz/harfbuzz-world.cc">github.com/harfbuzz/harfbuzz-world.cc</a>.</p>
   </section>
