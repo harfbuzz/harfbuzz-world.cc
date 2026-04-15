@@ -198,7 +198,12 @@
    * .src again would reload the iframe and hit all the
    * failure modes of racing the wasm bootstrap. */
   let gpuLoaded = false;
+  function focusGpu () {
+    try { gpuFrame.contentWindow.focus (); } catch {}
+    try { gpuFrame.focus (); } catch {}
+  }
   function renderGpu () {
+    setTimeout (focusGpu, 0);
     if (!gpuLoaded) {
       gpuLoaded = true;
       /* Two-frame delay so both visibility and layout have
