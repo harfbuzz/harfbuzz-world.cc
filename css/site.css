@@ -479,6 +479,8 @@ pre.code {
   overflow: auto;
   line-height: 1.45;
 }
+.resources li { margin-bottom: 0.5rem; }
+
 .placeholder {
   color: var(--muted);
   font-style: italic;
