@@ -371,7 +371,7 @@
       row.className = "axis";
       const caption = document.createElement ("span");
       caption.className = "axis-caption";
-      caption.textContent = (a.name || a.tag) + " (" + a.tag + ")";
+      caption.textContent = a.name || a.tag;
       const slider = document.createElement ("input");
       slider.type = "range";
       slider.min = a.min;

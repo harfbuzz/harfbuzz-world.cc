@@ -117,8 +117,11 @@ char *web_font_axes (const uint8_t *font_bytes, unsigned font_len)
   char *out = (char *) malloc (cap);
   size_t off = 0;
   off += snprintf (out + off, cap - off, "[");
+  bool first = true;
   for (unsigned i = 0; i < got; i++)
   {
+    /* Skip hidden axes -- not meant for direct UI exposure. */
+    if (axes[i].flags & HB_OT_VAR_AXIS_FLAG_HIDDEN) continue;
     char name[64] = {0};
     unsigned sz = sizeof name;
     hb_ot_name_get_utf8 (face, axes[i].name_id, HB_LANGUAGE_INVALID, &sz, name);
@@ -131,9 +134,10 @@ char *web_font_axes (const uint8_t *font_bytes, unsigned font_len)
     };
     off += snprintf (out + off, cap - off,
                      "%s{\"tag\":\"%s\",\"min\":%g,\"def\":%g,\"max\":%g,\"name\":\"%s\"}",
-                     i ? "," : "", tag,
+                     first ? "" : ",", tag,
                      axes[i].min_value, axes[i].default_value, axes[i].max_value,
                      name);
+    first = false;
   }
   off += snprintf (out + off, cap - off, "]");
   hb_face_destroy (face);

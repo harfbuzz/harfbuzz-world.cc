@@ -222,6 +222,7 @@ body[data-active="gpu"] .size-label { display: none; }
 }
 .demo-controls { margin: 1rem 0 0; }
 
+.axes[hidden] { display: none; }
 .axes {
   display: grid;
   grid-template-columns: 10rem 1fr 5rem;
