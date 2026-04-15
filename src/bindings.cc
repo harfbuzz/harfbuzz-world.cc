@@ -266,8 +266,8 @@ render (hb_vector_format_t format,
     static unsigned s_counter = 0;
     char pfx[16];
     snprintf (pfx, sizeof pfx, "v%u-", ++s_counter);
-    if (p) hb_vector_paint_svg_set_prefix (p, pfx);
-    if (d) hb_vector_draw_svg_set_prefix  (d, pfx);
+    if (p) hb_vector_paint_set_svg_prefix (p, pfx);
+    if (d) hb_vector_draw_set_svg_prefix  (d, pfx);
   }
 
   if (!p && !d)
