@@ -354,9 +354,9 @@
         if (v) url.searchParams.set ("variations", v);
         else   url.searchParams.delete ("variations");
       }
-      /* Drop ?preset only if the text no longer matches it. */
-      if (cur && !presetMatches)
-        url.searchParams.delete ("preset");
+      /* Preset stays put even when text/variations diverge --
+       * the pill represents the script + font choice and
+       * widget tweaks layer on top. */
       history.replaceState (null, "", url);
       reflectActivePreset ();
     }, 200);
