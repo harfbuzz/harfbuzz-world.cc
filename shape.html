@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>shape — HarfBuzz World</title>
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<header>
+  <h1><a href="./">HarfBuzz World</a> / shape</h1>
+</header>
+
+<main>
+  <section class="demo">
+    <div class="controls">
+      <label>Text:
+        <input id="text" type="text" value="Shape me." size="40">
+      </label>
+      <label>Size:
+        <input id="size" type="number" value="48" min="8" max="200">
+      </label>
+    </div>
+    <div id="render" class="render"></div>
+    <details>
+      <summary>Glyph data</summary>
+      <pre id="glyphs"></pre>
+    </details>
+  </section>
+</main>
+
+<script src="hb-world.js"></script>
+<script src="js/shape.js"></script>
+</body>
+</html>
