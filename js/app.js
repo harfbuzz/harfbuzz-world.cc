@@ -669,6 +669,7 @@
    * three scripts we ship fonts for. */
   const PRESETS = {
     english:    { text: "hello-world!",      font: "fonts/NotoSans.ttf",   name: "NotoSans" },
+    hebrew:     { text: "שלום עולם",          font: "fonts/NotoSansHebrew.ttf",     name: "NotoSansHebrew" },
     arabic:     { text: "مرحبا بالعالم",      font: "fonts/NotoNaskhArabic.ttf",    name: "NotoNaskhArabic" },
     urdu:       { text: "ہیلو دنیا",          font: "fonts/NotoNastaliqUrdu.ttf",   name: "NotoNastaliqUrdu" },
     hindi:      { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
