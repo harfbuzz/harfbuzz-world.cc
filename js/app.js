@@ -18,7 +18,12 @@
     fontBuf = bytes;
     fontPtr = Module._malloc (fontBuf.length);
     Module.HEAPU8.set (fontBuf, fontPtr);
-    if (displayName) fontNameEl.textContent = displayName;
+    /* Prefer the font's own family name (hb-ot-name) over
+     * whatever caller-friendly label was passed in. */
+    const namePtr = Module._web_font_family (fontPtr, fontBuf.length);
+    const otName = Module.UTF8ToString (namePtr);
+    Module._web_free_string (namePtr);
+    fontNameEl.textContent = otName || displayName || "";
     /* Also push to the GPU iframe if its runtime is up. */
     if (gpuReady)
       postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });

@@ -28,6 +28,41 @@ void web_free_string (char *s)
   free (s);
 }
 
+/* Return the font's typographic family (name id 16), falling
+ * back to legacy family (id 1), as a malloc'd UTF-8 string.
+ * Caller frees with web_free_string(). */
+EMSCRIPTEN_KEEPALIVE
+char *web_font_family (const uint8_t *font_bytes, unsigned font_len)
+{
+  hb_blob_t *blob = hb_blob_create_or_fail ((const char *) font_bytes,
+                                             font_len,
+                                             HB_MEMORY_MODE_READONLY,
+                                             nullptr, nullptr);
+  if (!blob) return strdup ("");
+  hb_face_t *face = hb_face_create (blob, 0);
+  hb_blob_destroy (blob);
+
+  const hb_ot_name_id_t ids[] = { HB_OT_NAME_ID_TYPOGRAPHIC_FAMILY,
+                                  HB_OT_NAME_ID_FONT_FAMILY };
+  for (hb_ot_name_id_t id : ids)
+  {
+    unsigned size = 0;
+    hb_ot_name_get_utf8 (face, id, HB_LANGUAGE_INVALID, &size, nullptr);
+    if (size)
+    {
+      size++; /* room for NUL */
+      char *buf = (char *) malloc (size);
+      if (!buf) break;
+      unsigned got = size;
+      hb_ot_name_get_utf8 (face, id, HB_LANGUAGE_INVALID, &got, buf);
+      hb_face_destroy (face);
+      return buf;
+    }
+  }
+  hb_face_destroy (face);
+  return strdup ("");
+}
+
 /* Common: produce a shaped buffer for (font_bytes, text). */
 static hb_buffer_t *
 shape (const uint8_t *font_bytes, unsigned font_len,
