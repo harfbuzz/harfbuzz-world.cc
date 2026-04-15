@@ -92,14 +92,22 @@ char *web_shape_json (const uint8_t *font_bytes, unsigned font_len,
   return out;
 }
 
-/* Returns a malloc'd SVG string rendering the shaped text via
- * hb-vector at @font_size_px pixels per em.  Caller frees with
- * web_free_string(). */
-EMSCRIPTEN_KEEPALIVE
-char *web_render_svg (const uint8_t *font_bytes, unsigned font_len,
-                      const char *utf8_text,
-                      float font_size_px)
+/* Render shaped text via hb-vector in the requested format.
+ *
+ * @format: HB_VECTOR_FORMAT_SVG or HB_VECTOR_FORMAT_PDF.
+ * @out_len: out-param receiving the byte length of the result
+ *           (excluding the trailing NUL).  Pass NULL to skip.
+ * Returns a malloc'd buffer with the rendered output plus a
+ * trailing NUL.  Caller frees with web_free_string(). */
+static char *
+render (hb_vector_format_t format,
+        const uint8_t *font_bytes, unsigned font_len,
+        const char *utf8_text,
+        float font_size_px,
+        unsigned *out_len)
 {
+  if (out_len) *out_len = 0;
+
   hb_face_t *face = nullptr;
   hb_font_t *font = nullptr;
   hb_buffer_t *buf = shape (font_bytes, font_len, utf8_text, &face, &font);
@@ -126,9 +134,9 @@ char *web_render_svg (const uint8_t *font_bytes, unsigned font_len,
   hb_vector_paint_t *p = nullptr;
   hb_vector_draw_t  *d = nullptr;
   if (is_color)
-    p = hb_vector_paint_create_or_fail (HB_VECTOR_FORMAT_SVG);
+    p = hb_vector_paint_create_or_fail (format);
   else
-    d = hb_vector_draw_create_or_fail (HB_VECTOR_FORMAT_SVG);
+    d = hb_vector_draw_create_or_fail (format);
   if (!p && !d)
   {
     hb_buffer_destroy (buf);
@@ -161,12 +169,13 @@ char *web_render_svg (const uint8_t *font_bytes, unsigned font_len,
 
   hb_blob_t *out = p ? hb_vector_paint_render (p)
                      : hb_vector_draw_render  (d);
-  unsigned out_len = 0;
-  const char *out_data = hb_blob_get_data (out, &out_len);
+  unsigned blob_len = 0;
+  const char *out_data = hb_blob_get_data (out, &blob_len);
 
-  char *str = (char *) malloc ((size_t) out_len + 1);
-  memcpy (str, out_data, out_len);
-  str[out_len] = '\0';
+  char *str = (char *) malloc ((size_t) blob_len + 1);
+  memcpy (str, out_data, blob_len);
+  str[blob_len] = '\0';
+  if (out_len) *out_len = blob_len;
 
   hb_blob_destroy (out);
   hb_vector_paint_destroy (p);
@@ -175,6 +184,25 @@ char *web_render_svg (const uint8_t *font_bytes, unsigned font_len,
   hb_font_destroy (font);
   hb_face_destroy (face);
   return str;
+}
+
+EMSCRIPTEN_KEEPALIVE
+char *web_render_svg (const uint8_t *font_bytes, unsigned font_len,
+                      const char *utf8_text,
+                      float font_size_px)
+{
+  return render (HB_VECTOR_FORMAT_SVG, font_bytes, font_len,
+                 utf8_text, font_size_px, nullptr);
+}
+
+EMSCRIPTEN_KEEPALIVE
+char *web_render_pdf (const uint8_t *font_bytes, unsigned font_len,
+                      const char *utf8_text,
+                      float font_size_px,
+                      unsigned *out_len)
+{
+  return render (HB_VECTOR_FORMAT_PDF, font_bytes, font_len,
+                 utf8_text, font_size_px, out_len);
 }
 
 } /* extern "C" */
