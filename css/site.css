@@ -173,6 +173,9 @@ nav.tabs {
   gap: 0.25rem;
   margin: 1.5rem 0 1.25rem;
   border-bottom: 1px solid var(--rule);
+  /* Wrap to multiple rows on narrow viewports; individual
+   * tab labels don't break mid-word. */
+  flex-wrap: wrap;
 }
 nav.tabs .tab {
   font-family: "PT Sans", system-ui, sans-serif;
@@ -183,6 +186,7 @@ nav.tabs .tab {
   padding: 0.5rem 1rem;
   border-bottom: 3px solid transparent;
   margin-bottom: -1px;
+  white-space: nowrap;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 nav.tabs .tab:hover {
