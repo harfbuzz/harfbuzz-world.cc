@@ -245,8 +245,13 @@
     withText ((textPtr) => {
       const wPtr = Module._malloc (4);
       const hPtr = Module._malloc (4);
+      /* Render at devicePixelRatio so a 48-px font on a
+       * 2x display gets a 96-px pixel buffer that the
+       * browser displays at 48 CSS px -- no upscale, no
+       * blur. */
+      const dpr = window.devicePixelRatio || 1;
       const dataPtr = Module._web_render_raster (fontPtr, fontBuf.length,
-                                                  textPtr, currentSize (),
+                                                  textPtr, currentSize () * dpr,
                                                   wPtr, hPtr);
       if (!dataPtr) {
         Module._free (wPtr); Module._free (hPtr);
@@ -265,6 +270,10 @@
       }
       rasterCanvas.width = w;
       rasterCanvas.height = h;
+      /* CSS-display at the un-DPR'd size so the browser
+       * maps each pixel to one device pixel. */
+      rasterCanvas.style.width = (w / dpr) + "px";
+      rasterCanvas.style.height = (h / dpr) + "px";
       const imageData = new ImageData (new Uint8ClampedArray (bgra.buffer), w, h);
       rasterCtx.putImageData (imageData, 0, 0);
     });
