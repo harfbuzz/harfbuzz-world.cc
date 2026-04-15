@@ -272,13 +272,11 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
   </section>
 
   <section class="demo" id="demo-subset" hidden>
-    <p>Slim the current font down to just the glyphs needed
-       to shape the text above.  hb-subset closes over the
-       font's layout rules so every glyph that could
-       participate in shaping the given codepoints stays in.
-       The preview below renders the text using the produced
-       subset font (loaded as a CSS @font-face), so what you
-       see is what the subset can actually shape.</p>
+    <p>Slim the font down to the glyphs needed for the text
+       above; hb-subset closes over the layout rules so any
+       glyph that could participate in shaping survives.  The
+       preview renders with the produced subset font, so what
+       you see is what it can shape.</p>
     <div id="subset-render" class="render">
       <span id="subset-preview"></span>
     </div>
