@@ -113,26 +113,6 @@
         via WebGL2 / WebGPU.</li>
     </ul>
 
-    <h2>Resources</h2>
-    <ul class="resources">
-      <li><a href="https://github.com/harfbuzz/harfbuzz">github.com/harfbuzz/harfbuzz</a>
-        — source, issues, releases.</li>
-      <li><a href="https://harfbuzz.github.io/">harfbuzz.github.io</a>
-        — user manual and API reference.</li>
-      <li><a href="https://github.com/harfbuzz/harfbuzz/blob/main/BUILD.md">BUILD.md</a>
-        — Meson / packaging guidance for systems that have
-        a build system already.</li>
-      <li><a href="https://github.com/harfbuzz/harfbuzz/blob/main/CONFIG.md">CONFIG.md</a>
-        — overview of compile-time configuration.  The full
-        knob list lives in
-        <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/hb-config.hh">src/hb-config.hh</a>
-        (<code>HB_NO_*</code> feature gates and the
-        <code>HB_TINY</code> / <code>HB_LEAN</code> /
-        <code>HB_MINI</code> presets) and
-        <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/hb-features.h.in">src/hb-features.h.in</a>
-        (the <code>HB_HAS_*</code> subsystem flags).</li>
-    </ul>
-
     <h2>Embedding <code>harfbuzz-world.cc</code></h2>
     <p>Add HarfBuzz to your project as a submodule (or vendor
        a checkout next to your code).  Then point your build
@@ -225,6 +205,28 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
        <a href="https://github.com/harfbuzz/harfbuzz-world.cc/blob/main/src/bindings.cc"><code>src/bindings.cc</code></a>
        for a complete working example.</p>
 
+    <h2>Resources</h2>
+    <ul class="resources">
+      <li><a href="https://github.com/harfbuzz/harfbuzz">github.com/harfbuzz/harfbuzz</a>
+        — source, issues, releases.</li>
+      <li><a href="https://harfbuzz.github.io/">harfbuzz.github.io</a>
+        — user manual and API reference.</li>
+      <li><a href="https://github.com/harfbuzz/harfbuzz/blob/main/BUILD.md">BUILD.md</a>
+        — Meson / packaging guidance for systems that have
+        a build system already.</li>
+      <li><a href="https://github.com/harfbuzz/harfbuzz/blob/main/CONFIG.md">CONFIG.md</a>
+        — overview of compile-time configuration.  The full
+        knob list lives in
+        <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/hb-config.hh">src/hb-config.hh</a>
+        (<code>HB_NO_*</code> feature gates and the
+        <code>HB_TINY</code> / <code>HB_LEAN</code> /
+        <code>HB_MINI</code> presets) and
+        <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/hb-features.h.in">src/hb-features.h.in</a>
+        (the <code>HB_HAS_*</code> subsystem flags).</li>
+      <li><a href="https://github.com/harfbuzz/harfbuzz-world.cc">github.com/harfbuzz/harfbuzz-world.cc</a>
+        — source for this site.</li>
+    </ul>
+
     <h3>Other languages</h3>
     <p>If C/C++ isn't where you live, there are first-class
        HarfBuzz bindings for several other ecosystems:</p>
@@ -238,10 +240,6 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         — pure-Rust port (formerly rustybuzz), no C
         dependency.</li>
     </ul>
-
-    <hr>
-    <p>Source for this site:
-       <a href="https://github.com/harfbuzz/harfbuzz-world.cc">github.com/harfbuzz/harfbuzz-world.cc</a>.</p>
   </section>
 
   <section class="demo" id="demo-shape" hidden>
