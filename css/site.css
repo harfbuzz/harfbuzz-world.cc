@@ -388,6 +388,7 @@ body[data-active="embed"] .presets { display: none; }
   display: block;
 }
 iframe.render {
+  display: block;
   width: 100%;
   height: 480px;
   border: 1px solid var(--rule);
