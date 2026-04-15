@@ -255,8 +255,11 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
 
   hb_raster_paint_t *p = nullptr;
   hb_raster_draw_t  *d = nullptr;
+  /* Image origin is the BOTTOM-LEFT in glyph space.  Glyphs
+   * draw with ascender > 0 and descender < 0, baseline at 0.
+   * Bottom of image at y = -descent (just below the descender). */
   hb_raster_extents_t ext = { 0,
-                              (int) (-descent * scale),
+                              (int) -(descent * scale + 0.5f),
                               w, h, 0 };
 
   if (is_color)
@@ -298,7 +301,8 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
     const uint8_t *src = hb_raster_image_get_buffer (img);
     hb_raster_extents_t ie;
     hb_raster_image_get_extents (img, &ie);
-    size_t bytes = (size_t) ie.stride * ie.height;
+    /* hb-raster guarantees tight stride for BGRA32. */
+    size_t bytes = (size_t) ie.width * 4 * ie.height;
     uint8_t *out = (uint8_t *) malloc (bytes);
     memcpy (out, src, bytes);
     if (out_width)  *out_width  = ie.width;
