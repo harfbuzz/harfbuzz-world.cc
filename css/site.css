@@ -185,6 +185,7 @@ nav.tabs .tab {
   color: var(--muted);
   padding: 0.5rem 1rem;
   border-bottom: 3px solid transparent;
+  border-radius: 12px 12px 0 0;
   margin-bottom: -1px;
   white-space: nowrap;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
@@ -197,7 +198,6 @@ nav.tabs .tab.active {
   color: var(--accent);
   background: var(--highlight);
   border-bottom-color: var(--accent);
-  border-radius: 4px 4px 0 0;
 }
 nav.tabs .tab:visited { color: var(--muted); }
 nav.tabs .tab.active:visited { color: var(--accent); }

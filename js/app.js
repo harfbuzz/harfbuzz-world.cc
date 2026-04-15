@@ -24,9 +24,13 @@
     const otName = Module.UTF8ToString (namePtr);
     Module._web_free_string (namePtr);
     fontNameEl.textContent = otName || displayName || "";
-    /* Also push to the GPU iframe if its runtime is up. */
-    if (gpuReady)
+    /* Also push to the GPU iframe if its runtime is up.
+     * web_load_font resets variations, so re-push the
+     * Regular defaults right after. */
+    if (gpuReady) {
       postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
+      postGpu ({ kind: "variations", value: "wght=400,wdth=100" });
+    }
     renderActive ();
   }
 
@@ -195,6 +199,10 @@
       gpuReady = true;
       postGpu ({ kind: "text", value: textInput.value });
       if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
+      /* Default the common axes to typical "Regular" values
+       * so CJK VFs (which pick wght=100 as their fvar
+       * default) don't render too light. */
+      postGpu ({ kind: "variations", value: "wght=400,wdth=100" });
       /* First rebuild_buffer on a freshly-loaded font
        * sometimes leaves the atlas half-uploaded and the
        * first composite blank.  A second text push forces

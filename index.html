@@ -186,11 +186,9 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
     <h3>Building for the web (Emscripten)</h3>
     <p>The same amalgamation compiles to wasm via
        <code>em++</code>; this site's wasm bundle is built
-       exactly this way.  This page ships in roughly
-       <strong>760 KB</strong> of wasm (uncompressed; the
-       wire size after gzip is roughly a third of that)
-       with shape, subset, raster, vector, and AAT all
-       enabled; the GPU tab embeds the separate hb-gpu demo.</p>
+       exactly this way, with shape, subset, raster,
+       vector, and AAT all enabled.  The GPU tab embeds the
+       separate hb-gpu demo.</p>
 <pre class="code">em++ -std=c++11 -Oz -flto \
      -I third_party/harfbuzz/src \
      -DHB_TINY -DHB_HAS_SUBSET -DHB_HAS_RASTER \
