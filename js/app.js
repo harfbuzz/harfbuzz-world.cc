@@ -190,6 +190,16 @@
       gpuReady = true;
       postGpu ({ kind: "text", value: textInput.value });
       if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
+      /* After wasm has processed text+font, nudge another
+       * redraw + resize a couple frames later.  First render
+       * on a freshly-swapped font sometimes comes up blank
+       * (glyphs uploaded but not actually composited) until
+       * a visibility/resize event re-drives the render. */
+      setTimeout (() => {
+        try {
+          gpuFrame.contentWindow.dispatchEvent (new Event ("resize"));
+        } catch {}
+      }, 200);
     }
   });
   /* Set the iframe src exactly once, lazily on first gpu-tab
