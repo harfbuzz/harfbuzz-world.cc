@@ -543,6 +543,12 @@
       const name = displayName || url.replace (/^.*\//, "")
                                      .replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
       setFontBytes (bytes, name);
+      /* Sync the shipped-fonts <select> if @url matches one
+       * of its options, so the dropdown is honest about the
+       * current font.  Falls through silently for ad-hoc
+       * URL / file picks, which the dropdown can't represent. */
+      for (const opt of fontShipped.options)
+        if (opt.value === url) { fontShipped.value = url; break; }
       /* Reflect the font URL in the location bar.  Skip when
        * called from applyPreset / initial ?font= load, which
        * own URL state themselves.  Keep any ?preset= intact:
