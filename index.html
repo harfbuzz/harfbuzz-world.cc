@@ -187,14 +187,20 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
   </section>
 
   <section class="demo" id="demo-shape" hidden>
+    <p>Turn text into a glyph stream: HarfBuzz picks glyph
+       ids from the font's cmap, then applies GSUB/GPOS to
+       substitute and position them.  The SVG preview shows
+       the laid-out result; the JSON below is the raw stream.</p>
     <div id="shape-render" class="render"></div>
     <h2>Glyph data</h2>
     <pre id="shape-glyphs"></pre>
   </section>
 
   <section class="demo" id="demo-subset" hidden>
-    <p>Subset the current font down to just the glyphs needed
-       to shape the text above:</p>
+    <p>Slim the current font down to just the glyphs needed
+       to shape the text above.  hb-subset closes over
+       GSUB/GPOS so every glyph that could participate in
+       shaping the given codepoints stays in.</p>
     <table class="size-table">
       <tr><th>Original</th><td id="subset-orig-size">—</td></tr>
       <tr><th>Subset</th>  <td id="subset-new-size">—</td></tr>
@@ -206,10 +212,18 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
   </section>
 
   <section class="demo" id="demo-raster" hidden>
+    <p>Pixel-perfect software rendering at the chosen size via
+       hb-raster.  A BGRA32 buffer is produced on the wasm
+       side and blitted straight into a <code>&lt;canvas&gt;</code>
+       — no browser glyph cache in the loop.</p>
     <div class="render"><canvas id="raster-canvas"></canvas></div>
   </section>
 
   <section class="demo" id="demo-vector" hidden>
+    <p>Resolution-independent output via hb-vector: the same
+       shaped text emitted as an SVG (inline preview) and a
+       PDF (download).  Both embed the outlines directly so
+       the receiver needs no font.</p>
     <div id="vector-render" class="render"></div>
     <div class="controls demo-controls">
       <a id="vector-dl-svg" href="#" download="text.svg">Download SVG</a>
