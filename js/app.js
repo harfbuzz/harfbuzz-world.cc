@@ -190,15 +190,15 @@
       gpuReady = true;
       postGpu ({ kind: "text", value: textInput.value });
       if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
-      /* After wasm has processed text+font, nudge another
-       * redraw + resize a couple frames later.  First render
-       * on a freshly-swapped font sometimes comes up blank
-       * (glyphs uploaded but not actually composited) until
-       * a visibility/resize event re-drives the render. */
+      /* First rebuild_buffer on a freshly-loaded font
+       * sometimes leaves the atlas half-uploaded and the
+       * first composite blank.  A second text push forces
+       * another rebuild that fills the atlas properly --
+       * the same nudge tab-switching-back happens to
+       * perform, and the only thing that reliably rescues
+       * this. */
       setTimeout (() => {
-        try {
-          gpuFrame.contentWindow.dispatchEvent (new Event ("resize"));
-        } catch {}
+        postGpu ({ kind: "text", value: textInput.value });
       }, 200);
     }
   });
