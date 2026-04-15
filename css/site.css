@@ -86,6 +86,7 @@ header h1 code {
   color: var(--accent);
   opacity: 0.55;
   padding: 0;
+  margin-left: 0.05em;
 }
 .tagline {
   color: var(--muted);
