@@ -83,21 +83,18 @@
         via WebGL2 / WebGPU.</li>
     </ul>
 
-    <h2>Embedding harfbuzz-world.cc</h2>
-    <p>Grab two things from the HarfBuzz source tree:</p>
-    <ul>
-      <li><code>src/harfbuzz-world.cc</code> — the
-        amalgamation; <code>#include</code>s every <code>.cc</code>
-        in the library so you compile a single translation
-        unit.</li>
-      <li>The <code>src/</code> directory on your include
-        path — for the headers that the amalgamation pulls
-        in.</li>
-    </ul>
-    <p>Then add one compile rule:</p>
-<pre class="code">c++ -std=c++17 -O2 -DHAVE_CONFIG_H \
-    -I/path/to/harfbuzz/src \
-    -c harfbuzz-world.cc -o harfbuzz-world.o</pre>
+    <h2>Embedding <code>harfbuzz-world.cc</code></h2>
+    <p>Add HarfBuzz to your project as a submodule (or vendor
+       a checkout next to your code).  Then point your build
+       at one file inside it —
+       <code>src/harfbuzz-world.cc</code>, the amalgamation
+       that <code>#include</code>s every <code>.cc</code> in
+       the library so the whole thing compiles as a single
+       translation unit:</p>
+<pre class="code">c++ -std=c++11 -O2 \
+    -I third_party/harfbuzz/src \
+    -c third_party/harfbuzz/src/harfbuzz-world.cc \
+    -o harfbuzz-world.o</pre>
     <p>Link <code>harfbuzz-world.o</code> with the rest of
        your program and call the public C API as usual:</p>
 <pre class="code">#include &lt;hb.h&gt;
