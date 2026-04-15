@@ -101,7 +101,20 @@
   const subsetNew     = document.getElementById ("subset-new-size");
   const subsetSaving  = document.getElementById ("subset-saving");
   const subsetDl      = document.getElementById ("subset-download");
+  const subsetPreview = document.getElementById ("subset-preview");
+  /* Dynamic @font-face rule; bytes change on every render. */
+  const subsetStyle = document.createElement ("style");
+  document.head.appendChild (subsetStyle);
+  let subsetGen = 0;
   let subsetUrl = null;
+  function bytesToBase64 (bytes) {
+    /* Chunked to avoid "Maximum call stack size exceeded"
+     * from spread on multi-hundred-KB arrays. */
+    let s = "";
+    for (let i = 0; i < bytes.length; i += 0x8000)
+      s += String.fromCharCode.apply (null, bytes.subarray (i, i + 0x8000));
+    return btoa (s);
+  }
   function fmtBytes (n) {
     if (n < 1024) return n + " B";
     if (n < 1024 * 1024) return (n / 1024).toFixed (1) + " KB";
@@ -132,6 +145,20 @@
       if (subsetUrl) URL.revokeObjectURL (subsetUrl);
       subsetUrl = URL.createObjectURL (new Blob ([bytes], { type: "font/ttf" }));
       subsetDl.href = subsetUrl;
+
+      /* Preview: render the current text using the subset
+       * font itself, via a dynamic @font-face whose src is a
+       * fresh base64 data URL every time.  A unique family
+       * name per render forces the browser to adopt the new
+       * bytes instead of holding on to a cached face. */
+      const family = "hbSubset" + (++subsetGen);
+      const b64 = bytesToBase64 (bytes);
+      subsetStyle.textContent =
+        '@font-face { font-family: "' + family + '"; ' +
+        'src: url(data:font/ttf;base64,' + b64 + ') format("truetype"); }';
+      subsetPreview.style.fontFamily = '"' + family + '", system-ui, sans-serif';
+      subsetPreview.style.fontSize = currentSize () + "px";
+      subsetPreview.textContent = textInput.value;
     });
   }
 
