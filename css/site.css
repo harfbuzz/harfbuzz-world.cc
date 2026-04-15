@@ -558,14 +558,14 @@ pre.code {
   color: var(--muted);
   font-size: 1rem;
 }
-.subset-tables { margin-top: 0.5rem; }
-.subset-tables summary {
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 0.95rem;
-  padding: 0.25rem 0;
+.subset-tables { margin-top: 1rem; }
+.subset-tables h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--accent-hi);
 }
-.subset-table { margin-top: 0.5rem; }
+.subset-table { margin-top: 0; }
 .subset-table tr.subset-grew td { color: var(--danger, #c0392b); }
 .subset-table tr.subset-same td { color: var(--muted); }
 
