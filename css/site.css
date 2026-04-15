@@ -104,9 +104,8 @@ header {
   border-radius: 16px;
 }
 #theme-toggle {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
+  margin-left: auto;
+  align-self: center;
   width: 2rem;
   height: 2rem;
   display: flex;
@@ -114,17 +113,18 @@ header {
   justify-content: center;
   padding: 0;
   border: 1px solid var(--rule);
-  border-radius: 6px;
+  border-radius: 50%;
   background: var(--bg-card);
   color: var(--muted);
   cursor: pointer;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   line-height: 1;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 #theme-toggle:hover {
   color: var(--accent);
   border-color: var(--accent);
+  background: var(--highlight);
 }
 header h1 {
   font-family: "Anton", "Impact", sans-serif;
