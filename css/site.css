@@ -253,6 +253,12 @@ body[data-active="gpu"] .size-label { display: none; }
   accent-color: var(--accent);
   margin: 0;
 }
+.axes-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+}
 
 .presets {
   display: flex;

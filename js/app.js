@@ -398,7 +398,13 @@
       });
       return entry;
     });
-    axesEl.hidden = currentAxes.length === 0;
+    if (currentAxes.length === 0) {
+      const empty = document.createElement ("span");
+      empty.className = "axes-empty";
+      empty.textContent = "no variable axes";
+      axesEl.append (empty);
+    }
+    axesEl.hidden = false;
     updateVariations ();
   }
 
