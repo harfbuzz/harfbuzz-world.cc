@@ -24,14 +24,15 @@
     const otName = Module.UTF8ToString (namePtr);
     Module._web_free_string (namePtr);
     fontNameEl.textContent = otName || displayName || "";
-    refreshAxes ();
-    refreshPalettes ();
-    /* Also push to the GPU iframe if its runtime is up.
-     * web_load_font resets variations, so the next
-     * updateVariations() call (from refreshAxes) re-pushes
-     * them. */
+    /* Push the font to the GPU iframe FIRST, so the subsequent
+     * refresh*() calls (which postGpu variations + palette)
+     * land on the new font.  Otherwise web_load_font would
+     * recreate the demo_font with default state and silently
+     * drop our previously-pushed configuration. */
     if (gpuReady)
       postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
+    refreshAxes ();
+    refreshPalettes ();
     renderActive ();
   }
 
