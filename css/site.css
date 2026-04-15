@@ -300,6 +300,7 @@ body[data-active="gpu"] .size-label { display: none; }
   color: var(--muted);
   font-size: 0.95rem;
 }
+.controls label[hidden] { display: none; }
 .controls input[type="text"],
 .controls input[type="number"] {
   font: inherit;

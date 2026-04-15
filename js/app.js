@@ -482,9 +482,11 @@
     const palettes = JSON.parse (Module.UTF8ToString (ptr));
     Module._web_free_string (ptr);
     paletteSelect.innerHTML = "";
+    Module._web_set_palette (0);
+    if (gpuReady)
+      postGpu ({ kind: "palette", value: 0 });
     if (palettes.length < 2) {
       paletteLabel.hidden = true;
-      Module._web_set_palette (0);
       return;
     }
     palettes.forEach ((p, i) => {
@@ -494,11 +496,13 @@
       paletteSelect.append (opt);
     });
     paletteSelect.value = "0";
-    Module._web_set_palette (0);
     paletteLabel.hidden = false;
   }
   paletteSelect.addEventListener ("change", () => {
-    Module._web_set_palette (parseInt (paletteSelect.value, 10) || 0);
+    const idx = parseInt (paletteSelect.value, 10) || 0;
+    Module._web_set_palette (idx);
+    if (gpuReady)
+      postGpu ({ kind: "palette", value: idx });
     renderActive ();
   });
 
@@ -624,6 +628,12 @@
       const name = displayName || url.replace (/^.*\//, "")
                                      .replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
       setFontBytes (bytes, name);
+      /* The file input remembers its last selection by value, so
+       * picking the same file twice in a row never fires
+       * 'change'.  Clearing it here lets the user re-upload the
+       * same file after a preset / URL load took control of the
+       * active font. */
+      fontInput.value = "";
       /* Sync the shipped-fonts <select> if @url matches one
        * of its options, so the dropdown is honest about the
        * current font.  Falls through silently for ad-hoc
