@@ -438,6 +438,33 @@ hb_blob_destroy (blob);`
     }
   });
 
+  /* Theme toggle: cycles auto (follow OS) -> light -> dark
+   * -> auto.  The early inline script in <head> applies any
+   * saved override before first paint; this just wires the
+   * button. */
+  const themeToggle = document.getElementById ("theme-toggle");
+  function themeIcon (t) {
+    return t === "light" ? "☀" : t === "dark" ? "☾" : "◐";
+  }
+  function applyTheme (t) {
+    if (t === "light" || t === "dark") {
+      document.documentElement.dataset.theme = t;
+      try { localStorage.setItem ("theme", t); } catch {}
+    } else {
+      delete document.documentElement.dataset.theme;
+      try { localStorage.removeItem ("theme"); } catch {}
+    }
+    themeToggle.textContent = themeIcon (t);
+  }
+  function currentTheme () {
+    return document.documentElement.dataset.theme || "auto";
+  }
+  themeToggle.textContent = themeIcon (currentTheme ());
+  themeToggle.addEventListener ("click", () => {
+    const cur = currentTheme ();
+    applyTheme (cur === "auto" ? "light" : cur === "light" ? "dark" : "auto");
+  });
+
   /* All snippet <details> share an open/closed state, and it
    * round-trips via ?snippet=1 in the URL so a shared link
    * lands in the same view. */

@@ -12,12 +12,17 @@
 <meta name="twitter:card" content="summary">
 <script>
   /* Inline early so there's no FOUC between parse and paint.
-   * ?theme=dark or ?theme=light forces the palette regardless
-   * of the OS prefers-color-scheme. */
+   * Resolution order: ?theme= URL param > localStorage pick >
+   * OS prefers-color-scheme (via CSS @media).  Valid values
+   * are 'light' / 'dark'; 'auto' (or missing) defers to OS. */
   (function () {
-    var t = new URLSearchParams(location.search).get('theme');
-    if (t === 'dark' || t === 'light')
-      document.documentElement.dataset.theme = t;
+    var url = new URLSearchParams(location.search).get('theme');
+    var saved = null;
+    try { saved = localStorage.getItem('theme'); } catch (e) {}
+    var t = (url === 'dark' || url === 'light') ? url
+          : (saved === 'dark' || saved === 'light') ? saved
+          : null;
+    if (t) document.documentElement.dataset.theme = t;
   })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,6 +38,9 @@
   <a class="logo-corner" href="./" aria-label="home">
     <img src="logo.png" alt="">
   </a>
+  <button id="theme-toggle" type="button"
+          title="Theme: auto (follow OS) / light / dark"
+          aria-label="Toggle theme"></button>
   <h1><a href="./" id="logo-home">harfbuzz-world<code>.cc</code></a></h1>
   <p class="tagline">Your one-stop HarfBuzz shop</p>
   <nav class="tabs">
