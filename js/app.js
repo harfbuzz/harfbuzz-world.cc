@@ -1200,7 +1200,12 @@ hb_blob_destroy (blob);`
     if (e.key === "Enter") fontGfLoad.click ();
   });
 
+  /* Drag-and-drop only takes effect when the font picker is
+   * open; otherwise normal page-drag behavior (text selection,
+   * link drag, etc.) keeps working without our overlay
+   * blanking the screen. */
   document.addEventListener ("dragover", (e) => {
+    if (fontMenu.hidden) return;
     e.preventDefault ();
     dropOverlay.classList.add ("active");
   });
@@ -1209,6 +1214,7 @@ hb_blob_destroy (blob);`
       dropOverlay.classList.remove ("active");
   });
   document.addEventListener ("drop", (e) => {
+    if (fontMenu.hidden) return;
     e.preventDefault ();
     dropOverlay.classList.remove ("active");
     if (e.dataTransfer.files.length) loadFontFile (e.dataTransfer.files[0]);
