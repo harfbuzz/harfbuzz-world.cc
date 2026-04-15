@@ -552,16 +552,21 @@
     const p = PRESETS[key];
     if (!p) return false;
     textInput.value = p.text;
-    loadFontUrl (p.font, p.name, { silentUrl: true });
-    /* Rewrite the URL to just ?preset=key.  Clearing any
-     * prior ?text / ?font so the link reproduces the
-     * preset cleanly; users who want overrides can edit
-     * them back in. */
+    /* If the user has loaded a custom font (URL / file / GF),
+     * presets become text-only so they can compare scripts
+     * across the same chosen font.  Otherwise the preset
+     * brings its bundled script-appropriate font along. */
     const url = new URL (location.href);
     url.searchParams.delete ("text");
     url.searchParams.delete ("size");
-    url.searchParams.delete ("font");
     url.searchParams.set ("preset", key);
+    if (customFontActive) {
+      /* Keep ?font; just re-render with the new text. */
+      renderActive ();
+    } else {
+      url.searchParams.delete ("font");
+      loadFontUrl (p.font, p.name, { silentUrl: true, preset: true });
+    }
     history.replaceState (null, "", url);
     reflectActivePreset ();
     return true;
@@ -588,6 +593,7 @@
     const bytes = new Uint8Array (await file.arrayBuffer ());
     const name = file.name.replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
     setFontBytes (bytes, name);
+    customFontActive = true;
     /* File-uploaded fonts have no URL to point at; drop
      * any lingering ?font= so the location bar doesn't lie.
      * Keep any ?preset= -- its text still applies. */
@@ -616,7 +622,10 @@
 
   fontShipped.addEventListener ("change", () => {
     const opt = fontShipped.selectedOptions[0];
-    loadFontUrl (opt.value, opt.dataset.name);
+    /* Treat shipped picks like presets for the custom-font
+     * tracker -- they're a curated default, not a "user
+     * brought their own" font. */
+    loadFontUrl (opt.value, opt.dataset.name, { preset: true });
     closeFontMenu ();
   });
   fontInput.addEventListener ("change", () => {
@@ -706,6 +715,12 @@
   /* Load a font from a URL.  Used both for the bundled default
    * and for the ?font=URL query parameter.  Returns true on
    * success so the caller can fall back. */
+  /* Tracks whether the active font came from a "custom" source
+   * (URL / file drop / Google Fonts).  When true, preset
+   * buttons become text-only so the user can sweep scripts
+   * across the same custom font.  Reset to false on the
+   * site-default load and on shipped <select> + preset picks. */
+  let customFontActive = false;
   async function loadFontUrl (url, displayName, opts) {
     try {
       const r = await fetch (url);
@@ -714,6 +729,7 @@
       const name = displayName || url.replace (/^.*\//, "")
                                      .replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
       setFontBytes (bytes, name);
+      customFontActive = !(opts && opts.preset);
       /* The file input remembers its last selection by value, so
        * picking the same file twice in a row never fires
        * 'change'.  Clearing it here lets the user re-upload the
@@ -754,13 +770,18 @@
   if (presetParam && PRESETS[presetParam]) {
     /* ?text= and ?font= in the URL override the preset's
      * defaults -- the explicit URL wins.  textInput.value
-     * was already set from ?text= above. */
+     * was already set from ?text= above.  When ?font= is
+     * present we treat it as a user-custom font (so subsequent
+     * preset clicks won't replace it); otherwise it's the
+     * preset's bundled font. */
     if (textParam === null) textInput.value = PRESETS[presetParam].text;
     const fontChoice = fontUrlParam || PRESETS[presetParam].font;
     const nameChoice = fontUrlParam ? null : PRESETS[presetParam].name;
-    await loadFontUrl (fontChoice, nameChoice, { silentUrl: true });
+    await loadFontUrl (fontChoice, nameChoice,
+                       fontUrlParam ? { silentUrl: true }
+                                    : { silentUrl: true, preset: true });
   } else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam, null, { silentUrl: true })))
-    await loadFontUrl ("fonts/NotoSans.ttf", "NotoSans", { silentUrl: true });
+    await loadFontUrl ("fonts/NotoSans.ttf", "NotoSans", { silentUrl: true, preset: true });
 
   reflectActivePreset ();
   fromHash ();
