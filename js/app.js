@@ -305,21 +305,47 @@ hb_blob_destroy (blob);`
 hb_face_t *face = hb_face_create (blob, 0);
 hb_font_t *font = hb_font_create (face);
 
-hb_gpu_paint_t *p = hb_gpu_paint_create_or_fail ();
+/* Color fonts go through hb_gpu_paint_*; mono outline fonts
+ * through the cheaper hb_gpu_draw_* path.  Each path has its
+ * own fragment shader -- pull the matching one below. */
+hb_bool_t is_color = hb_ot_color_has_paint (face) ||
+                     hb_ot_color_has_layers (face) ||
+                     hb_ot_color_has_png (face);
+hb_gpu_paint_t *p = is_color ? hb_gpu_paint_create_or_fail () : NULL;
+hb_gpu_draw_t  *d = is_color ? NULL : hb_gpu_draw_create_or_fail ();
 
-/* Per-glyph: encode an outline blob the GPU can rasterize. */
-hb_glyph_extents_t ext;
-hb_gpu_paint_glyph (p, font, /* glyph_id */ 0);
-hb_blob_t *enc = hb_gpu_paint_encode (p, &ext);
-/* ...upload enc bytes to atlas; record extents for the quad... */
-hb_blob_destroy (enc);
+/* HB_GPU_SHADER_LANG_GLSL / _WGSL / _MSL / _HLSL all available --
+ * pick the one your backend (OpenGL, WebGPU, Metal, D3D12) needs. */
+hb_gpu_shader_lang_t lang = HB_GPU_SHADER_LANG_GLSL;
+const char *frag = is_color
+  ? hb_gpu_paint_shader_source (HB_GPU_SHADER_STAGE_FRAGMENT, lang)
+  : hb_gpu_draw_shader_source  (HB_GPU_SHADER_STAGE_FRAGMENT, lang);
+const char *vert = hb_gpu_shader_source (HB_GPU_SHADER_STAGE_VERTEX, lang);
+/* ...compile {vert,frag} into your renderer's pipeline... */
 
-/* Get the shader source matching your renderer's API. */
-const char *frag = hb_gpu_shader_source (HB_GPU_SHADER_LANG_GLSL,
-                                         HB_GPU_SHADER_STAGE_FRAGMENT);
-/* ...compile + draw a quad per glyph at its advance position... */
+/* Per-glyph: encode the outline / paint tree into a compact
+ * blob that the GPU shader decodes + rasterizes. */
+unsigned len = hb_buffer_get_length (buf);  /* assume buf is shaped */
+hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
+hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, NULL);
+for (unsigned i = 0; i < len; i++) {
+  hb_glyph_extents_t ext;
+  hb_blob_t *enc;
+  if (p) {
+    hb_gpu_paint_glyph (p, font, info[i].codepoint);
+    enc = hb_gpu_paint_encode (p, &ext);
+  } else {
+    hb_gpu_draw_glyph (d, font, info[i].codepoint);
+    enc = hb_gpu_draw_encode (d, &ext);
+  }
+  /* ...upload enc bytes to atlas; draw a quad at the
+   *    glyph's advance position with the encoded blob's
+   *    atlas offset as a vertex attribute... */
+  hb_blob_destroy (enc);
+}
 
 hb_gpu_paint_destroy (p);
+hb_gpu_draw_destroy (d);
 hb_font_destroy (font);
 hb_face_destroy (face);
 hb_blob_destroy (blob);`
