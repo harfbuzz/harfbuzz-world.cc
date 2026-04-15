@@ -190,16 +190,6 @@
       gpuReady = true;
       postGpu ({ kind: "text", value: textInput.value });
       if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
-      /* First rebuild_buffer on a freshly-loaded font
-       * sometimes leaves the atlas half-uploaded and the
-       * first composite blank.  A second text push forces
-       * another rebuild that fills the atlas properly --
-       * the same nudge tab-switching-back happens to
-       * perform, and the only thing that reliably rescues
-       * this. */
-      setTimeout (() => {
-        postGpu ({ kind: "text", value: textInput.value });
-      }, 200);
     }
   });
   /* Set the iframe src exactly once, lazily on first gpu-tab
@@ -207,28 +197,18 @@
    * that, every update flows through postMessage -- setting
    * .src again would reload the iframe and hit all the
    * failure modes of racing the wasm bootstrap. */
-  let gpuLoaded = false;
   function focusGpu () {
     try { gpuFrame.contentWindow.focus (); } catch {}
     try { gpuFrame.focus (); } catch {}
   }
+  /* Load the iframe eagerly at page bootstrap (not lazily on
+   * first tab activation) so its wasm is already up by the
+   * time the user clicks gpu.  The demo's own resize
+   * handler picks up the canvas's true dims when the tab
+   * becomes visible. */
+  gpuFrame.src = gpuFrameUrl ();
   function renderGpu () {
     setTimeout (focusGpu, 0);
-    if (!gpuLoaded) {
-      gpuLoaded = true;
-      /* Two-frame delay so both visibility and layout have
-       * committed before hb-gpu-demo's GLFW canvas measures
-       * itself; on load, dispatch a synthetic resize into
-       * the iframe for hb-gpu-demo's resize handler to
-       * re-measure the canvas (belt + suspenders). */
-      gpuFrame.addEventListener ("load", () => {
-        try { gpuFrame.contentWindow.dispatchEvent (new Event ("resize")); } catch {}
-      }, { once: true });
-      requestAnimationFrame (() => requestAnimationFrame (() => {
-        gpuFrame.src = gpuFrameUrl ();
-      }));
-      return;
-    }
     if (gpuReady)
       postGpu ({ kind: "text", value: textInput.value });
   }
@@ -308,8 +288,25 @@
     history.pushState (null, "", location.pathname + location.search);
     activate ("embed");
   });
-  textInput.addEventListener ("input", renderActive);
-  sizeInput.addEventListener ("input", renderActive);
+  /* Reflect current text/size in the URL so the view is
+   * shareable.  Debounced so we don't replaceState per
+   * keystroke. */
+  let urlSyncTimer = 0;
+  function syncUrl () {
+    clearTimeout (urlSyncTimer);
+    urlSyncTimer = setTimeout (() => {
+      const url = new URL (location.href);
+      if (textInput.value) url.searchParams.set ("text", textInput.value);
+      else                 url.searchParams.delete ("text");
+      if (sizeInput.value && sizeInput.value !== "48") url.searchParams.set ("size", sizeInput.value);
+      else                                             url.searchParams.delete ("size");
+      /* Typing a custom text invalidates any preset selection. */
+      url.searchParams.delete ("preset");
+      history.replaceState (null, "", url);
+    }, 200);
+  }
+  textInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
+  sizeInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
 
   /* Presets: one-click combos of text + font, covering the
    * three scripts we ship fonts for. */
@@ -414,8 +411,12 @@
    * bundled NotoSans.  ?preset wins because it owns both
    * text and font, so a preset link reproduces the view. */
   const params = new URLSearchParams (location.search);
+  const textParam = params.get ("text");
+  const sizeParam = params.get ("size");
   const presetParam = params.get ("preset");
   const fontUrlParam = params.get ("font");
+  if (textParam !== null) textInput.value = textParam;
+  if (sizeParam !== null) sizeInput.value = sizeParam;
   if (presetParam && PRESETS[presetParam])
     applyPreset (presetParam);
   else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam)))
