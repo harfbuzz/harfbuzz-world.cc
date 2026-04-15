@@ -345,9 +345,14 @@
     if (!p) return false;
     textInput.value = p.text;
     loadFontUrl (p.font, p.name, { silentUrl: true });
-    /* Reflect the choice in the URL so the view is
-     * shareable; keep the hash (active tab) untouched. */
+    /* Rewrite the URL to just ?preset=key.  Clearing any
+     * prior ?text / ?font so the link reproduces the
+     * preset cleanly; users who want overrides can edit
+     * them back in. */
     const url = new URL (location.href);
+    url.searchParams.delete ("text");
+    url.searchParams.delete ("size");
+    url.searchParams.delete ("font");
     url.searchParams.set ("preset", key);
     history.replaceState (null, "", url);
     return true;
@@ -458,9 +463,10 @@
   if (textParam !== null) textInput.value = textParam;
   if (sizeParam !== null) sizeInput.value = sizeParam;
   if (presetParam && PRESETS[presetParam]) {
-    textInput.value = PRESETS[presetParam].text;
-    /* If ?font= is also present it overrides the preset's
-     * font -- the user's explicit URL wins. */
+    /* ?text= and ?font= in the URL override the preset's
+     * defaults -- the explicit URL wins.  textInput.value
+     * was already set from ?text= above. */
+    if (textParam === null) textInput.value = PRESETS[presetParam].text;
     const fontChoice = fontUrlParam || PRESETS[presetParam].font;
     const nameChoice = fontUrlParam ? null : PRESETS[presetParam].name;
     await loadFontUrl (fontChoice, nameChoice, { silentUrl: true });
