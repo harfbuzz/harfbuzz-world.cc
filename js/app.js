@@ -22,11 +22,16 @@
     renderActive ();
   }
 
-  const textInput   = document.getElementById ("text");
-  const sizeInput   = document.getElementById ("size");
-  const fontInput   = document.getElementById ("font-input");
-  const fontNameEl  = document.getElementById ("font-name");
-  const dropOverlay = document.getElementById ("drop-overlay");
+  const textInput     = document.getElementById ("text");
+  const sizeInput     = document.getElementById ("size");
+  const fontButton    = document.getElementById ("font-button");
+  const fontMenu      = document.getElementById ("font-menu");
+  const fontShipped   = document.getElementById ("font-shipped");
+  const fontInput     = document.getElementById ("font-input");
+  const fontUrl       = document.getElementById ("font-url");
+  const fontUrlLoad   = document.getElementById ("font-url-load");
+  const fontNameEl    = document.getElementById ("font-name");
+  const dropOverlay   = document.getElementById ("drop-overlay");
 
   /* Helper: marshal current text into wasm memory.  Caller frees. */
   function withText (fn) {
@@ -151,15 +156,47 @@
   textInput.addEventListener ("input", renderActive);
   sizeInput.addEventListener ("input", renderActive);
 
-  /* Font picker: <input type="file"> + drag-and-drop. */
+  /* Font picker: dropdown menu with three sources (shipped /
+   * file / URL), plus drag-and-drop anywhere on the page. */
   async function loadFontFile (file) {
     const bytes = new Uint8Array (await file.arrayBuffer ());
-    const name = file.name.replace (/\.(ttf|otf|ttc|woff2?|TTF|OTF|TTC|WOFF2?)$/, "");
+    const name = file.name.replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
     setFontBytes (bytes, name);
   }
-  fontInput.addEventListener ("change", () => {
-    if (fontInput.files.length) loadFontFile (fontInput.files[0]);
+
+  function openFontMenu () { fontMenu.hidden = false; }
+  function closeFontMenu () { fontMenu.hidden = true; }
+  fontButton.addEventListener ("click", (e) => {
+    e.stopPropagation ();
+    fontMenu.hidden ? openFontMenu () : closeFontMenu ();
   });
+  fontMenu.addEventListener ("click", (e) => e.stopPropagation ());
+  document.addEventListener ("click", closeFontMenu);
+  document.addEventListener ("keydown", (e) => {
+    if (e.key === "Escape") closeFontMenu ();
+  });
+
+  fontShipped.addEventListener ("change", () => {
+    const opt = fontShipped.selectedOptions[0];
+    loadFontUrl (opt.value, opt.dataset.name);
+    closeFontMenu ();
+  });
+  fontInput.addEventListener ("change", () => {
+    if (fontInput.files.length) {
+      loadFontFile (fontInput.files[0]);
+      closeFontMenu ();
+    }
+  });
+  fontUrlLoad.addEventListener ("click", () => {
+    if (fontUrl.value) {
+      loadFontUrl (fontUrl.value);
+      closeFontMenu ();
+    }
+  });
+  fontUrl.addEventListener ("keydown", (e) => {
+    if (e.key === "Enter") fontUrlLoad.click ();
+  });
+
   document.addEventListener ("dragover", (e) => {
     e.preventDefault ();
     dropOverlay.classList.add ("active");
@@ -193,8 +230,8 @@
    * On URL failure, fall back to the bundled default so the
    * page is never left fontless. */
   const params = new URLSearchParams (location.search);
-  const fontUrl = params.get ("font");
-  if (!fontUrl || !(await loadFontUrl (fontUrl)))
+  const fontUrlParam = params.get ("font");
+  if (!fontUrlParam || !(await loadFontUrl (fontUrlParam)))
     await loadFontUrl ("fonts/NotoSans-Regular.ttf", "NotoSans-Regular");
 
   fromHash ();

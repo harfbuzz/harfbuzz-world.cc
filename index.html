@@ -28,10 +28,31 @@
     <label>Size:
       <input id="size" type="number" value="48" min="8" max="200">
     </label>
-    <label class="file-label">
-      <span id="font-name">NotoSans-Regular</span>
-      <input id="font-input" type="file" accept=".ttf,.otf,.ttc,.woff,.woff2">
-    </label>
+    <div class="font-picker">
+      <button class="font-button" type="button" id="font-button">
+        <span class="font-prefix">Font:</span>
+        <span id="font-name">NotoSans-Regular</span>
+      </button>
+      <div class="font-menu" id="font-menu" hidden>
+        <div class="font-menu-row">
+          <label for="font-shipped">Shipped</label>
+          <select id="font-shipped">
+            <option value="fonts/NotoSans-Regular.ttf"   data-name="NotoSans-Regular">Noto Sans</option>
+            <option value="fonts/NotoSansArabic.ttf"     data-name="NotoSansArabic">Noto Sans Arabic</option>
+            <option value="fonts/NotoSansDevanagari.ttf" data-name="NotoSansDevanagari">Noto Sans Devanagari</option>
+          </select>
+        </div>
+        <div class="font-menu-row">
+          <label for="font-input">File</label>
+          <input id="font-input" type="file" accept=".ttf,.otf,.ttc,.woff,.woff2">
+        </div>
+        <div class="font-menu-row">
+          <label for="font-url">URL</label>
+          <input id="font-url" type="url" placeholder="https://…/Font.ttf">
+          <button id="font-url-load" type="button">Load</button>
+        </div>
+      </div>
+    </div>
   </div>
   <div id="drop-overlay">drop font file</div>
 
