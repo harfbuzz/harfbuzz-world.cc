@@ -331,10 +331,12 @@
     urlSyncTimer = setTimeout (() => {
       const url = new URL (location.href);
       const cur = url.searchParams.get ("preset");
-      const presetMatches = cur && PRESETS[cur] && PRESETS[cur].text === textInput.value;
-      /* Only emit ?text when it diverges from the preset's
-       * default -- otherwise leave the URL as just ?preset=X. */
-      if (textInput.value && !presetMatches)
+      /* The "default" text depends on context: a preset's
+       * own text if a preset is selected, otherwise the
+       * site-wide default (hello-world!).  Only emit ?text
+       * when the user has typed something different. */
+      const defaultText = (cur && PRESETS[cur]) ? PRESETS[cur].text : "hello-world!";
+      if (textInput.value && textInput.value !== defaultText)
         url.searchParams.set ("text", textInput.value);
       else
         url.searchParams.delete ("text");
