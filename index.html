@@ -123,10 +123,13 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
        <code>#include</code>s
        <code>harfbuzz-world.cc</code>.</p>
     <ul>
-      <li><code>HB_TINY</code> — strip every optional
-        feature and shaper down to a small Latin-only core.
-        Combine with the <code>HB_HAS_*</code> flags below
-        to add back what you need.</li>
+      <li><code>HB_TINY</code> — turn on every size-saving
+        knob: drop deprecated APIs, variable fonts, AAT,
+        legacy fallbacks, hinting, glyph names, math, name
+        table, metrics, and a long etc., and switch the
+        compiler to size optimization.  All script shapers
+        stay in.  Combine with the <code>HB_HAS_*</code>
+        flags below to add back the subsystems you need.</li>
       <li><code>HB_HAS_SUBSET</code> — pull in the
         font-subsetting subsystem (<code>hb-subset</code>).</li>
       <li><code>HB_HAS_RASTER</code> — pull in
