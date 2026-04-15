@@ -213,6 +213,8 @@ footer {
   text-align: center;
   font-size: 0.9rem;
 }
+footer p { margin: 0.25rem 0; }
+footer .copyright { font-size: 0.8rem; }
 
 @media (max-width: 720px) {
   body {
