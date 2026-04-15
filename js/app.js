@@ -467,7 +467,7 @@
   /* Presets: one-click combos of text + font, covering the
    * three scripts we ship fonts for. */
   const PRESETS = {
-    latin:      { text: "hello-world!",      font: "fonts/NotoSans.ttf",   name: "NotoSans" },
+    english:    { text: "hello-world!",      font: "fonts/NotoSans.ttf",   name: "NotoSans" },
     arabic:     { text: "مرحبا بالعالم",      font: "fonts/NotoSansArabic.ttf",     name: "NotoSansArabic" },
     urdu:       { text: "ہیلو دنیا",          font: "fonts/NotoNastaliqUrdu.ttf",   name: "NotoNastaliqUrdu" },
     hindi:      { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
