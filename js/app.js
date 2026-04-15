@@ -118,7 +118,107 @@
       Module._web_free_string (jsonPtr);
       renderGlyphTable (glyphs);
     });
+    renderSnippet ("shape");
   }
+
+  /* ---- Code snippets ---- */
+  const SNIPPETS = {
+    shape: {
+      headline: "hb_shape",
+      template:
+`hb_blob_t *blob = hb_blob_create_from_file ("{font}");
+hb_face_t *face = hb_face_create (blob, 0);
+hb_font_t *font = hb_font_create (face);
+
+hb_buffer_t *buf = hb_buffer_create ();
+hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
+hb_buffer_guess_segment_properties (buf);  /* toy: real apps set script/lang/dir explicitly */
+
+hb_shape (font, buf, NULL, 0);
+
+unsigned len = hb_buffer_get_length (buf);
+hb_glyph_info_t     *info = hb_buffer_get_glyph_infos     (buf, NULL);
+hb_glyph_position_t *pos  = hb_buffer_get_glyph_positions (buf, NULL);
+
+/* ... use info[i].codepoint, pos[i].x_advance, etc. ... */
+
+hb_buffer_destroy (buf);
+hb_font_destroy (font);
+hb_face_destroy (face);
+hb_blob_destroy (blob);`
+    },
+  };
+  /* Map an hb_<table>_<rest> identifier to its docs URL.
+   * harfbuzz.github.io has one page per "section" -- the
+   * second underscore-separated chunk -- with anchors built
+   * from the dashed function name. */
+  function hbDocsUrl (name) {
+    const m = name.match (/^hb_([a-z0-9]+)/);
+    const section = m ? m[1] : "common";
+    return "https://harfbuzz.github.io/harfbuzz-hb-" + section + ".html#"
+         + name.replace (/_/g, "-");
+  }
+  function escapeForC (s) {
+    return s.replace (/\\/g, "\\\\")
+            .replace (/"/g, "\\\"")
+            .replace (/\n/g, "\\n");
+  }
+  /* Walk over the highlighted HTML and turn known hb_*
+   * identifiers into anchors pointing at the official docs. */
+  function linkifyHbCalls (html, headline) {
+    return html.replace (/(hb_[a-z0-9_]+)/g, (m) => {
+      const url = hbDocsUrl (m);
+      const wrapped = "<a href=\"" + url + "\" target=\"_blank\" rel=\"noopener\">" + m + "</a>";
+      return m === headline ? "<strong>" + wrapped + "</strong>" : wrapped;
+    });
+  }
+  function renderSnippet (key) {
+    const def = SNIPPETS[key];
+    if (!def) return;
+    const el = document.getElementById (key + "-snippet");
+    if (!el) return;
+    const fontPath = (function () {
+      const u = new URL (location.href);
+      const f = u.searchParams.get ("font");
+      if (f) return f.split ("/").pop ();
+      /* Preset / shipped picks have the preset key in the URL;
+       * resolve via PRESETS for a clean filename. */
+      const presetKey = u.searchParams.get ("preset");
+      if (presetKey && PRESETS[presetKey])
+        return PRESETS[presetKey].font.split ("/").pop ();
+      /* Last resort: build something printable from the OT
+       * family name. */
+      return (fontNameEl.textContent || "font").replace (/\s+/g, "") + ".ttf";
+    }) ();
+    /* Wrap substituted text fields in U+2068 FIRST STRONG
+     * ISOLATE / U+2069 POP DIRECTIONAL ISOLATE so embedded
+     * RTL strings (Hebrew, Arabic) don't bidi-reorder against
+     * the surrounding LTR C code (e.g. "..." -1, 0, -1) in
+     * the rendered HTML.  Invisible to text/clipboard. */
+    const isolate = (s) => "\u2068" + s + "\u2069";
+    const code = def.template
+      .replaceAll ("{font}", isolate (escapeForC (fontPath)))
+      .replaceAll ("{text}", isolate (escapeForC (textInput.value)))
+      .replaceAll ("{size}", String (currentSize ()));
+    /* hljs may not be loaded yet on first render; in that
+     * case just show the raw code, then re-highlight when
+     * highlight.js arrives. */
+    el.textContent = code;
+    if (window.hljs) {
+      const result = hljs.highlight (code, { language: "c" });
+      el.innerHTML = linkifyHbCalls (result.value, def.headline);
+    }
+  }
+  /* Re-render snippets once highlight.js finishes loading,
+   * and highlight any static <code class="language-*"> blocks
+   * on the embed/welcome tab. */
+  window.addEventListener ("load", () => {
+    for (const key of Object.keys (SNIPPETS)) renderSnippet (key);
+    if (window.hljs) {
+      document.querySelectorAll ("pre.code code[class*=\"language-\"]")
+        .forEach ((el) => hljs.highlightElement (el));
+    }
+  });
 
   const vectorRender = document.getElementById ("vector-render");
   const dlSvg        = document.getElementById ("vector-dl-svg");

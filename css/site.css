@@ -575,6 +575,50 @@ pre.code {
   text-align: center;
 }
 
+/* Code snippet disclosure under each demo. */
+.snippet {
+  margin-top: 1.25rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--bg-card);
+}
+.snippet > summary {
+  cursor: pointer;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  color: var(--accent-hi);
+  user-select: none;
+  list-style: none;
+}
+.snippet > summary::-webkit-details-marker { display: none; }
+.snippet > summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.4rem;
+  transition: transform 0.15s ease;
+}
+.snippet[open] > summary::before { transform: rotate(90deg); }
+.snippet pre {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-top: 1px solid var(--rule);
+  background: var(--soft);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  overflow: auto;
+  border-radius: 0 0 6px 6px;
+}
+.snippet code a {
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+.snippet code a:hover { border-bottom-style: solid; }
+.snippet code strong a { font-weight: 700; }
+/* highlight.js themes set their own bg + padding; override to
+ * blend with our card / soft backgrounds. */
+pre code.hljs { background: transparent !important; padding: 0 !important; }
+pre.code code.hljs { background: transparent !important; padding: 0 !important; }
+
 /* Inline byte-size tag next to the Vector tab download links. */
 .size-tag {
   font-size: 0.85em;
