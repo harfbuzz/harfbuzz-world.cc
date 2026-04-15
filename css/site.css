@@ -54,7 +54,19 @@ body {
 
 header {
   margin-bottom: 1rem;
+  position: relative;
 }
+.attribution {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+.attribution em { font-style: italic; }
 header h1 {
   font-family: "Anton", "Impact", sans-serif;
   font-weight: 400;
@@ -69,7 +81,6 @@ header h1 {
   font-size: 1.2rem;
   margin: 0.25rem 0 0;
 }
-footer em { font-style: italic; }
 
 h2 {
   font-family: "Prata", serif;
@@ -284,17 +295,6 @@ nav.tabs .tab.active:visited { color: var(--accent); }
   overflow: auto;
   margin: 0;
   line-height: 1.45;
-}
-
-/* Footer */
-
-footer {
-  margin-top: 3rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--rule);
-  color: var(--muted);
-  text-align: center;
-  font-size: 0.9rem;
 }
 
 @media (max-width: 720px) {
