@@ -183,6 +183,7 @@ nav.tabs .tab.active:visited { color: var(--accent); }
 }
 .font-prefix { color: var(--muted); margin-right: 0.25rem; }
 
+.font-menu[hidden] { display: none; }
 .font-menu {
   position: absolute;
   top: calc(100% + 0.4rem);
