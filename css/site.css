@@ -133,6 +133,7 @@ nav.tabs .tab.active:visited { color: var(--accent); }
   align-items: center;
   margin-bottom: 1.25rem;
 }
+.demo-controls { margin: 1rem 0 0; }
 .controls label {
   display: flex;
   align-items: center;
