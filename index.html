@@ -64,11 +64,12 @@
 
   <section class="demo" id="demo-embed">
     <h2>Welcome</h2>
-    <p>HarfBuzz World is a live playground for HarfBuzz, a
-       small set of in-browser demos backed by the same C/C++
-       library that ships in browsers, OSes, and design
-       tools.  The shared <em>Text</em>, <em>Size</em>, and
-       <em>Font</em> controls above feed every demo:</p>
+    <p>HarfBuzz World is a live playground for HarfBuzz, plus
+       <code>harfbuzz-world.cc</code> — a single-file build of
+       HarfBuzz that drops into your own C or C++ project
+       without any build-system glue.  The shared <em>Text</em>,
+       <em>Size</em>, and <em>Font</em> controls above feed
+       every demo:</p>
     <ul>
       <li><a href="#shape">shape</a> — the shaped glyph
         stream as JSON, alongside an SVG preview.</li>
@@ -82,24 +83,45 @@
         via WebGL2 / WebGPU.</li>
     </ul>
 
-    <h2>Embed in your own site</h2>
-    <p>The wasm bundle is two files —
-       <code>hb-world.js</code> and <code>hb-world.wasm</code>
-       — and exposes a small C surface for shaping and
-       rendering.  Drop them next to your page:</p>
-<pre class="code">&lt;script src="hb-world.js"&gt;&lt;/script&gt;
-&lt;script&gt;
-  const Module = await createHbWorld ();
-  const fontPtr = Module._malloc (fontBytes.length);
-  Module.HEAPU8.set (fontBytes, fontPtr);
-  const textPtr = Module._malloc (Module.lengthBytesUTF8 (text) + 1);
-  Module.stringToUTF8 (text, textPtr, /* maxBytes */ 1024);
-  const svgPtr = Module._web_render_svg (fontPtr, fontBytes.length,
-                                         textPtr, /* px */ 48);
-  document.body.innerHTML = Module.UTF8ToString (svgPtr);
-  Module._web_free_string (svgPtr);
-&lt;/script&gt;</pre>
-    <p>Source and build scripts:
+    <h2>Embedding harfbuzz-world.cc</h2>
+    <p>Grab two things from the HarfBuzz source tree:</p>
+    <ul>
+      <li><code>src/harfbuzz-world.cc</code> — the
+        amalgamation; <code>#include</code>s every <code>.cc</code>
+        in the library so you compile a single translation
+        unit.</li>
+      <li>The <code>src/</code> directory on your include
+        path — for the headers that the amalgamation pulls
+        in.</li>
+    </ul>
+    <p>Then add one compile rule:</p>
+<pre class="code">c++ -std=c++17 -O2 -DHAVE_CONFIG_H \
+    -I/path/to/harfbuzz/src \
+    -c harfbuzz-world.cc -o harfbuzz-world.o</pre>
+    <p>Link <code>harfbuzz-world.o</code> with the rest of
+       your program and call the public C API as usual:</p>
+<pre class="code">#include &lt;hb.h&gt;
+#include &lt;hb-ot.h&gt;
+
+hb_blob_t  *blob = hb_blob_create_from_file ("MyFont.ttf");
+hb_face_t  *face = hb_face_create (blob, 0);
+hb_font_t  *font = hb_font_create (face);
+hb_buffer_t *buf = hb_buffer_create ();
+
+hb_buffer_add_utf8 (buf, "Hello", -1, 0, -1);
+hb_buffer_guess_segment_properties (buf);
+hb_shape (font, buf, NULL, 0);
+
+unsigned len;
+hb_glyph_info_t      *info = hb_buffer_get_glyph_infos     (buf, &amp;len);
+hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
+/* …draw the glyphs… */</pre>
+    <p>Pick what you need at compile time with feature
+       defines: <code>HB_TINY</code> for a minimal core,
+       <code>HB_HAS_RASTER</code>, <code>HB_HAS_VECTOR</code>,
+       <code>HB_HAS_GPU</code>, <code>HB_HAS_SUBSET</code>
+       to opt into the matching subsystems.</p>
+    <p>Source for this site:
        <a href="https://github.com/harfbuzz/harfbuzz-world.cc">github.com/harfbuzz/harfbuzz-world.cc</a>.</p>
   </section>
 
