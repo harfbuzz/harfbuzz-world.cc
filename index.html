@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>harfbuzz-world.cc — your one-stop HarfBuzz shop</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
+<script>
+  /* Inline early so there's no FOUC between parse and paint.
+   * ?theme=dark or ?theme=light forces the palette regardless
+   * of the OS prefers-color-scheme. */
+  (function () {
+    var t = new URLSearchParams(location.search).get('theme');
+    if (t === 'dark' || t === 'light')
+      document.documentElement.dataset.theme = t;
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=PT+Sans:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
