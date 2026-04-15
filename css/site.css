@@ -143,9 +143,9 @@ nav.tabs .tab {
   letter-spacing: 0.02em;
   color: var(--muted);
   padding: 0.5rem 1rem;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   margin-bottom: -1px;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 nav.tabs .tab:hover {
   color: var(--fg);
@@ -153,7 +153,9 @@ nav.tabs .tab:hover {
 }
 nav.tabs .tab.active {
   color: var(--accent);
+  background: var(--highlight);
   border-bottom-color: var(--accent);
+  border-radius: 4px 4px 0 0;
 }
 nav.tabs .tab:visited { color: var(--muted); }
 nav.tabs .tab.active:visited { color: var(--accent); }
