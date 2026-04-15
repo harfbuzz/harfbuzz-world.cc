@@ -204,6 +204,11 @@ nav.tabs .tab.active:visited { color: var(--accent); }
 
 /* Controls */
 
+/* On the embed/welcome tab the shared controls and presets
+ * aren't driving anything visible, so hide them. */
+body[data-active="embed"] #shared-controls,
+body[data-active="embed"] .presets { display: none; }
+
 .controls {
   display: flex;
   gap: 1rem;

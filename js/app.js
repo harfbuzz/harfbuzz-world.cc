@@ -258,6 +258,7 @@
     if (!demos[name]) name = "embed";
     if (name === activeName) return;
     activeName = name;
+    document.body.dataset.active = name;
     for (const [n, d] of Object.entries (demos))
       d.section.hidden = (n !== name);
     for (const t of tabs)
@@ -293,16 +294,20 @@
     devanagari: { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
     emoji:      { text: "😋😎😍😘🥰",         font: "fonts/NotoEmoji.ttf",          name: "NotoEmoji" },
   };
+  function applyPreset (key) {
+    const p = PRESETS[key];
+    if (!p) return false;
+    textInput.value = p.text;
+    loadFontUrl (p.font, p.name);
+    /* Reflect the choice in the URL so the view is
+     * shareable; keep the hash (active tab) untouched. */
+    const url = new URL (location.href);
+    url.searchParams.set ("preset", key);
+    history.replaceState (null, "", url);
+    return true;
+  }
   document.querySelectorAll (".preset").forEach ((btn) => {
-    btn.addEventListener ("click", () => {
-      const p = PRESETS[btn.dataset.preset];
-      if (!p) return;
-      textInput.value = p.text;
-      loadFontUrl (p.font, p.name);
-      /* setFontBytes (called inside loadFontUrl) will
-       * renderActive with the new font; the text change
-       * rides along because we set textInput.value before. */
-    });
+    btn.addEventListener ("click", () => applyPreset (btn.dataset.preset));
   });
 
   /* Font picker: dropdown menu with three sources (shipped /
@@ -380,12 +385,15 @@
     } catch { return false; }
   }
 
-  /* Initial font: ?font=URL if present, else bundled NotoSans.
-   * On URL failure, fall back to the bundled default so the
-   * page is never left fontless. */
+  /* Initial state.  Priority: ?preset=<name> > ?font=URL >
+   * bundled NotoSans.  ?preset wins because it owns both
+   * text and font, so a preset link reproduces the view. */
   const params = new URLSearchParams (location.search);
+  const presetParam = params.get ("preset");
   const fontUrlParam = params.get ("font");
-  if (!fontUrlParam || !(await loadFontUrl (fontUrlParam)))
+  if (presetParam && PRESETS[presetParam])
+    applyPreset (presetParam);
+  else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam)))
     await loadFontUrl ("fonts/NotoSans-Regular.ttf", "NotoSans-Regular");
 
   fromHash ();
