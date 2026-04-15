@@ -339,7 +339,7 @@
     const p = PRESETS[key];
     if (!p) return false;
     textInput.value = p.text;
-    loadFontUrl (p.font, p.name);
+    loadFontUrl (p.font, p.name, { silentUrl: true });
     /* Reflect the choice in the URL so the view is
      * shareable; keep the hash (active tab) untouched. */
     const url = new URL (location.href);
@@ -357,6 +357,13 @@
     const bytes = new Uint8Array (await file.arrayBuffer ());
     const name = file.name.replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
     setFontBytes (bytes, name);
+    /* File-uploaded fonts have no URL to point at; drop
+     * any lingering ?font= / ?preset= so the location bar
+     * doesn't lie about what's loaded. */
+    const u = new URL (location.href);
+    u.searchParams.delete ("font");
+    u.searchParams.delete ("preset");
+    history.replaceState (null, "", u);
   }
 
   function openFontMenu () { fontMenu.hidden = false; }
@@ -414,7 +421,7 @@
   /* Load a font from a URL.  Used both for the bundled default
    * and for the ?font=URL query parameter.  Returns true on
    * success so the caller can fall back. */
-  async function loadFontUrl (url, displayName) {
+  async function loadFontUrl (url, displayName, opts) {
     try {
       const r = await fetch (url);
       if (!r.ok) return false;
@@ -422,6 +429,15 @@
       const name = displayName || url.replace (/^.*\//, "")
                                      .replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
       setFontBytes (bytes, name);
+      /* Reflect the font URL in the location bar.  Skip when
+       * called from applyPreset / initial ?font= load, which
+       * own URL state themselves. */
+      if (!opts || !opts.silentUrl) {
+        const u = new URL (location.href);
+        u.searchParams.set ("font", url);
+        u.searchParams.delete ("preset");
+        history.replaceState (null, "", u);
+      }
       return true;
     } catch { return false; }
   }
@@ -438,8 +454,8 @@
   if (sizeParam !== null) sizeInput.value = sizeParam;
   if (presetParam && PRESETS[presetParam])
     applyPreset (presetParam);
-  else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam)))
-    await loadFontUrl ("fonts/NotoSans-Regular.ttf", "NotoSans-Regular");
+  else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam, null, { silentUrl: true })))
+    await loadFontUrl ("fonts/NotoSans-Regular.ttf", "NotoSans-Regular", { silentUrl: true });
 
   fromHash ();
 }) ();

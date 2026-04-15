@@ -346,6 +346,12 @@ body[data-active="gpu"] .size-label { display: none; }
   border-radius: 4px;
 }
 .font-menu-row button:hover { background: var(--highlight); }
+.font-menu-hint {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
 
 /* Drag-and-drop overlay */
 #drop-overlay {
