@@ -81,12 +81,11 @@ header h1 {
 }
 header h1 code {
   font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
-  font-size: 0.9em;
+  font-size: 1em;
   background: none;
   color: var(--accent);
   opacity: 0.55;
   padding: 0;
-  margin-left: 0.05em;
 }
 .tagline {
   color: var(--muted);
