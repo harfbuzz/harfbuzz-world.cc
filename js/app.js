@@ -299,6 +299,9 @@
     if (name === activeName) return;
     activeName = name;
     document.body.dataset.active = name;
+    document.title = name === "embed"
+      ? "harfbuzz-world.cc — your one-stop HarfBuzz shop"
+      : name + " — harfbuzz-world.cc";
     for (const [n, d] of Object.entries (demos))
       d.section.hidden = (n !== name);
     for (const t of tabs)
