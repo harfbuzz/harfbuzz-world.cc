@@ -372,6 +372,7 @@
 
   const rasterCanvas = document.getElementById ("raster-canvas");
   const rasterCtx    = rasterCanvas.getContext ("2d");
+  const rasterStats  = document.getElementById ("raster-stats");
   function renderRaster () {
     withText ((textPtr) => {
       const wPtr = Module._malloc (4);
@@ -407,6 +408,10 @@
       rasterCanvas.style.height = (h / dpr) + "px";
       const imageData = new ImageData (new Uint8ClampedArray (bgra.buffer), w, h);
       rasterCtx.putImageData (imageData, 0, 0);
+      rasterStats.textContent =
+        w + " × " + h + " px"
+        + " (" + (w / dpr).toFixed (0) + " × " + (h / dpr).toFixed (0) + " CSS px"
+        + " · " + dpr + "× DPR)";
     });
   }
 
