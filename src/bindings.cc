@@ -74,6 +74,16 @@ void web_set_variations (const char *s)
   g_variations[n] = 0;
 }
 
+/* Selected CPAL palette index.  Applied to vector_paint /
+ * raster_paint contexts in the render helpers below. */
+static unsigned g_palette = 0;
+
+EMSCRIPTEN_KEEPALIVE
+void web_set_palette (unsigned idx)
+{
+  g_palette = idx;
+}
+
 static void
 apply_variations (hb_font_t *font)
 {
@@ -90,6 +100,58 @@ apply_variations (hb_font_t *font)
     p = end ? end + 1 : nullptr;
   }
   hb_font_set_variations (font, vars, n);
+}
+
+/* JSON-describe the font's CPAL palettes (name, flags).
+ * Returns "[]" for fonts without a CPAL table.  Each entry
+ * carries the palette name (from name table, or empty if
+ * unset) and the flags bitfield (1=light bg, 2=dark bg) so
+ * the JS can fall back on those when there's no name.
+ * Caller frees with web_free_string(). */
+EMSCRIPTEN_KEEPALIVE
+char *web_font_palettes (const uint8_t *font_bytes, unsigned font_len)
+{
+  hb_blob_t *blob = hb_blob_create_or_fail ((const char *) font_bytes,
+                                             font_len,
+                                             HB_MEMORY_MODE_READONLY,
+                                             nullptr, nullptr);
+  if (!blob) return strdup ("[]");
+  hb_face_t *face = hb_face_create (blob, 0);
+  hb_blob_destroy (blob);
+
+  unsigned n = hb_ot_color_palette_get_count (face);
+  if (!n) { hb_face_destroy (face); return strdup ("[]"); }
+
+  size_t cap = 8 + (size_t) n * 96 + 1;
+  char *out = (char *) malloc (cap);
+  size_t off = 0;
+  off += snprintf (out + off, cap - off, "[");
+  for (unsigned i = 0; i < n; i++)
+  {
+    char name[64] = {0};
+    unsigned sz = sizeof name;
+    hb_ot_name_id_t nid = hb_ot_color_palette_get_name_id (face, i);
+    if (nid != HB_OT_NAME_ID_INVALID)
+      hb_ot_name_get_utf8 (face, nid, HB_LANGUAGE_INVALID, &sz, name);
+    /* Escape the few JSON-significant chars we might see in
+     * a CPAL name (quote, backslash).  Names rarely contain
+     * control chars; if they do we just pass them through. */
+    char esc[128];
+    size_t eo = 0;
+    for (const char *p = name; *p && eo + 2 < sizeof esc; p++)
+    {
+      if (*p == '"' || *p == '\\') esc[eo++] = '\\';
+      esc[eo++] = *p;
+    }
+    esc[eo] = 0;
+    unsigned flags = hb_ot_color_palette_get_flags (face, i);
+    off += snprintf (out + off, cap - off,
+                     "%s{\"name\":\"%s\",\"flags\":%u}",
+                     i ? "," : "", esc, flags);
+  }
+  off += snprintf (out + off, cap - off, "]");
+  hb_face_destroy (face);
+  return out;
 }
 
 /* JSON-describe the font's fvar axes (tag, min, def, max,
@@ -254,7 +316,10 @@ render (hb_vector_format_t format,
   hb_vector_paint_t *p = nullptr;
   hb_vector_draw_t  *d = nullptr;
   if (is_color)
+  {
     p = hb_vector_paint_create_or_fail (format);
+    if (p) hb_vector_paint_set_palette (p, g_palette);
+  }
   else
     d = hb_vector_draw_create_or_fail (format);
 
@@ -469,8 +534,13 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
 
   hb_raster_paint_t *p = nullptr;
   hb_raster_draw_t  *d = nullptr;
-  if (is_color) p = hb_raster_paint_create_or_fail ();
-  else          d = hb_raster_draw_create_or_fail ();
+  if (is_color)
+  {
+    p = hb_raster_paint_create_or_fail ();
+    if (p) hb_raster_paint_set_palette (p, g_palette);
+  }
+  else
+    d = hb_raster_draw_create_or_fail ();
 
   /* Extents live in pixel space (Y-up): bottom edge at
    * -descent_px places the descender row at row 0 of the buffer

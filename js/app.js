@@ -25,6 +25,7 @@
     Module._web_free_string (namePtr);
     fontNameEl.textContent = otName || displayName || "";
     refreshAxes ();
+    refreshPalettes ();
     /* Also push to the GPU iframe if its runtime is up.
      * web_load_font resets variations, so the next
      * updateVariations() call (from refreshAxes) re-pushes
@@ -44,6 +45,8 @@
   const fontUrlLoad   = document.getElementById ("font-url-load");
   const fontNameEl    = document.getElementById ("font-name");
   const dropOverlay   = document.getElementById ("drop-overlay");
+  const paletteLabel  = document.getElementById ("palette-label");
+  const paletteSelect = document.getElementById ("palette");
 
   /* Helper: marshal current text into wasm memory.  Caller frees. */
   function withText (fn) {
@@ -463,6 +466,41 @@
       });
     updateVariations ();
   }
+
+  /* CPAL palettes: pull the list from the current font and
+   * surface a dropdown when there are two or more palettes.
+   * Single-palette fonts (most COLR fonts) and non-color fonts
+   * stay quiet. */
+  function paletteLabelFor (p, i) {
+    if (p.name) return p.name;
+    if (p.flags & 1) return "Light background";
+    if (p.flags & 2) return "Dark background";
+    return "Palette " + i;
+  }
+  function refreshPalettes () {
+    const ptr = Module._web_font_palettes (fontPtr, fontBuf.length);
+    const palettes = JSON.parse (Module.UTF8ToString (ptr));
+    Module._web_free_string (ptr);
+    paletteSelect.innerHTML = "";
+    if (palettes.length < 2) {
+      paletteLabel.hidden = true;
+      Module._web_set_palette (0);
+      return;
+    }
+    palettes.forEach ((p, i) => {
+      const opt = document.createElement ("option");
+      opt.value = i;
+      opt.textContent = paletteLabelFor (p, i);
+      paletteSelect.append (opt);
+    });
+    paletteSelect.value = "0";
+    Module._web_set_palette (0);
+    paletteLabel.hidden = false;
+  }
+  paletteSelect.addEventListener ("change", () => {
+    Module._web_set_palette (parseInt (paletteSelect.value, 10) || 0);
+    renderActive ();
+  });
 
   /* Presets: one-click combos of text + font, covering the
    * three scripts we ship fonts for. */
