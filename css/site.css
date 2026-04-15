@@ -496,6 +496,7 @@ pre.code {
   font-size: 0.92rem;
   border-collapse: collapse;
   margin: 0 auto;
+  background: var(--soft);
   border: 1px solid var(--rule);
 }
 .glyph-table th,
@@ -547,14 +548,8 @@ pre.code {
 /* Glyph data */
 
 #shape-glyphs {
-  font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
-  font-size: 0.85rem;
-  background: var(--soft);
-  padding: 0.9rem 1rem;
-  border-radius: 6px;
+  text-align: center;
   overflow: auto;
-  margin: 0;
-  line-height: 1.45;
 }
 
 @media (max-width: 900px) {

@@ -88,9 +88,11 @@
     if (!glyphs.length) { shapeGlyphs.innerHTML = ""; return; }
     const useName = shapeShowNames.checked;
     const idCol = useName ? "name" : "gid";
+    const idHeader = useName ? "glyph name" : "glyph index";
     const cols = [idCol, "cluster", "x_advance", "y_advance", "x_offset", "y_offset"];
+    const headers = [idHeader, "cluster", "x_advance", "y_advance", "x_offset", "y_offset"];
     let html = "<table class=\"glyph-table\"><thead><tr>";
-    for (const c of cols) html += "<th>" + c + "</th>";
+    for (const h of headers) html += "<th>" + h + "</th>";
     html += "</tr></thead><tbody>";
     let prevCluster = glyphs[0].cluster;
     for (const g of glyphs) {
