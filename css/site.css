@@ -87,9 +87,10 @@ header h1 {
 }
 
 h2 {
-  font-family: "Prata", serif;
-  font-weight: 400;
-  font-size: 1.6rem;
+  font-family: "PT Sans", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: 0.005em;
   margin: 2rem 0 1rem;
   color: var(--accent);
 }
@@ -127,8 +128,10 @@ nav.tabs {
   border-bottom: 1px solid var(--rule);
 }
 nav.tabs .tab {
-  font-family: "Prata", serif;
-  font-size: 1.15rem;
+  font-family: "PT Sans", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
   color: var(--muted);
   padding: 0.5rem 1rem;
   border-bottom: 2px solid transparent;
@@ -261,7 +264,8 @@ nav.tabs .tab.active:visited { color: var(--accent); }
   inset: 0;
   background: rgba(0,0,0,0.5);
   color: #fff;
-  font-family: "Prata", serif;
+  font-family: "PT Sans", system-ui, sans-serif;
+  font-weight: 700;
   font-size: 2rem;
   display: none;
   align-items: center;

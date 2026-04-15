@@ -71,8 +71,8 @@ Integration is the conversion surface — see below.
 - Logo: globe wrapped in multi-script letterforms, "حرف‌باز"
   cresting the top, navy on white.  (Working concept; not
   locked.)
-- Site typography: PT Sans body, Anton title, Roboto Mono
-  code, Prata headings.  Mirrors Behdad's personal site.
+- Site typography: PT Sans body and headings, Anton title,
+  JetBrains Mono code.
 - Visual style: product-landing polish (Stripe / Linear
   cleanliness) with the warmth of behdad.org.
 - **Dark mode**: yes.  Default light (logo contrast), auto-
