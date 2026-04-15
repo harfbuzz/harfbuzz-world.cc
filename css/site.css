@@ -69,12 +69,7 @@ header h1 {
   font-size: 1.2rem;
   margin: 0.25rem 0 0;
 }
-.attribution {
-  color: var(--muted);
-  font-size: 0.9rem;
-  margin: 0.5rem 0 0;
-}
-.attribution em { font-style: italic; }
+footer em { font-style: italic; }
 
 h2 {
   font-family: "Prata", serif;
