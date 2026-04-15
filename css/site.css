@@ -74,16 +74,34 @@ header {
   position: relative;
 }
 .attribution {
-  position: absolute;
-  top: 0;
-  right: 0;
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
   margin: 0;
   text-align: right;
   color: var(--muted);
   font-size: 0.85rem;
   line-height: 1.35;
+  background: var(--bg-card);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  z-index: 10;
 }
 .attribution em { font-style: italic; }
+
+.logo-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: block;
+  line-height: 0;
+}
+.logo-corner img {
+  width: 96px;
+  height: 96px;
+  display: block;
+}
 header h1 {
   font-family: "Anton", "Impact", sans-serif;
   font-weight: 400;
@@ -91,14 +109,6 @@ header h1 {
   margin: 0;
   color: var(--accent);
   letter-spacing: 0.01em;
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-}
-header h1 .logo-img {
-  height: 1.2em;
-  width: auto;
-  display: block;
 }
 header h1 a,
 header h1 a:visited,
