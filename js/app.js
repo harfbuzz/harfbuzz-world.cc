@@ -654,7 +654,7 @@
     arabic:     { text: "مرحبا بالعالم",      font: "fonts/NotoSansArabic.ttf",     name: "NotoSansArabic" },
     urdu:       { text: "ہیلو دنیا",          font: "fonts/NotoNastaliqUrdu.ttf",   name: "NotoNastaliqUrdu" },
     hindi:      { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
-    thai:       { text: "สวัสดีชาวโลก",       font: "fonts/NotoSansThai.ttf",       name: "NotoSansThai" },
+    thai:       { text: "สวัสดีชาวโลก",       font: "fonts/NotoSansThaiLooped.ttf", name: "NotoSansThaiLooped" },
     chinese:    { text: "你好世界！",          font: "fonts/NotoSansCJKsc-subset.otf", name: "NotoSansCJKsc" },
     emoji:      { text: "🫠🌈❤️🦋🥰",         font: "fonts/NotoColorEmoji.ttf",          name: "NotoColorEmoji" },
   };
