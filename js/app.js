@@ -344,9 +344,16 @@
         url.searchParams.delete ("text");
       if (sizeInput.value && sizeInput.value !== "48") url.searchParams.set ("size", sizeInput.value);
       else                                             url.searchParams.delete ("size");
-      const v = variationsForUrl ();
-      if (v) url.searchParams.set ("variations", v);
-      else   url.searchParams.delete ("variations");
+      /* Only touch ?variations when the current font has
+       * sliders to read.  If we're on a font with no axes
+       * (e.g. the emoji preset), leave any prior
+       * ?variations alone -- the user might switch back to
+       * a variable font and want them restored. */
+      if (currentAxes.length) {
+        const v = variationsForUrl ();
+        if (v) url.searchParams.set ("variations", v);
+        else   url.searchParams.delete ("variations");
+      }
       /* Drop ?preset only if the text no longer matches it. */
       if (cur && !presetMatches)
         url.searchParams.delete ("preset");
