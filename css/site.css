@@ -589,6 +589,8 @@ pre.code {
   color: var(--accent-hi);
   user-select: none;
   list-style: none;
+  display: flex;
+  align-items: center;
 }
 .snippet > summary::-webkit-details-marker { display: none; }
 .snippet > summary::before {
@@ -598,6 +600,25 @@ pre.code {
   transition: transform 0.15s ease;
 }
 .snippet[open] > summary::before { transform: rotate(90deg); }
+.snippet-actions {
+  margin-left: auto;
+  display: none;
+  gap: 0.25rem;
+}
+.snippet[open] > summary .snippet-actions { display: inline-flex; }
+.snippet-actions button {
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  line-height: 1;
+}
+.snippet-actions button:hover {
+  background: var(--soft);
+  border-color: var(--rule);
+}
 .snippet pre {
   margin: 0;
   padding: 0.55rem 1rem;
@@ -607,6 +628,13 @@ pre.code {
   line-height: 1.5;
   overflow: auto;
   border-radius: 0 0 6px 6px;
+}
+.snippet pre code,
+.snippet pre code.hljs {
+  display: block;
+  margin: 0;
+  padding: 0;
+  background: transparent;
 }
 .snippet code a {
   text-decoration: none;

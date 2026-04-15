@@ -147,6 +147,132 @@ hb_font_destroy (font);
 hb_face_destroy (face);
 hb_blob_destroy (blob);`
     },
+    subset: {
+      headline: "hb_subset_or_fail",
+      template:
+`hb_blob_t *blob = hb_blob_create_from_file ("{font}");
+hb_face_t *face = hb_face_create (blob, 0);
+
+hb_subset_input_t *input = hb_subset_input_create_or_fail ();
+hb_set_t *unicodes = hb_subset_input_unicode_set (input);
+const char *text = "{text}";
+for (const char *p = text; *p; ) {
+  /* decode next UTF-8 codepoint into 'cp' */
+  hb_codepoint_t cp = /* ... */ 0;
+  hb_set_add (unicodes, cp);
+  /* advance p */
+}
+
+hb_face_t *subset = hb_subset_or_fail (face, input);
+hb_blob_t *out = hb_face_reference_blob (subset);
+/* ...write hb_blob_get_data(out, NULL) to disk... */
+
+hb_blob_destroy (out);
+hb_face_destroy (subset);
+hb_subset_input_destroy (input);
+hb_face_destroy (face);
+hb_blob_destroy (blob);`
+    },
+    raster: {
+      headline: "hb_raster_paint_render",
+      template:
+`hb_blob_t *blob = hb_blob_create_from_file ("{font}");
+hb_face_t *face = hb_face_create (blob, 0);
+hb_font_t *font = hb_font_create (face);
+hb_font_set_scale (font, {size} * 64, {size} * 64);
+
+hb_buffer_t *buf = hb_buffer_create ();
+hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
+hb_buffer_guess_segment_properties (buf);  /* toy: real apps set script/lang/dir explicitly */
+hb_shape (font, buf, NULL, 0);
+
+hb_raster_paint_t *p = hb_raster_paint_create_or_fail ();
+
+unsigned len = hb_buffer_get_length (buf);
+hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
+hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, NULL);
+
+float pen_x = 0, pen_y = 0;
+for (unsigned i = 0; i < len; i++) {
+  hb_raster_paint_glyph (p, font, info[i].codepoint,
+                         pen_x + pos[i].x_offset,
+                         pen_y + pos[i].y_offset);
+  hb_raster_image_t *img = hb_raster_paint_render (p);
+  /* ...composite img's BGRA32 buffer onto your output... */
+  pen_x += pos[i].x_advance;
+  pen_y += pos[i].y_advance;
+}
+
+hb_raster_paint_destroy (p);
+hb_buffer_destroy (buf);
+hb_font_destroy (font);
+hb_face_destroy (face);
+hb_blob_destroy (blob);`
+    },
+    vector: {
+      headline: "hb_vector_paint_render",
+      template:
+`hb_blob_t *blob = hb_blob_create_from_file ("{font}");
+hb_face_t *face = hb_face_create (blob, 0);
+hb_font_t *font = hb_font_create (face);
+
+hb_buffer_t *buf = hb_buffer_create ();
+hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
+hb_buffer_guess_segment_properties (buf);  /* toy: real apps set script/lang/dir explicitly */
+hb_shape (font, buf, NULL, 0);
+
+hb_vector_paint_t *p = hb_vector_paint_create_or_fail (HB_VECTOR_FORMAT_SVG);
+
+unsigned len = hb_buffer_get_length (buf);
+hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
+hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, NULL);
+
+float pen_x = 0, pen_y = 0;
+for (unsigned i = 0; i < len; i++) {
+  hb_vector_paint_glyph (p, font, info[i].codepoint,
+                         pen_x + pos[i].x_offset,
+                         pen_y + pos[i].y_offset,
+                         HB_VECTOR_EXTENTS_MODE_EXPAND);
+  pen_x += pos[i].x_advance;
+  pen_y += pos[i].y_advance;
+}
+
+hb_blob_t *out = hb_vector_paint_render (p);
+/* ...write hb_blob_get_data(out, NULL) somewhere... */
+
+hb_blob_destroy (out);
+hb_vector_paint_destroy (p);
+hb_buffer_destroy (buf);
+hb_font_destroy (font);
+hb_face_destroy (face);
+hb_blob_destroy (blob);`
+    },
+    gpu: {
+      headline: "hb_gpu_paint_encode",
+      template:
+`hb_blob_t *blob = hb_blob_create_from_file ("{font}");
+hb_face_t *face = hb_face_create (blob, 0);
+hb_font_t *font = hb_font_create (face);
+
+hb_gpu_paint_t *p = hb_gpu_paint_create_or_fail ();
+
+/* Per-glyph: encode an outline blob the GPU can rasterize. */
+hb_glyph_extents_t ext;
+hb_gpu_paint_glyph (p, font, /* glyph_id */ 0);
+hb_blob_t *enc = hb_gpu_paint_encode (p, &ext);
+/* ...upload enc bytes to atlas; record extents for the quad... */
+hb_blob_destroy (enc);
+
+/* Get the shader source matching your renderer's API. */
+const char *frag = hb_gpu_shader_source (HB_GPU_SHADER_LANG_GLSL,
+                                         HB_GPU_SHADER_STAGE_FRAGMENT);
+/* ...compile + draw a quad per glyph at its advance position... */
+
+hb_gpu_paint_destroy (p);
+hb_font_destroy (font);
+hb_face_destroy (face);
+hb_blob_destroy (blob);`
+    },
   };
   /* Look up an hb_* identifier's docs section in the
    * generated HB_DOC_SYMBOLS table (sourced from the
@@ -170,7 +296,7 @@ hb_blob_destroy (blob);`
    * Unknown identifiers (or pseudocode placeholders) are
    * left as plain text. */
   function linkifyHbCalls (html, headline) {
-    return html.replace (/(hb_[a-z0-9_]+)/g, (m) => {
+    return html.replace (/(hb_[a-z0-9_]+|HB_[A-Z0-9_]+)/g, (m) => {
       const url = hbDocsUrl (m);
       if (!url)
         return m === headline ? "<strong>" + m + "</strong>" : m;
@@ -226,6 +352,57 @@ hb_blob_destroy (blob);`
     }
   });
 
+  /* All snippet <details> share an open/closed state, and it
+   * round-trips via ?snippet=1 in the URL so a shared link
+   * lands in the same view. */
+  const snippetEls = () => document.querySelectorAll ("details.snippet");
+  function applySnippetOpen (open) {
+    snippetEls ().forEach ((d) => { d.open = open; });
+  }
+  applySnippetOpen (new URLSearchParams (location.search).get ("snippet") === "1");
+  snippetEls ().forEach ((d) => {
+    d.addEventListener ("toggle", () => {
+      const open = d.open;
+      /* Mirror to siblings without recursing back into toggle. */
+      snippetEls ().forEach ((other) => {
+        if (other !== d && other.open !== open) other.open = open;
+      });
+      const u = new URL (location.href);
+      if (open) u.searchParams.set ("snippet", "1");
+      else      u.searchParams.delete ("snippet");
+      history.replaceState (null, "", u);
+    });
+    /* Buttons in the summary: action without toggling the
+     * details.  preventDefault on click stops the native
+     * "summary toggles details" behavior. */
+    function flash (btn, msg) {
+      const old = btn.textContent;
+      btn.textContent = msg;
+      setTimeout (() => { btn.textContent = old; }, 1200);
+    }
+    const linkBtn = d.querySelector (".snippet-link");
+    const copyBtn = d.querySelector (".snippet-copy");
+    if (linkBtn)
+      linkBtn.addEventListener ("click", (e) => {
+        e.preventDefault ();
+        e.stopPropagation ();
+        const u = new URL (location.href);
+        u.searchParams.set ("snippet", "1");
+        navigator.clipboard.writeText (u.toString ()).then (
+          () => flash (linkBtn, "✓"),
+          () => flash (linkBtn, "✗"));
+      });
+    if (copyBtn)
+      copyBtn.addEventListener ("click", (e) => {
+        e.preventDefault ();
+        e.stopPropagation ();
+        const code = d.querySelector ("pre code").innerText;
+        navigator.clipboard.writeText (code).then (
+          () => flash (copyBtn, "✓"),
+          () => flash (copyBtn, "✗"));
+      });
+  });
+
   const vectorRender = document.getElementById ("vector-render");
   const dlSvg        = document.getElementById ("vector-dl-svg");
   const dlPdf        = document.getElementById ("vector-dl-pdf");
@@ -257,6 +434,7 @@ hb_blob_destroy (blob);`
       dlPdf.href = pdfUrl;
       pdfSizeEl.textContent = fmtBytes (pdfLen);
     });
+    renderSnippet ("vector");
   }
 
   const subsetOrig    = document.getElementById ("subset-orig-size");
@@ -358,6 +536,7 @@ hb_blob_destroy (blob);`
         "Kept " + subStats.num_glyphs + " of " + origStats.num_glyphs + " glyphs"
         + " · " + subStats.num_unicodes + " of " + origStats.num_unicodes + " Unicode codepoints";
       renderSubsetTables (origStats, subStats);
+      renderSnippet ("subset");
       subsetTablesWrap.hidden = false;
 
       /* If the loaded font is itself already small (i.e. mostly
@@ -474,6 +653,7 @@ hb_blob_destroy (blob);`
     }
     if (gpuReady)
       postGpu ({ kind: "text", value: textInput.value });
+    renderSnippet ("gpu");
   }
 
   const rasterCanvas = document.getElementById ("raster-canvas");
@@ -532,6 +712,7 @@ hb_blob_destroy (blob);`
         rasterPngSize.textContent = fmtBytes (blob.size);
       }, "image/png");
     });
+    renderSnippet ("raster");
   }
 
   /* Static tabs (embed, subset, gpu) have no live render --
