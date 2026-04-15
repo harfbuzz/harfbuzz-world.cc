@@ -19,10 +19,9 @@
     fontPtr = Module._malloc (fontBuf.length);
     Module.HEAPU8.set (fontBuf, fontPtr);
     if (displayName) fontNameEl.textContent = displayName;
-    /* Push to the GPU iframe whenever it's loaded.  Cheap if
-     * the iframe hasn't been activated yet -- postGpu is a
-     * no-op on a missing contentWindow. */
-    postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
+    /* Also push to the GPU iframe if its runtime is up. */
+    if (gpuReady)
+      postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
     renderActive ();
   }
 

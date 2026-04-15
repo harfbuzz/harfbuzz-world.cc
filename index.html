@@ -219,9 +219,11 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 
   <section class="demo" id="demo-gpu" hidden>
     <p>Slug-based GPU rendering via HarfBuzz's hb-gpu library,
-       running here in a WebGL2 / WebGPU canvas.  The demo is
-       interactive: <strong>drag</strong> to pan,
-       <strong>scroll</strong> to zoom.  Standalone version at
+       running on WebGL2 or WebGPU.  Interactive:
+       <strong>drag</strong> to pan,
+       <strong>scroll</strong> to zoom,
+       <strong>right-drag</strong> to rotate in 3D.  Full
+       standalone demo at
        <a href="https://harfbuzz.github.io/hb-gpu-demo/">harfbuzz.github.io/hb-gpu-demo</a>.</p>
     <iframe id="gpu-frame" class="render"
             title="hb-gpu live demo"></iframe>
