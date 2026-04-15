@@ -15,7 +15,7 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Pick the HarfBuzz source tree to build against:
 #   1. $HB_SRC if set explicitly.
-#   2. ./harfbuzz submodule (fresh-clone / CI default).
+#   2. ./harfbuzz/ next to the repo (clone harfbuzz here).
 #   3. ~/harfbuzz if it exists (developer's working tree).
 if [ -z "$HB_SRC" ]; then
   if [ -f "$HERE/harfbuzz/src/harfbuzz-world.cc" ]; then
@@ -28,7 +28,7 @@ fi
 if [ -z "$HB_SRC" ] || [ ! -f "$HB_SRC/src/harfbuzz-world.cc" ]; then
   echo "error: cannot find HarfBuzz source" >&2
   echo "       set HB_SRC=/path/to/harfbuzz, or" >&2
-  echo "       run 'git submodule update --init harfbuzz'" >&2
+  echo "       clone https://github.com/harfbuzz/harfbuzz next to this repo" >&2
   exit 1
 fi
 echo "Using HarfBuzz source at: $HB_SRC"
