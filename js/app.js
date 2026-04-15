@@ -319,13 +319,9 @@
   }
   window.addEventListener ("hashchange", fromHash);
 
-  /* Logo click: go to the embed ("home") tab and clear the
-   * hash from the URL -- without a full page reload. */
-  document.getElementById ("logo-home").addEventListener ("click", (e) => {
-    e.preventDefault ();
-    history.pushState (null, "", location.pathname + location.search);
-    activate ("embed");
-  });
+  /* Logo click: let the <a href="./"> reload to bare URL.
+   * Full reload, all query params and hash dropped, all
+   * widget state back to defaults.  No JS interception. */
   /* Reflect current text/size in the URL so the view is
    * shareable.  Debounced so we don't replaceState per
    * keystroke. */
