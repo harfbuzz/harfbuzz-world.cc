@@ -137,10 +137,10 @@
   }
 
   /* GPU tab: live iframe of harfbuzz.github.io/hb-gpu-demo.
-   * We push text/size/font into it via postMessage; the demo
-   * has a small embed-mode listener for those messages.
-   * Initial values go in the iframe URL so the first render
-   * is already correct. */
+   * The demo's embed mode accepts { kind: 'text', value } and
+   * { kind: 'font', bytes } via postMessage and sends back a
+   * { kind: 'ready' } once its wasm runtime is up.  Initial
+   * text rides the URL; font bytes have to wait for ready.  */
   const gpuFrame = document.getElementById ("gpu-frame");
   const GPU_ORIGIN = "https://harfbuzz.github.io";
   function postGpu (msg) {
@@ -153,16 +153,20 @@
     u.searchParams.set ("text", textInput.value);
     return u.toString ();
   }
+  window.addEventListener ("message", (e) => {
+    if (e.origin !== GPU_ORIGIN) return;
+    if (e.data && e.data.kind === "ready" && fontBuf)
+      postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
+  });
   function renderGpu () {
-    /* On first activation just (re)point the iframe so it
-     * loads with the current text; after that, push live
-     * updates via postMessage. */
+    /* GPU view has no "font size" concept -- zoom is a user
+     * gesture on the canvas -- so we only sync text + font.
+     * On first activation (re)point the iframe; after that,
+     * push text updates via postMessage. */
     const want = gpuFrameUrl ();
     if (gpuFrame.src !== want) gpuFrame.src = want;
-    else {
+    else
       postGpu ({ kind: "text", value: textInput.value });
-      postGpu ({ kind: "size", value: currentSize () });
-    }
   }
 
   const rasterCanvas = document.getElementById ("raster-canvas");
