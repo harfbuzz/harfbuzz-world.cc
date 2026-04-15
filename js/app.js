@@ -305,12 +305,12 @@ hb_blob_destroy (blob);`
 hb_face_t *face = hb_face_create (blob, 0);
 hb_font_t *font = hb_font_create (face);
 
-/* Color fonts go through hb_gpu_paint_*; mono outline fonts
- * through the cheaper hb_gpu_draw_* path.  Each path has its
- * own fragment shader -- pull the matching one below. */
+/* Color fonts (COLR layers / paint tree) go through
+ * hb_gpu_paint_*; mono outline fonts through the cheaper
+ * hb_gpu_draw_* path.  Bitmap color glyphs (CBDT/sbix/PNG)
+ * are NOT supported by hb-gpu -- shapes/paths only. */
 hb_bool_t is_color = hb_ot_color_has_paint (face) ||
-                     hb_ot_color_has_layers (face) ||
-                     hb_ot_color_has_png (face);
+                     hb_ot_color_has_layers (face);
 hb_gpu_paint_t *p = is_color ? hb_gpu_paint_create_or_fail () : NULL;
 hb_gpu_draw_t  *d = is_color ? NULL : hb_gpu_draw_create_or_fail ();
 
@@ -324,22 +324,28 @@ const char *vert = hb_gpu_shader_source (HB_GPU_SHADER_STAGE_VERTEX, lang);
 /* ...compile {vert,frag} into your renderer's pipeline... */
 
 /* Per-glyph: encode the outline / paint tree into a compact
- * blob that the GPU shader decodes + rasterizes. */
+ * blob that the GPU shader decodes + rasterizes.  Cache the
+ * (glyph_id -> atlas_offset) mapping in your renderer so
+ * each glyph is encoded + uploaded at most once per font;
+ * subsequent draws of the same glyph just emit a quad with
+ * the cached atlas offset. */
 unsigned len = hb_buffer_get_length (buf);  /* assume buf is shaped */
 hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
 hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, NULL);
 for (unsigned i = 0; i < len; i++) {
+  unsigned gid = info[i].codepoint;
+  /* if (cache_lookup (gid)) { emit_quad (...); continue; } */
   hb_glyph_extents_t ext;
   hb_blob_t *enc;
   if (p) {
-    hb_gpu_paint_glyph (p, font, info[i].codepoint);
+    hb_gpu_paint_glyph (p, font, gid);
     enc = hb_gpu_paint_encode (p, &ext);
   } else {
-    hb_gpu_draw_glyph (d, font, info[i].codepoint);
+    hb_gpu_draw_glyph (d, font, gid);
     enc = hb_gpu_draw_encode (d, &ext);
   }
-  /* ...upload enc bytes to atlas; draw a quad at the
-   *    glyph's advance position with the encoded blob's
+  /* ...upload enc bytes to atlas, store offset in cache,
+   *    emit a quad at the glyph's pen position with the
    *    atlas offset as a vertex attribute... */
   hb_blob_destroy (enc);
 }
