@@ -20,6 +20,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Sub-pixel precision for shaped glyph positions.  Same
+ * 26.6-fixed-point convention as the in-tree hb-vector /
+ * hb-raster utils (and FreeType): shape at font_size * SCALE,
+ * then tell the render context to divide by SCALE to land on
+ * pixels. */
+#define SUBPIXEL_BITS 6
+#define SCALE (1 << SUBPIXEL_BITS)
+
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE
@@ -366,10 +374,12 @@ render (hb_vector_format_t format,
   if (!buf)
     return strdup ("");
 
-  /* Render at @font_size_px pixels per em: shaped positions then
-   * come back in pixel space, and the SVG carries pixel coords. */
-  hb_font_set_scale (font, (int) font_size_px, (int) font_size_px);
-  /* Re-shape with the new scale so positions are in pixels. */
+  /* Shape at pixel * SCALE for sub-pixel precision; the
+   * render contexts below divide by SCALE on emit to land on
+   * pixels in the produced SVG/PDF. */
+  int fsp = (int) (font_size_px * (float) SCALE);
+  hb_font_set_scale (font, fsp, fsp);
+  /* Re-shape with the new scale. */
   hb_buffer_clear_contents (buf);
   hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
   hb_buffer_guess_segment_properties (buf);
@@ -388,10 +398,17 @@ render (hb_vector_format_t format,
   if (is_color)
   {
     p = hb_vector_paint_create_or_fail (format);
-    if (p) hb_vector_paint_set_palette (p, g_palette);
+    if (p)
+    {
+      hb_vector_paint_set_palette (p, g_palette);
+      hb_vector_paint_set_scale_factor (p, (float) SCALE, (float) SCALE);
+    }
   }
   else
+  {
     d = hb_vector_draw_create_or_fail (format);
+    if (d) hb_vector_draw_set_scale_factor (d, (float) SCALE, (float) SCALE);
+  }
 
   /* Namespace SVG ids per render so multiple hb-vector
    * SVGs embedded in the same page (shape tab vs vector
@@ -430,7 +447,16 @@ render (hb_vector_format_t format,
   hb_font_get_h_extents (font, &fe);
   float asc = (float) fe.ascender;   /* positive */
   float desc = (float) fe.descender; /* negative */
-  hb_vector_extents_t logical = { 0.f, -asc, total_x, asc - desc };
+  /* Advances and h_extents come back in pixel*SCALE; the
+   * output extents we hand to set_extents go through as-is
+   * (no scale_factor applied), so divide down to pixels. */
+  const float inv_scale = 1.f / (float) SCALE;
+  hb_vector_extents_t logical = {
+    0.f,
+    -asc * inv_scale,
+    total_x * inv_scale,
+    (asc - desc) * inv_scale,
+  };
   if (p) hb_vector_paint_set_extents (p, &logical);
   else   hb_vector_draw_set_extents  (d, &logical);
 
@@ -570,13 +596,17 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
   hb_buffer_t *buf = shape (font_bytes, font_len, utf8_text, &face, &font);
   if (!buf) return nullptr;
 
-  /* Shape happened at the font's default upem scale; positions
-   * are in font units.  Convert to pixels via a scale factor on
-   * the raster context. */
-  unsigned upem = hb_face_get_upem (face);
-  float scale  = font_size_px / (float) upem;
+  /* Re-shape at pixel*SCALE for sub-pixel shaping precision;
+   * the raster context below divides by SCALE on render. */
+  int fsp = (int) (font_size_px * (float) SCALE);
+  hb_font_set_scale (font, fsp, fsp);
+  hb_buffer_clear_contents (buf);
+  hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
+  hb_buffer_guess_segment_properties (buf);
+  hb_shape (font, buf, nullptr, 0);
 
-  /* Total advance and font metrics in font units. */
+  /* Total advance + metrics in pixel*SCALE; divide by SCALE
+   * to get the pixel-sized buffer dimensions. */
   unsigned len = hb_buffer_get_length (buf);
   hb_glyph_info_t    *info = hb_buffer_get_glyph_infos (buf, nullptr);
   hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, nullptr);
@@ -587,9 +617,9 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
   float ascent  = (float) fe.ascender;
   float descent = (float) -fe.descender;
 
-  /* Pixel-space buffer dimensions. */
-  unsigned w = (unsigned) (total_x * scale + 0.999f);
-  unsigned h = (unsigned) ((ascent + descent) * scale + 0.999f);
+  const float inv_scale = 1.f / (float) SCALE;
+  unsigned w = (unsigned) (total_x * inv_scale + 0.999f);
+  unsigned h = (unsigned) ((ascent + descent) * inv_scale + 0.999f);
   if (!w || !h)
   {
     hb_buffer_destroy (buf);
@@ -617,7 +647,7 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
    * and the ascender row at the top.  pen_y stays at 0
    * (baseline) and gets scaled by set_scale_factor below. */
   unsigned stride = w * 4;
-  int descent_px = (int) (descent * scale);
+  int descent_px = (int) (descent * inv_scale);
   hb_raster_extents_t ext = { 0, -descent_px, w, h, stride };
 
   uint8_t *out = (p || d) ? (uint8_t *) calloc ((size_t) stride * h, 1)
@@ -647,7 +677,7 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
     if (p)
     {
       hb_raster_paint_set_extents (p, &ext);
-      hb_raster_paint_set_scale_factor (p, 1.f / scale, 1.f / scale);
+      hb_raster_paint_set_scale_factor (p, (float) SCALE, (float) SCALE);
       hb_raster_paint_glyph (p, font, info[i].codepoint, gx, gy);
       img = hb_raster_paint_render (p);
     }
@@ -655,7 +685,7 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
     {
       hb_raster_draw_reset (d);
       hb_raster_draw_set_extents (d, &ext);
-      hb_raster_draw_set_scale_factor (d, 1.f / scale, 1.f / scale);
+      hb_raster_draw_set_scale_factor (d, (float) SCALE, (float) SCALE);
       hb_raster_draw_glyph (d, font, info[i].codepoint, gx, gy);
       img = hb_raster_draw_render (d);
     }
