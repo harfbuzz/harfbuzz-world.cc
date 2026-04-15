@@ -190,19 +190,15 @@
       gpuReady = true;
       postGpu ({ kind: "text", value: textInput.value });
       if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
-      /* The first render after a fresh font load comes up
-       * blank for color fonts; tab-switch-away-and-back
-       * always rescues it.  Simulate that: briefly hide and
-       * re-show the iframe so visibilitychange fires inside
-       * and the demo's handleResume runs. */
+      /* First rebuild_buffer on a freshly-loaded font
+       * sometimes leaves the atlas half-uploaded and the
+       * first composite blank.  A second text push forces
+       * another rebuild that fills the atlas properly --
+       * the same nudge tab-switching-back happens to
+       * perform, and the only thing that reliably rescues
+       * this. */
       setTimeout (() => {
-        gpuFrame.style.display = "none";
-        /* Force a reflow so the display toggle actually
-         * commits before we restore. */
-        void gpuFrame.offsetHeight;
-        requestAnimationFrame (() => {
-          gpuFrame.style.display = "";
-        });
+        postGpu ({ kind: "text", value: textInput.value });
       }, 200);
     }
   });
