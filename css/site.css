@@ -317,7 +317,11 @@ nav.tabs .tab.active:visited { color: var(--accent); }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-card);
+  /* Render stages always show white paper + black ink,
+   * regardless of site theme -- that's what the demos are
+   * actually producing and what users would download. */
+  background: #fff;
+  color: #000;
 }
 .render svg {
   display: block;
