@@ -165,12 +165,20 @@
        * bytes instead of holding on to a cached face. */
       const family = "hbSubset" + (++subsetGen);
       const b64 = bytesToBase64 (bytes);
+      /* Mirror the picker's palette in the native font render
+       * via @font-palette-values + font-palette.  The named
+       * palette stays --hbPalette so the style block can be
+       * regenerated freely without rebinding the preview. */
+      const palIdx = parseInt (paletteSelect.value, 10) || 0;
       subsetStyle.textContent =
         '@font-face { font-family: "' + family + '"; ' +
-        'src: url(data:font/ttf;base64,' + b64 + ') format("truetype"); }';
+        'src: url(data:font/ttf;base64,' + b64 + ') format("truetype"); } ' +
+        '@font-palette-values --hbPalette { font-family: "' + family + '"; ' +
+        'base-palette: ' + palIdx + '; }';
       subsetPreview.style.fontFamily = '"' + family + '", system-ui, sans-serif';
       subsetPreview.style.fontSize = currentSize () + "px";
       subsetPreview.style.fontVariationSettings = cssVariationSettings ();
+      subsetPreview.style.fontPalette = "--hbPalette";
       subsetPreview.textContent = textInput.value;
     });
   }
@@ -355,6 +363,14 @@
         if (v) url.searchParams.set ("variations", v);
         else   url.searchParams.delete ("variations");
       }
+      /* Same convention as variations: only touch ?palette
+       * when the current font actually has multi-palette,
+       * so a font switch doesn't clobber a prior selection. */
+      if (!paletteLabel.hidden) {
+        const pIdx = parseInt (paletteSelect.value, 10) || 0;
+        if (pIdx) url.searchParams.set ("palette", String (pIdx));
+        else      url.searchParams.delete ("palette");
+      }
       /* Preset stays put even when text/variations diverge --
        * the pill represents the script + font choice and
        * widget tweaks layer on top. */
@@ -495,7 +511,17 @@
       opt.textContent = paletteLabelFor (p, i);
       paletteSelect.append (opt);
     });
-    paletteSelect.value = "0";
+    /* Honour ?palette=N from the URL so a shared link can pin
+     * the picker.  Falls back to 0 (and any out-of-range index
+     * also lands on 0) so we never load with an invalid pick. */
+    const urlPal = parseInt (new URLSearchParams (location.search).get ("palette"), 10);
+    const startIdx = (urlPal >= 0 && urlPal < palettes.length) ? urlPal : 0;
+    paletteSelect.value = String (startIdx);
+    if (startIdx) {
+      Module._web_set_palette (startIdx);
+      if (gpuReady)
+        postGpu ({ kind: "palette", value: startIdx });
+    }
     paletteLabel.hidden = false;
   }
   paletteSelect.addEventListener ("change", () => {
@@ -504,6 +530,7 @@
     if (gpuReady)
       postGpu ({ kind: "palette", value: idx });
     renderActive ();
+    syncUrl ();
   });
 
   /* Presets: one-click combos of text + font, covering the
