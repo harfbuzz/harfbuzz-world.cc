@@ -7,13 +7,26 @@
 
 (async function main () {
   const Module = await createHbWorld ();
-  const fontResp = await fetch ("fonts/NotoSans-Regular.ttf");
-  const fontBuf = new Uint8Array (await fontResp.arrayBuffer ());
-  const fontPtr = Module._malloc (fontBuf.length);
-  Module.HEAPU8.set (fontBuf, fontPtr);
 
-  const textInput = document.getElementById ("text");
-  const sizeInput = document.getElementById ("size");
+  /* Single owner of the wasm-side font blob.  Swapped in place
+   * when the user picks a different font; the old buffer is
+   * freed before the new one is allocated. */
+  let fontBuf = null;
+  let fontPtr = 0;
+  function setFontBytes (bytes, displayName) {
+    if (fontPtr) Module._free (fontPtr);
+    fontBuf = bytes;
+    fontPtr = Module._malloc (fontBuf.length);
+    Module.HEAPU8.set (fontBuf, fontPtr);
+    if (displayName) fontNameEl.textContent = displayName;
+    renderActive ();
+  }
+
+  const textInput   = document.getElementById ("text");
+  const sizeInput   = document.getElementById ("size");
+  const fontInput   = document.getElementById ("font-input");
+  const fontNameEl  = document.getElementById ("font-name");
+  const dropOverlay = document.getElementById ("drop-overlay");
 
   /* Helper: marshal current text into wasm memory.  Caller frees. */
   function withText (fn) {
@@ -137,6 +150,33 @@
   window.addEventListener ("hashchange", fromHash);
   textInput.addEventListener ("input", renderActive);
   sizeInput.addEventListener ("input", renderActive);
+
+  /* Font picker: <input type="file"> + drag-and-drop. */
+  async function loadFontFile (file) {
+    const bytes = new Uint8Array (await file.arrayBuffer ());
+    const name = file.name.replace (/\.(ttf|otf|ttc|woff2?|TTF|OTF|TTC|WOFF2?)$/, "");
+    setFontBytes (bytes, name);
+  }
+  fontInput.addEventListener ("change", () => {
+    if (fontInput.files.length) loadFontFile (fontInput.files[0]);
+  });
+  document.addEventListener ("dragover", (e) => {
+    e.preventDefault ();
+    dropOverlay.classList.add ("active");
+  });
+  document.addEventListener ("dragleave", (e) => {
+    if (e.target === document || e.relatedTarget === null)
+      dropOverlay.classList.remove ("active");
+  });
+  document.addEventListener ("drop", (e) => {
+    e.preventDefault ();
+    dropOverlay.classList.remove ("active");
+    if (e.dataTransfer.files.length) loadFontFile (e.dataTransfer.files[0]);
+  });
+
+  /* Initial font: bundled NotoSans. */
+  const fontResp = await fetch ("fonts/NotoSans-Regular.ttf");
+  setFontBytes (new Uint8Array (await fontResp.arrayBuffer ()), "NotoSans-Regular");
 
   fromHash ();
 }) ();

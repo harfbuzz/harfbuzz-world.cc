@@ -165,6 +165,42 @@ nav.tabs .tab.active:visited { color: var(--accent); }
   text-decoration: none;
 }
 
+/* File picker: hide the actual <input>, click the label. */
+.file-label {
+  cursor: pointer;
+  border: 1px solid var(--rule);
+  padding: 0.4rem 0.7rem;
+  border-radius: 4px;
+  color: var(--fg);
+  background: var(--bg-card);
+  transition: border-color 0.15s, background 0.15s;
+}
+.file-label:hover {
+  border-color: var(--accent);
+  background: var(--highlight);
+}
+.file-label::before {
+  content: "Font: ";
+  color: var(--muted);
+}
+.file-label input[type="file"] { display: none; }
+
+/* Drag-and-drop overlay */
+#drop-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  font-family: "Prata", serif;
+  font-size: 2rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+}
+#drop-overlay.active { display: flex; }
+
 /* Demo render stage */
 
 .render {
