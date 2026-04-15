@@ -176,21 +176,24 @@ hb_blob_destroy (blob);`
     raster: {
       headline: "hb_raster_paint_render",
       template:
-`hb_blob_t *blob = hb_blob_create_from_file ("{font}");
+`#define FONT_SIZE_PX {size}
+
+hb_blob_t *blob = hb_blob_create_from_file ("{font}");
 hb_face_t *face = hb_face_create (blob, 0);
 hb_font_t *font = hb_font_create (face);
+/* Shape at the font's default upem scale -- positions come
+ * out in font units; we tell the raster context how many
+ * font units fit in one pixel below. */
+unsigned upem = hb_face_get_upem (face);
+float units_per_pixel = (float) upem / FONT_SIZE_PX;
 
 hb_buffer_t *buf = hb_buffer_create ();
 hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
 hb_buffer_guess_segment_properties (buf);  /* toy: real apps set script/lang/dir explicitly */
 hb_shape (font, buf, NULL, 0);
 
-float font_size_px = {size};
-unsigned upem = hb_face_get_upem (face);
-float scale_factor = (float) upem / font_size_px;  /* font units per pixel */
-
 hb_raster_extents_t ext = { /*x*/ 0, /*y*/ 0, /*w*/ 0, /*h*/ 0, /*stride*/ 0 };
-/* ... compute ext from buffer's advances + font h_extents ... */
+/* ... compute ext in pixels from buffer's advances + font h_extents ... */
 
 /* Color fonts go through hb_raster_paint_*; mono outline
  * fonts can use the cheaper hb_raster_draw_* path. */
@@ -211,13 +214,13 @@ for (unsigned i = 0; i < len; i++) {
   hb_raster_image_t *img;
   if (p) {
     hb_raster_paint_set_extents (p, &ext);
-    hb_raster_paint_set_scale_factor (p, 1.f / scale_factor, 1.f / scale_factor);
+    hb_raster_paint_set_scale_factor (p, units_per_pixel, units_per_pixel);
     hb_raster_paint_glyph (p, font, info[i].codepoint, gx, gy);
     img = hb_raster_paint_render (p);  /* BGRA32 premultiplied */
   } else {
     hb_raster_draw_reset (d);
     hb_raster_draw_set_extents (d, &ext);
-    hb_raster_draw_set_scale_factor (d, 1.f / scale_factor, 1.f / scale_factor);
+    hb_raster_draw_set_scale_factor (d, units_per_pixel, units_per_pixel);
     hb_raster_draw_glyph (d, font, info[i].codepoint, gx, gy);
     img = hb_raster_draw_render (d);  /* A8 coverage */
   }
@@ -236,15 +239,15 @@ hb_blob_destroy (blob);`
     vector: {
       headline: "hb_vector_paint_render",
       template:
-`hb_blob_t *blob = hb_blob_create_from_file ("{font}");
+`#define FONT_SIZE_PX {size}
+
+hb_blob_t *blob = hb_blob_create_from_file ("{font}");
 hb_face_t *face = hb_face_create (blob, 0);
 hb_font_t *font = hb_font_create (face);
-
-float font_size_px = {size};
-/* For SVG/PDF, set the font's scale so shaped positions come
- * out in pixel units; the produced markup's viewBox / coords
- * are then in CSS pixels. */
-hb_font_set_scale (font, (int) font_size_px, (int) font_size_px);
+/* Set the font's scale so shaped positions come out in
+ * pixels; the produced SVG/PDF viewBox is then in pixels.
+ * (vector contexts default to scale_factor=1.) */
+hb_font_set_scale (font, FONT_SIZE_PX, FONT_SIZE_PX);
 
 hb_buffer_t *buf = hb_buffer_create ();
 hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
