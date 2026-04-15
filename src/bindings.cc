@@ -46,17 +46,12 @@ char *web_font_family (const uint8_t *font_bytes, unsigned font_len)
                                   HB_OT_NAME_ID_FONT_FAMILY };
   for (hb_ot_name_id_t id : ids)
   {
-    unsigned size = 0;
-    hb_ot_name_get_utf8 (face, id, HB_LANGUAGE_INVALID, &size, nullptr);
-    if (size)
+    char buf[256];
+    unsigned sz = sizeof buf;
+    if (hb_ot_name_get_utf8 (face, id, HB_LANGUAGE_INVALID, &sz, buf) > 0)
     {
-      size++; /* room for NUL */
-      char *buf = (char *) malloc (size);
-      if (!buf) break;
-      unsigned got = size;
-      hb_ot_name_get_utf8 (face, id, HB_LANGUAGE_INVALID, &got, buf);
       hb_face_destroy (face);
-      return buf;
+      return strdup (buf);
     }
   }
   hb_face_destroy (face);
