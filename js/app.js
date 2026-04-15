@@ -377,14 +377,20 @@
       slider.min = a.min;
       slider.max = a.max;
       slider.step = (a.max - a.min) / 100;
-      slider.value = a.def;
+      /* Start wght at Regular (400) regardless of the font's
+       * own fvar default -- CJK families tend to pick
+       * wght=100 as default which renders as Thin. */
+      const startValue = a.tag === "wght"
+        ? Math.min (a.max, Math.max (a.min, 400))
+        : a.def;
+      slider.value = startValue;
       const readout = document.createElement ("span");
       readout.className = "axis-value";
-      readout.textContent = String (a.def);
+      readout.textContent = String (startValue);
       row.append (caption, slider, readout);
       axesEl.append (row);
       const entry = { tag: a.tag, name: a.name, min: a.min, def: a.def,
-                      max: a.max, slider, readout, value: a.def };
+                      max: a.max, slider, readout, value: startValue };
       slider.addEventListener ("input", () => {
         entry.value = parseFloat (slider.value);
         readout.textContent = (+slider.value).toFixed (2).replace (/\.?0+$/, "");
