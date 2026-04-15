@@ -275,13 +275,6 @@
   }
   window.addEventListener ("hashchange", fromHash);
 
-  /* Logo click: go to the embed ("home") tab and clear the
-   * hash from the URL -- without a full page reload. */
-  document.getElementById ("logo-home").addEventListener ("click", (e) => {
-    e.preventDefault ();
-    history.pushState (null, "", location.pathname + location.search);
-    activate ("embed");
-  });
   textInput.addEventListener ("input", renderActive);
   sizeInput.addEventListener ("input", renderActive);
 
