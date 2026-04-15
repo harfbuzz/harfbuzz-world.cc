@@ -265,12 +265,10 @@ nav.tabs .tab.active:visited { color: var(--accent); }
   max-width: 100%;
   height: auto;
 }
-canvas.render {
-  /* canvas is the render itself; flex centering is handled by
-   * letting the canvas be inline-block centered via parent on
-   * larger viewports, but here we just give it nice alignment. */
+.render canvas {
+  /* Display at native pixel-buffer size; .render's min-height
+   * must not stretch the canvas. */
   display: block;
-  margin: 0 auto;
 }
 
 /* Glyph data */
