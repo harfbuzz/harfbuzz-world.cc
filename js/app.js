@@ -373,6 +373,9 @@
   const rasterCanvas = document.getElementById ("raster-canvas");
   const rasterCtx    = rasterCanvas.getContext ("2d");
   const rasterStats  = document.getElementById ("raster-stats");
+  const rasterDl     = document.getElementById ("raster-dl-png");
+  const rasterPngSize = document.getElementById ("raster-png-size");
+  let rasterPngUrl   = null;
   function renderRaster () {
     withText ((textPtr) => {
       const wPtr = Module._malloc (4);
@@ -412,6 +415,16 @@
         w + " × " + h + " px"
         + " (" + (w / dpr).toFixed (0) + " × " + (h / dpr).toFixed (0) + " CSS px"
         + " · " + dpr + "× DPR)";
+      /* Re-encode the canvas as PNG for the download link.
+       * toBlob is async; the previous URL is revoked once the
+       * new one lands so we don't leak. */
+      rasterCanvas.toBlob ((blob) => {
+        if (!blob) return;
+        if (rasterPngUrl) URL.revokeObjectURL (rasterPngUrl);
+        rasterPngUrl = URL.createObjectURL (blob);
+        rasterDl.href = rasterPngUrl;
+        rasterPngSize.textContent = fmtBytes (blob.size);
+      }, "image/png");
     });
   }
 
