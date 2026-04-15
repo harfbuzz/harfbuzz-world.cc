@@ -277,7 +277,9 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
     <p>Pixel-perfect software rendering at the chosen size via
        hb-raster.  A BGRA32 buffer is produced on the wasm
        side and blitted straight into a <code>&lt;canvas&gt;</code>
-       — no browser glyph cache in the loop.</p>
+       — no browser glyph cache in the loop.  HarfBuzz itself
+       does no font hinting, so very small sizes can look
+       soft compared to a hinted renderer like FreeType.</p>
     <div class="render"><canvas id="raster-canvas"></canvas></div>
   </section>
 
