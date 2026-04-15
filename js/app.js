@@ -358,11 +358,10 @@
     const name = file.name.replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
     setFontBytes (bytes, name);
     /* File-uploaded fonts have no URL to point at; drop
-     * any lingering ?font= / ?preset= so the location bar
-     * doesn't lie about what's loaded. */
+     * any lingering ?font= so the location bar doesn't lie.
+     * Keep any ?preset= -- its text still applies. */
     const u = new URL (location.href);
     u.searchParams.delete ("font");
-    u.searchParams.delete ("preset");
     history.replaceState (null, "", u);
   }
 
@@ -431,11 +430,12 @@
       setFontBytes (bytes, name);
       /* Reflect the font URL in the location bar.  Skip when
        * called from applyPreset / initial ?font= load, which
-       * own URL state themselves. */
+       * own URL state themselves.  Keep any ?preset= intact:
+       * changing just the font doesn't invalidate the
+       * preset's text, only a text change does. */
       if (!opts || !opts.silentUrl) {
         const u = new URL (location.href);
         u.searchParams.set ("font", url);
-        u.searchParams.delete ("preset");
         history.replaceState (null, "", u);
       }
       return true;
@@ -452,9 +452,14 @@
   const fontUrlParam = params.get ("font");
   if (textParam !== null) textInput.value = textParam;
   if (sizeParam !== null) sizeInput.value = sizeParam;
-  if (presetParam && PRESETS[presetParam])
-    applyPreset (presetParam);
-  else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam, null, { silentUrl: true })))
+  if (presetParam && PRESETS[presetParam]) {
+    textInput.value = PRESETS[presetParam].text;
+    /* If ?font= is also present it overrides the preset's
+     * font -- the user's explicit URL wins. */
+    const fontChoice = fontUrlParam || PRESETS[presetParam].font;
+    const nameChoice = fontUrlParam ? null : PRESETS[presetParam].name;
+    await loadFontUrl (fontChoice, nameChoice, { silentUrl: true });
+  } else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam, null, { silentUrl: true })))
     await loadFontUrl ("fonts/NotoSans-Regular.ttf", "NotoSans-Regular", { silentUrl: true });
 
   fromHash ();
