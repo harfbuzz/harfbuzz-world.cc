@@ -148,13 +148,15 @@ hb_face_destroy (face);
 hb_blob_destroy (blob);`
     },
   };
-  /* Map an hb_<table>_<rest> identifier to its docs URL.
-   * harfbuzz.github.io has one page per "section" -- the
-   * second underscore-separated chunk -- with anchors built
-   * from the dashed function name. */
+  /* Look up an hb_* identifier's docs section in the
+   * generated HB_DOC_SYMBOLS table (sourced from the
+   * authoritative harfbuzz-sections.txt).  Returns null if
+   * unknown so the linkifier can leave the token unlinked
+   * rather than emit a broken link. */
   function hbDocsUrl (name) {
-    const m = name.match (/^hb_([a-z0-9]+)/);
-    const section = m ? m[1] : "common";
+    const map = window.HB_DOC_SYMBOLS;
+    const section = map ? map[name] : null;
+    if (!section) return null;
     return "https://harfbuzz.github.io/harfbuzz-hb-" + section + ".html#"
          + name.replace (/_/g, "-");
   }
@@ -164,10 +166,14 @@ hb_blob_destroy (blob);`
             .replace (/\n/g, "\\n");
   }
   /* Walk over the highlighted HTML and turn known hb_*
-   * identifiers into anchors pointing at the official docs. */
+   * identifiers into anchors pointing at the official docs.
+   * Unknown identifiers (or pseudocode placeholders) are
+   * left as plain text. */
   function linkifyHbCalls (html, headline) {
     return html.replace (/(hb_[a-z0-9_]+)/g, (m) => {
       const url = hbDocsUrl (m);
+      if (!url)
+        return m === headline ? "<strong>" + m + "</strong>" : m;
       const wrapped = "<a href=\"" + url + "\" target=\"_blank\" rel=\"noopener\">" + m + "</a>";
       return m === headline ? "<strong>" + wrapped + "</strong>" : wrapped;
     });
