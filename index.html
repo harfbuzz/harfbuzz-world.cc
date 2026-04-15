@@ -188,9 +188,10 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 
   <section class="demo" id="demo-shape" hidden>
     <p>Turn text into a glyph stream: HarfBuzz picks glyph
-       ids from the font's cmap, then applies GSUB/GPOS to
-       substitute and position them.  The SVG preview shows
-       the laid-out result; the JSON below is the raw stream.</p>
+       ids from the font's cmap, then applies the font's
+       layout rules to substitute and position them.  The
+       SVG preview shows the laid-out result; the JSON below
+       is the raw stream.</p>
     <div id="shape-render" class="render"></div>
     <h2>Glyph data</h2>
     <pre id="shape-glyphs"></pre>
@@ -198,9 +199,9 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 
   <section class="demo" id="demo-subset" hidden>
     <p>Slim the current font down to just the glyphs needed
-       to shape the text above.  hb-subset closes over
-       GSUB/GPOS so every glyph that could participate in
-       shaping the given codepoints stays in.</p>
+       to shape the text above.  hb-subset closes over the
+       font's layout rules so every glyph that could
+       participate in shaping the given codepoints stays in.</p>
     <div id="subset-render" class="render">
       <span id="subset-preview"></span>
     </div>
