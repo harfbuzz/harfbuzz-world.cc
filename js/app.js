@@ -167,6 +167,7 @@
         'src: url(data:font/ttf;base64,' + b64 + ') format("truetype"); }';
       subsetPreview.style.fontFamily = '"' + family + '", system-ui, sans-serif';
       subsetPreview.style.fontSize = currentSize () + "px";
+      subsetPreview.style.fontVariationSettings = cssVariationSettings ();
       subsetPreview.textContent = textInput.value;
     });
   }
@@ -344,6 +345,11 @@
     return currentAxes
       .map ((a) => a.tag + "=" + a.value)
       .join (",");
+  }
+  function cssVariationSettings () {
+    return currentAxes
+      .map ((a) => '"' + a.tag + '" ' + a.value)
+      .join (", ");
   }
   function updateVariations () {
     const s = variationsString ();
