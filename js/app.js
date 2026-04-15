@@ -94,6 +94,44 @@
     });
   }
 
+  const subsetOrig    = document.getElementById ("subset-orig-size");
+  const subsetNew     = document.getElementById ("subset-new-size");
+  const subsetSaving  = document.getElementById ("subset-saving");
+  const subsetDl      = document.getElementById ("subset-download");
+  let subsetUrl = null;
+  function fmtBytes (n) {
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return (n / 1024).toFixed (1) + " KB";
+    return (n / (1024 * 1024)).toFixed (2) + " MB";
+  }
+  function renderSubset () {
+    subsetOrig.textContent = fmtBytes (fontBuf.length);
+    withText ((textPtr) => {
+      const lenPtr = Module._malloc (4);
+      const dataPtr = Module._web_subset (fontPtr, fontBuf.length,
+                                           textPtr, lenPtr);
+      if (!dataPtr) {
+        Module._free (lenPtr);
+        subsetNew.textContent    = "(failed)";
+        subsetSaving.textContent = "—";
+        subsetDl.removeAttribute ("href");
+        return;
+      }
+      const sublen = new Uint32Array (Module.HEAPU8.buffer, lenPtr, 1)[0];
+      const bytes  = Module.HEAPU8.slice (dataPtr, dataPtr + sublen);
+      Module._web_free_string (dataPtr);
+      Module._free (lenPtr);
+
+      subsetNew.textContent = fmtBytes (sublen);
+      const pct = (100 * (1 - sublen / fontBuf.length)).toFixed (1);
+      subsetSaving.textContent = pct + "% (" + fmtBytes (fontBuf.length - sublen) + ")";
+
+      if (subsetUrl) URL.revokeObjectURL (subsetUrl);
+      subsetUrl = URL.createObjectURL (new Blob ([bytes], { type: "font/ttf" }));
+      subsetDl.href = subsetUrl;
+    });
+  }
+
   const rasterCanvas = document.getElementById ("raster-canvas");
   const rasterCtx    = rasterCanvas.getContext ("2d");
   function renderRaster () {
@@ -132,7 +170,7 @@
   const demos = {
     embed:  { section: document.getElementById ("demo-embed"),  render: noop          },
     shape:  { section: document.getElementById ("demo-shape"),  render: renderShape   },
-    subset: { section: document.getElementById ("demo-subset"), render: noop          },
+    subset: { section: document.getElementById ("demo-subset"), render: renderSubset  },
     raster: { section: document.getElementById ("demo-raster"), render: renderRaster  },
     vector: { section: document.getElementById ("demo-vector"), render: renderVector  },
     gpu:    { section: document.getElementById ("demo-gpu"),    render: noop          },

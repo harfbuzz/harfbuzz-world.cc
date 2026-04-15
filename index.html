@@ -192,10 +192,16 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
   </section>
 
   <section class="demo" id="demo-subset" hidden>
-    <p class="placeholder">Subset binding is pending an upstream
-      HarfBuzz fix for single-translation-unit duplicate
-      includes.  Once that lands, this tab will let you produce
-      a subsetted font for the current text and download it.</p>
+    <p>Subset the current font down to just the glyphs needed
+       to shape the text above:</p>
+    <table class="size-table">
+      <tr><th>Original</th><td id="subset-orig-size">—</td></tr>
+      <tr><th>Subset</th>  <td id="subset-new-size">—</td></tr>
+      <tr><th>Saving</th>  <td id="subset-saving">—</td></tr>
+    </table>
+    <div class="controls demo-controls">
+      <a id="subset-download" href="#" download="subset.ttf">Download subset</a>
+    </div>
   </section>
 
   <section class="demo" id="demo-raster" hidden>

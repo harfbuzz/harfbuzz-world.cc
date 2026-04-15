@@ -11,6 +11,7 @@
 #include <hb.h>
 #include <hb-ot.h>
 #include <hb-raster.h>
+#include <hb-subset.h>
 #include <hb-vector.h>
 
 #include <emscripten.h>
@@ -223,8 +224,65 @@ char *web_render_pdf (const uint8_t *font_bytes, unsigned font_len,
                  utf8_text, font_size_px, out_len);
 }
 
-/* TODO: web_subset — pending HB upstream fix for harfbuzz-world.cc
- * single-TU duplicate includes when HB_HAS_SUBSET is enabled. */
+/* Subset @font_bytes to the codepoints in @utf8_text and
+ * return the resulting font as a malloc'd byte buffer.
+ * @out_len receives the buffer's byte length.
+ * Returns NULL on failure (invalid font, OOM, hb_subset_or_fail).
+ * Caller frees the buffer with web_free_string(). */
+EMSCRIPTEN_KEEPALIVE
+uint8_t *web_subset (const uint8_t *font_bytes, unsigned font_len,
+                     const char *utf8_text,
+                     unsigned *out_len)
+{
+  if (out_len) *out_len = 0;
+
+  hb_blob_t *blob = hb_blob_create_or_fail ((const char *) font_bytes,
+                                             font_len,
+                                             HB_MEMORY_MODE_READONLY,
+                                             nullptr, nullptr);
+  if (!blob) return nullptr;
+  hb_face_t *face = hb_face_create (blob, 0);
+  hb_blob_destroy (blob);
+
+  hb_subset_input_t *input = hb_subset_input_create_or_fail ();
+  if (!input)
+  {
+    hb_face_destroy (face);
+    return nullptr;
+  }
+
+  /* Add every Unicode codepoint in the text to the subset's
+   * unicode set.  hb-subset closes over GSUB/GPOS lookups
+   * and pulls in any glyphs needed to shape that input. */
+  hb_set_t *unicodes = hb_subset_input_unicode_set (input);
+  hb_buffer_t *buf = hb_buffer_create ();
+  hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
+  unsigned n = hb_buffer_get_length (buf);
+  hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, nullptr);
+  for (unsigned i = 0; i < n; i++)
+    hb_set_add (unicodes, info[i].codepoint);
+  hb_buffer_destroy (buf);
+
+  hb_face_t *subset_face = hb_subset_or_fail (face, input);
+  hb_subset_input_destroy (input);
+  hb_face_destroy (face);
+  if (!subset_face) return nullptr;
+
+  hb_blob_t *subset_blob = hb_face_reference_blob (subset_face);
+  hb_face_destroy (subset_face);
+  if (!subset_blob) return nullptr;
+
+  unsigned blob_len = 0;
+  const char *src = hb_blob_get_data (subset_blob, &blob_len);
+  uint8_t *out = (uint8_t *) malloc (blob_len);
+  if (out)
+  {
+    memcpy (out, src, blob_len);
+    if (out_len) *out_len = blob_len;
+  }
+  hb_blob_destroy (subset_blob);
+  return out;
+}
 
 
 /* Render shaped text via hb-raster and return a BGRA32 pixel

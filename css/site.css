@@ -337,6 +337,22 @@ pre.code {
   border-radius: 6px;
 }
 
+.size-table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-variant-numeric: tabular-nums;
+}
+.size-table th {
+  text-align: left;
+  font-weight: 400;
+  color: var(--muted);
+  padding: 0.3rem 1.25rem 0.3rem 0;
+}
+.size-table td {
+  font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+  padding: 0.3rem 0;
+}
+
 /* Glyph data */
 
 #shape-glyphs {
