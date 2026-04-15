@@ -166,12 +166,17 @@
 
   function openFontMenu () { fontMenu.hidden = false; }
   function closeFontMenu () { fontMenu.hidden = true; }
-  fontButton.addEventListener ("click", (e) => {
-    e.stopPropagation ();
+  fontButton.addEventListener ("click", () => {
     fontMenu.hidden ? openFontMenu () : closeFontMenu ();
   });
-  fontMenu.addEventListener ("click", (e) => e.stopPropagation ());
-  document.addEventListener ("click", closeFontMenu);
+  /* Close on click outside the picker.  Use the picker root
+   * (button + menu) so clicks inside the menu -- including on
+   * native <select> popups -- don't immediately re-close. */
+  const fontPicker = fontButton.parentElement;
+  document.addEventListener ("click", (e) => {
+    if (!fontMenu.hidden && !fontPicker.contains (e.target))
+      closeFontMenu ();
+  });
   document.addEventListener ("keydown", (e) => {
     if (e.key === "Escape") closeFontMenu ();
   });
