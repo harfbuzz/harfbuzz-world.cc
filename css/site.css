@@ -600,7 +600,7 @@ pre.code {
 .snippet[open] > summary::before { transform: rotate(90deg); }
 .snippet pre {
   margin: 0;
-  padding: 0.9rem 1rem;
+  padding: 0.55rem 1rem;
   border-top: 1px solid var(--rule);
   background: var(--soft);
   font-size: 0.85rem;
