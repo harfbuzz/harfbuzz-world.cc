@@ -37,6 +37,10 @@ html {
   margin: 0;
   padding: 0;
   scroll-behavior: smooth;
+  /* Reserve scrollbar gutter so the card doesn't shift
+   * sideways between short tabs (no scrollbar) and long
+   * tabs (scrollbar present). */
+  scrollbar-gutter: stable;
 }
 body {
   hyphens: auto;
