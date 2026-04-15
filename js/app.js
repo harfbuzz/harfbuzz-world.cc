@@ -242,7 +242,7 @@
       const subStats = fontStats (subPtr, sublen);
       Module._free (subPtr);
       subsetCounts.textContent =
-        "kept " + subStats.num_glyphs + " of " + origStats.num_glyphs + " glyphs"
+        "Kept " + subStats.num_glyphs + " of " + origStats.num_glyphs + " glyphs"
         + " · " + subStats.num_unicodes + " of " + origStats.num_unicodes + " Unicode codepoints";
       renderSubsetTables (origStats, subStats);
       subsetTablesWrap.hidden = false;
@@ -254,7 +254,7 @@
       if (savedPct < 20 && origStats.num_glyphs < 5000) {
         subsetHint.textContent = "Low savings: this font is already tight"
           + " (" + origStats.num_glyphs + " glyphs)."
-          + " Try a large family like Noto Sans CJK to see the subsetter shine.";
+          + " Try a large family to see the subsetter shine.";
         subsetHint.hidden = false;
       } else {
         subsetHint.hidden = true;
