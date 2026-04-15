@@ -176,16 +176,17 @@ hb_blob_destroy (blob);`
     raster: {
       headline: "hb_raster_paint_render",
       template:
-`#define FONT_SIZE_PX {size}
+`#define FONT_SIZE_PX  {size}
+#define SUBPIXEL_BITS 6              /* 26.6 fixed-point, like FreeType */
+#define SCALE         (1 << SUBPIXEL_BITS)
 
 hb_blob_t *blob = hb_blob_create_from_file ("{font}");
 hb_face_t *face = hb_face_create (blob, 0);
 hb_font_t *font = hb_font_create (face);
-/* Shape at the font's default upem scale -- positions come
- * out in font units; we tell the raster context how many
- * font units fit in one pixel below. */
-unsigned upem = hb_face_get_upem (face);
-float units_per_pixel = (float) upem / FONT_SIZE_PX;
+/* Shape positions in pixel*SCALE units for sub-pixel
+ * precision; the raster context divides input coords by
+ * SCALE to land on pixels at render time. */
+hb_font_set_scale (font, FONT_SIZE_PX * SCALE, FONT_SIZE_PX * SCALE);
 
 hb_buffer_t *buf = hb_buffer_create ();
 hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
@@ -214,13 +215,13 @@ for (unsigned i = 0; i < len; i++) {
   hb_raster_image_t *img;
   if (p) {
     hb_raster_paint_set_extents (p, &ext);
-    hb_raster_paint_set_scale_factor (p, units_per_pixel, units_per_pixel);
+    hb_raster_paint_set_scale_factor (p, SCALE, SCALE);
     hb_raster_paint_glyph (p, font, info[i].codepoint, gx, gy);
     img = hb_raster_paint_render (p);  /* BGRA32 premultiplied */
   } else {
     hb_raster_draw_reset (d);
     hb_raster_draw_set_extents (d, &ext);
-    hb_raster_draw_set_scale_factor (d, units_per_pixel, units_per_pixel);
+    hb_raster_draw_set_scale_factor (d, SCALE, SCALE);
     hb_raster_draw_glyph (d, font, info[i].codepoint, gx, gy);
     img = hb_raster_draw_render (d);  /* A8 coverage */
   }
@@ -239,15 +240,14 @@ hb_blob_destroy (blob);`
     vector: {
       headline: "hb_vector_paint_render",
       template:
-`#define FONT_SIZE_PX {size}
+`#define FONT_SIZE_PX  {size}
+#define SUBPIXEL_BITS 6              /* 26.6 fixed-point, like FreeType */
+#define SCALE         (1 << SUBPIXEL_BITS)
 
 hb_blob_t *blob = hb_blob_create_from_file ("{font}");
 hb_face_t *face = hb_face_create (blob, 0);
 hb_font_t *font = hb_font_create (face);
-/* Set the font's scale so shaped positions come out in
- * pixels; the produced SVG/PDF viewBox is then in pixels.
- * (vector contexts default to scale_factor=1.) */
-hb_font_set_scale (font, FONT_SIZE_PX, FONT_SIZE_PX);
+hb_font_set_scale (font, FONT_SIZE_PX * SCALE, FONT_SIZE_PX * SCALE);
 
 hb_buffer_t *buf = hb_buffer_create ();
 hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
@@ -263,6 +263,10 @@ hb_vector_paint_t *p = is_color
   ? hb_vector_paint_create_or_fail (HB_VECTOR_FORMAT_SVG) : NULL;
 hb_vector_draw_t  *d = is_color
   ? NULL : hb_vector_draw_create_or_fail (HB_VECTOR_FORMAT_SVG);
+/* Tell vector how many input units fit in one output pixel
+ * (matches what hb-vector / hb-raster utils do). */
+if (p) hb_vector_paint_set_scale_factor (p, SCALE, SCALE);
+else   hb_vector_draw_set_scale_factor  (d, SCALE, SCALE);
 
 unsigned len = hb_buffer_get_length (buf);
 hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
