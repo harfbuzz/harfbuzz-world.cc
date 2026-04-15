@@ -404,6 +404,12 @@ iframe.render {
 /* Prose / code blocks (embed tab) */
 
 .demo p { margin: 1rem 0; }
+/* Pin the intro paragraph height so switching between demos
+ * whose descriptions run different lengths doesn't bounce
+ * the render stage up/down. */
+.demo > p:first-child {
+  min-height: calc(3em * 1.6);
+}
 .demo ul { margin: 1rem 0 1rem 1.5rem; padding: 0; }
 .demo li { margin-bottom: 0.4rem; }
 .demo code {
