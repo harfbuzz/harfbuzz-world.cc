@@ -73,6 +73,17 @@ shape (const uint8_t *font_bytes, unsigned font_len,
   hb_blob_destroy (blob);
   hb_font_t *font = hb_font_create (face);
 
+  /* Default the common axes to their typical "Regular"
+   * values: Chinese/CJK VFs (and some non-Latin ones) pick
+   * wght=100 as their fvar default, which renders way too
+   * light for a preview.  Any font that doesn't have the
+   * axis just ignores the setting. */
+  hb_variation_t vars[] = {
+    { HB_TAG ('w','g','h','t'), 400.f },
+    { HB_TAG ('w','d','t','h'), 100.f },
+  };
+  hb_font_set_variations (font, vars, 2);
+
   hb_buffer_t *buf = hb_buffer_create ();
   hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
   hb_buffer_guess_segment_properties (buf);
