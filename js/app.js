@@ -213,6 +213,13 @@
       postGpu ({ kind: "text", value: textInput.value });
       if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
       updateVariations ();
+      /* Mirror the host's currently-selected palette into the
+       * iframe.  Otherwise switching to the GPU tab after
+       * picking a non-zero palette in another tab would render
+       * with palette 0 until the user touches the dropdown. */
+      const pIdx = parseInt (paletteSelect.value, 10) || 0;
+      if (pIdx)
+        postGpu ({ kind: "palette", value: pIdx });
       /* First rebuild_buffer on a freshly-loaded font
        * sometimes leaves the atlas half-uploaded and the
        * first composite blank.  A second text push forces
