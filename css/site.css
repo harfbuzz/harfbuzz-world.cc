@@ -302,7 +302,8 @@ body[data-active="gpu"] .size-label { display: none; }
 }
 .controls label[hidden] { display: none; }
 .controls input[type="text"],
-.controls input[type="number"] {
+.controls input[type="number"],
+.controls select {
   font: inherit;
   padding: 0.45rem 0.7rem;
   border: 1px solid var(--rule);
@@ -312,7 +313,8 @@ body[data-active="gpu"] .size-label { display: none; }
   transition: border-color 0.15s;
 }
 .controls input[type="number"] { width: 5rem; }
-.controls input:focus {
+.controls input:focus,
+.controls select:focus {
   outline: none;
   border-color: var(--accent);
 }
