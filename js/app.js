@@ -179,14 +179,26 @@ hb_blob_destroy (blob);`
 `hb_blob_t *blob = hb_blob_create_from_file ("{font}");
 hb_face_t *face = hb_face_create (blob, 0);
 hb_font_t *font = hb_font_create (face);
-hb_font_set_scale (font, {size} * 64, {size} * 64);
 
 hb_buffer_t *buf = hb_buffer_create ();
 hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
 hb_buffer_guess_segment_properties (buf);  /* toy: real apps set script/lang/dir explicitly */
 hb_shape (font, buf, NULL, 0);
 
-hb_raster_paint_t *p = hb_raster_paint_create_or_fail ();
+float font_size_px = {size};
+unsigned upem = hb_face_get_upem (face);
+float scale_factor = (float) upem / font_size_px;  /* font units per pixel */
+
+hb_raster_extents_t ext = { /*x*/ 0, /*y*/ 0, /*w*/ 0, /*h*/ 0, /*stride*/ 0 };
+/* ... compute ext from buffer's advances + font h_extents ... */
+
+/* Color fonts go through hb_raster_paint_*; mono outline
+ * fonts can use the cheaper hb_raster_draw_* path. */
+hb_bool_t is_color = hb_ot_color_has_paint (face) ||
+                     hb_ot_color_has_layers (face) ||
+                     hb_ot_color_has_png (face);
+hb_raster_paint_t *p = is_color ? hb_raster_paint_create_or_fail () : NULL;
+hb_raster_draw_t  *d = is_color ? NULL : hb_raster_draw_create_or_fail ();
 
 unsigned len = hb_buffer_get_length (buf);
 hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
@@ -194,16 +206,28 @@ hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, NULL);
 
 float pen_x = 0, pen_y = 0;
 for (unsigned i = 0; i < len; i++) {
-  hb_raster_paint_glyph (p, font, info[i].codepoint,
-                         pen_x + pos[i].x_offset,
-                         pen_y + pos[i].y_offset);
-  hb_raster_image_t *img = hb_raster_paint_render (p);
-  /* ...composite img's BGRA32 buffer onto your output... */
+  float gx = pen_x + pos[i].x_offset;
+  float gy = pen_y + pos[i].y_offset;
+  hb_raster_image_t *img;
+  if (p) {
+    hb_raster_paint_set_extents (p, &ext);
+    hb_raster_paint_set_scale_factor (p, 1.f / scale_factor, 1.f / scale_factor);
+    hb_raster_paint_glyph (p, font, info[i].codepoint, gx, gy);
+    img = hb_raster_paint_render (p);  /* BGRA32 premultiplied */
+  } else {
+    hb_raster_draw_reset (d);
+    hb_raster_draw_set_extents (d, &ext);
+    hb_raster_draw_set_scale_factor (d, 1.f / scale_factor, 1.f / scale_factor);
+    hb_raster_draw_glyph (d, font, info[i].codepoint, gx, gy);
+    img = hb_raster_draw_render (d);  /* A8 coverage */
+  }
+  /* ...SRC_OVER composite img onto your output... */
   pen_x += pos[i].x_advance;
   pen_y += pos[i].y_advance;
 }
 
 hb_raster_paint_destroy (p);
+hb_raster_draw_destroy (d);
 hb_buffer_destroy (buf);
 hb_font_destroy (font);
 hb_face_destroy (face);
@@ -216,12 +240,26 @@ hb_blob_destroy (blob);`
 hb_face_t *face = hb_face_create (blob, 0);
 hb_font_t *font = hb_font_create (face);
 
+float font_size_px = {size};
+/* For SVG/PDF, set the font's scale so shaped positions come
+ * out in pixel units; the produced markup's viewBox / coords
+ * are then in CSS pixels. */
+hb_font_set_scale (font, (int) font_size_px, (int) font_size_px);
+
 hb_buffer_t *buf = hb_buffer_create ();
 hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
 hb_buffer_guess_segment_properties (buf);  /* toy: real apps set script/lang/dir explicitly */
 hb_shape (font, buf, NULL, 0);
 
-hb_vector_paint_t *p = hb_vector_paint_create_or_fail (HB_VECTOR_FORMAT_SVG);
+/* Color fonts go through hb_vector_paint_*; mono outline
+ * fonts can use the cheaper hb_vector_draw_* path. */
+hb_bool_t is_color = hb_ot_color_has_paint (face) ||
+                     hb_ot_color_has_layers (face) ||
+                     hb_ot_color_has_png (face);
+hb_vector_paint_t *p = is_color
+  ? hb_vector_paint_create_or_fail (HB_VECTOR_FORMAT_SVG) : NULL;
+hb_vector_draw_t  *d = is_color
+  ? NULL : hb_vector_draw_create_or_fail (HB_VECTOR_FORMAT_SVG);
 
 unsigned len = hb_buffer_get_length (buf);
 hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
@@ -229,19 +267,25 @@ hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, NULL);
 
 float pen_x = 0, pen_y = 0;
 for (unsigned i = 0; i < len; i++) {
-  hb_vector_paint_glyph (p, font, info[i].codepoint,
-                         pen_x + pos[i].x_offset,
-                         pen_y + pos[i].y_offset,
-                         HB_VECTOR_EXTENTS_MODE_EXPAND);
+  float gx = pen_x + pos[i].x_offset;
+  float gy = pen_y + pos[i].y_offset;
+  if (p)
+    hb_vector_paint_glyph (p, font, info[i].codepoint, gx, gy,
+                           HB_VECTOR_EXTENTS_MODE_EXPAND);
+  else
+    hb_vector_draw_glyph  (d, font, info[i].codepoint, gx, gy,
+                           HB_VECTOR_EXTENTS_MODE_EXPAND);
   pen_x += pos[i].x_advance;
   pen_y += pos[i].y_advance;
 }
 
-hb_blob_t *out = hb_vector_paint_render (p);
+hb_blob_t *out = p ? hb_vector_paint_render (p)
+                   : hb_vector_draw_render  (d);
 /* ...write hb_blob_get_data(out, NULL) somewhere... */
 
 hb_blob_destroy (out);
 hb_vector_paint_destroy (p);
+hb_vector_draw_destroy (d);
 hb_buffer_destroy (buf);
 hb_font_destroy (font);
 hb_face_destroy (face);
