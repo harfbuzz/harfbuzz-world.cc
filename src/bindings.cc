@@ -250,19 +250,32 @@ char *web_shape_json (const uint8_t *font_bytes, unsigned font_len,
   hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, nullptr);
   hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, nullptr);
 
-  /* Estimate JSON capacity:  ~96 bytes per glyph entry. */
-  size_t cap = 16 + 96 * (size_t) len + 1;
+  /* Estimate JSON capacity:  ~160 bytes per glyph entry leaves
+   * room for a 64-char name on top of the numeric fields. */
+  size_t cap = 16 + 160 * (size_t) len + 1;
   char *out = (char *) malloc (cap);
   size_t off = 0;
   off += snprintf (out + off, cap - off, "[");
   for (unsigned i = 0; i < len; i++)
   {
+    char name[64] = {0};
+    hb_font_glyph_to_string (font, info[i].codepoint, name, sizeof name);
+    /* Escape the few JSON-significant chars that can show up in
+     * glyph names (quote, backslash). */
+    char esc[128];
+    size_t eo = 0;
+    for (const char *p = name; *p && eo + 2 < sizeof esc; p++)
+    {
+      if (*p == '"' || *p == '\\') esc[eo++] = '\\';
+      esc[eo++] = *p;
+    }
+    esc[eo] = 0;
     off += snprintf (out + off, cap - off,
-                     "%s{\"gid\":%u,\"cluster\":%u,"
+                     "%s{\"gid\":%u,\"name\":\"%s\",\"cluster\":%u,"
                      "\"x_offset\":%d,\"y_offset\":%d,"
                      "\"x_advance\":%d,\"y_advance\":%d}",
                      i ? "," : "",
-                     info[i].codepoint, info[i].cluster,
+                     info[i].codepoint, esc, info[i].cluster,
                      pos[i].x_offset, pos[i].y_offset,
                      pos[i].x_advance, pos[i].y_advance);
   }

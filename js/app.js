@@ -70,7 +70,40 @@
    * controls and updates its DOM. */
 
   const shapeRender  = document.getElementById ("shape-render");
-  const shapeGlyphs  = document.getElementById ("shape-glyphs");
+  const shapeGlyphs    = document.getElementById ("shape-glyphs");
+  const shapeShowNames = document.getElementById ("shape-show-names");
+  let lastShapeGlyphs  = [];
+  /* Render the shaped-glyph stream as a table so columns line
+   * up and a faint divider visually groups consecutive glyphs
+   * that share a cluster (= came from the same input
+   * codepoint).  First column toggles between gid (numeric)
+   * and glyph name -- gid is what most APIs return; names are
+   * what humans recognize while authoring fonts. */
+  function escapeHtml (s) {
+    return String (s).replace (/[&<>]/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  }
+  function renderGlyphTable (glyphs) {
+    lastShapeGlyphs = glyphs;
+    if (!glyphs.length) { shapeGlyphs.innerHTML = ""; return; }
+    const useName = shapeShowNames.checked;
+    const idCol = useName ? "name" : "gid";
+    const cols = [idCol, "cluster", "x_advance", "y_advance", "x_offset", "y_offset"];
+    let html = "<table class=\"glyph-table\"><thead><tr>";
+    for (const c of cols) html += "<th>" + c + "</th>";
+    html += "</tr></thead><tbody>";
+    let prevCluster = glyphs[0].cluster;
+    for (const g of glyphs) {
+      const cls = g.cluster !== prevCluster ? " class=\"cluster-break\"" : "";
+      html += "<tr" + cls + ">";
+      for (const c of cols) html += "<td>" + escapeHtml (g[c]) + "</td>";
+      html += "</tr>";
+      prevCluster = g.cluster;
+    }
+    html += "</tbody></table>";
+    shapeGlyphs.innerHTML = html;
+  }
+  shapeShowNames.addEventListener ("change", () => renderGlyphTable (lastShapeGlyphs));
   function renderShape () {
     withText ((textPtr) => {
       const svgPtr = Module._web_render_svg (fontPtr, fontBuf.length,
@@ -79,9 +112,9 @@
       Module._web_free_string (svgPtr);
 
       const jsonPtr = Module._web_shape_json (fontPtr, fontBuf.length, textPtr);
-      shapeGlyphs.textContent = JSON.stringify (
-        JSON.parse (Module.UTF8ToString (jsonPtr)), null, 2);
+      const glyphs = JSON.parse (Module.UTF8ToString (jsonPtr));
       Module._web_free_string (jsonPtr);
+      renderGlyphTable (glyphs);
     });
   }
 

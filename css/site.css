@@ -488,6 +488,38 @@ pre.code {
 }
 .resources li { margin-bottom: 0.5rem; }
 
+/* Shape tab: glyph-stream table.  Cluster boundaries get a
+ * faint top-border so consecutive glyphs from the same input
+ * codepoint visually clump together. */
+.glyph-table {
+  font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+  font-size: 0.92rem;
+  border-collapse: collapse;
+  margin: 0 auto;
+  border: 1px solid var(--rule);
+}
+.glyph-table th,
+.glyph-table td {
+  padding: 0.4rem 1.1rem;
+  text-align: center;
+  border: 1px solid var(--rule);
+}
+.glyph-table th {
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--soft);
+}
+.glyph-table tbody tr.cluster-break td {
+  border-top: 2px solid var(--accent);
+}
+.glyph-id-toggle {
+  font-size: 0.85rem;
+  font-weight: normal;
+  color: var(--muted);
+  margin-left: 0.75rem;
+}
+.glyph-id-toggle input { margin-right: 0.25rem; vertical-align: middle; }
+
 .placeholder {
   color: var(--muted);
   font-style: italic;
