@@ -438,31 +438,25 @@ hb_blob_destroy (blob);`
     }
   });
 
-  /* Theme toggle: cycles auto (follow OS) -> light -> dark
-   * -> auto.  The early inline script in <head> applies any
-   * saved override before first paint; this just wires the
-   * button. */
+  /* Theme toggle: flips between light and dark.  For a
+   * first-time visitor (no data-theme set), the OS pref
+   * controls the initial render via CSS @media; the button
+   * icon reflects that effective theme so the first click
+   * predictably goes to the opposite. */
   const themeToggle = document.getElementById ("theme-toggle");
-  function themeIcon (t) {
-    return t === "light" ? "☀" : t === "dark" ? "☾" : "◐";
+  function effectiveTheme () {
+    const pinned = document.documentElement.dataset.theme;
+    if (pinned === "light" || pinned === "dark") return pinned;
+    return matchMedia ("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
   function applyTheme (t) {
-    if (t === "light" || t === "dark") {
-      document.documentElement.dataset.theme = t;
-      try { localStorage.setItem ("theme", t); } catch {}
-    } else {
-      delete document.documentElement.dataset.theme;
-      try { localStorage.removeItem ("theme"); } catch {}
-    }
-    themeToggle.textContent = themeIcon (t);
+    document.documentElement.dataset.theme = t;
+    try { localStorage.setItem ("theme", t); } catch {}
+    themeToggle.textContent = t === "dark" ? "☾" : "☀";
   }
-  function currentTheme () {
-    return document.documentElement.dataset.theme || "auto";
-  }
-  themeToggle.textContent = themeIcon (currentTheme ());
+  themeToggle.textContent = effectiveTheme () === "dark" ? "☾" : "☀";
   themeToggle.addEventListener ("click", () => {
-    const cur = currentTheme ();
-    applyTheme (cur === "auto" ? "light" : cur === "light" ? "dark" : "auto");
+    applyTheme (effectiveTheme () === "dark" ? "light" : "dark");
   });
 
   /* All snippet <details> share an open/closed state, and it
