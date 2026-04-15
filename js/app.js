@@ -44,6 +44,9 @@
   const fontInput     = document.getElementById ("font-input");
   const fontUrl       = document.getElementById ("font-url");
   const fontUrlLoad   = document.getElementById ("font-url-load");
+  const fontGf        = document.getElementById ("font-gf");
+  const fontGfList    = document.getElementById ("font-gf-list");
+  const fontGfLoad    = document.getElementById ("font-gf-load");
   const fontNameEl    = document.getElementById ("font-name");
   const dropOverlay   = document.getElementById ("drop-overlay");
   const paletteLabel  = document.getElementById ("palette-label");
@@ -630,6 +633,60 @@
   });
   fontUrl.addEventListener ("keydown", (e) => {
     if (e.key === "Enter") fontUrlLoad.click ();
+  });
+
+  /* Google Fonts picker.  We bypass the woff2-only css2 API by
+   * reading google/fonts' own family_features.json (used by
+   * their familyexplorer.html), which lists each family's TTF
+   * relative path.  Fetched lazily on first focus so the
+   * ~380KB JSON only downloads when someone actually opens the
+   * picker; cached for the session. */
+  const GF_RAW = "https://raw.githubusercontent.com/google/fonts/main/";
+  const GF_META = GF_RAW + ".ci/family_features.json";
+  let gfFamiliesPromise = null;
+  function fetchGfFamilies () {
+    if (gfFamiliesPromise) return gfFamiliesPromise;
+    gfFamiliesPromise = fetch (GF_META)
+      .then ((r) => { if (!r.ok) throw new Error ("HTTP " + r.status); return r.json (); })
+      .then ((data) => data.families || {})
+      .catch ((e) => { gfFamiliesPromise = null; throw e; });
+    return gfFamiliesPromise;
+  }
+  let gfDatalistPopulated = false;
+  fontGf.addEventListener ("focus", async () => {
+    if (gfDatalistPopulated) return;
+    try {
+      const families = await fetchGfFamilies ();
+      const frag = document.createDocumentFragment ();
+      Object.keys (families).sort ().forEach ((name) => {
+        const opt = document.createElement ("option");
+        opt.value = name;
+        frag.append (opt);
+      });
+      fontGfList.append (frag);
+      gfDatalistPopulated = true;
+    } catch (e) { /* leave empty; user can still type a known family */ }
+  });
+  async function loadGfFamily (name) {
+    name = name.trim ();
+    if (!name) return;
+    try {
+      const families = await fetchGfFamilies ();
+      const entry = families[name];
+      if (!entry || !entry.fp) {
+        fontGf.setCustomValidity ("Unknown family");
+        fontGf.reportValidity ();
+        setTimeout (() => fontGf.setCustomValidity (""), 2000);
+        return;
+      }
+      const url = GF_RAW + entry.fp.replace (/^\.\//, "");
+      const ok = await loadFontUrl (url, name);
+      if (ok) closeFontMenu ();
+    } catch { /* network/json error: silent */ }
+  }
+  fontGfLoad.addEventListener ("click", () => loadGfFamily (fontGf.value));
+  fontGf.addEventListener ("keydown", (e) => {
+    if (e.key === "Enter") fontGfLoad.click ();
   });
 
   document.addEventListener ("dragover", (e) => {
