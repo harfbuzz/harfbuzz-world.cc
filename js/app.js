@@ -291,6 +291,7 @@
     latin:      { text: "hello-world!",      font: "fonts/NotoSans-Regular.ttf",   name: "NotoSans-Regular" },
     arabic:     { text: "مرحبا بالعالم",      font: "fonts/NotoSansArabic.ttf",     name: "NotoSansArabic" },
     devanagari: { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
+    emoji:      { text: "😋😎😍😘🥰",         font: "fonts/NotoEmoji.ttf",          name: "NotoEmoji" },
   };
   document.querySelectorAll (".preset").forEach ((btn) => {
     btn.addEventListener ("click", () => {
