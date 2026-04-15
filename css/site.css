@@ -222,6 +222,32 @@ body[data-active="gpu"] .size-label { display: none; }
 }
 .demo-controls { margin: 1rem 0 0; }
 
+.axes {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.4rem 0.75rem;
+  align-items: center;
+  margin: -0.25rem 0 1rem;
+  font-size: 0.9rem;
+}
+.axis {
+  display: contents;
+}
+.axis-caption {
+  color: var(--muted);
+}
+.axis-value {
+  font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+  color: var(--muted);
+  font-size: 0.85rem;
+  min-width: 3em;
+  text-align: right;
+}
+.axes input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
 .presets {
   display: flex;
   gap: 0.4rem;

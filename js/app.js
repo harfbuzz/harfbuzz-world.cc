@@ -24,13 +24,13 @@
     const otName = Module.UTF8ToString (namePtr);
     Module._web_free_string (namePtr);
     fontNameEl.textContent = otName || displayName || "";
+    refreshAxes ();
     /* Also push to the GPU iframe if its runtime is up.
-     * web_load_font resets variations, so re-push the
-     * Regular defaults right after. */
-    if (gpuReady) {
+     * web_load_font resets variations, so the next
+     * updateVariations() call (from refreshAxes) re-pushes
+     * them. */
+    if (gpuReady)
       postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
-      postGpu ({ kind: "variations", value: "wght=400,wdth=100" });
-    }
     renderActive ();
   }
 
@@ -199,10 +199,7 @@
       gpuReady = true;
       postGpu ({ kind: "text", value: textInput.value });
       if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
-      /* Default the common axes to typical "Regular" values
-       * so CJK VFs (which pick wght=100 as their fvar
-       * default) don't render too light. */
-      postGpu ({ kind: "variations", value: "wght=400,wdth=100" });
+      updateVariations ();
       /* First rebuild_buffer on a freshly-loaded font
        * sometimes leaves the atlas half-uploaded and the
        * first composite blank.  A second text push forces
@@ -336,6 +333,63 @@
   textInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
   sizeInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
 
+  /* Variable axes: pull fvar info from the current font,
+   * render one range slider per axis, and push the combined
+   * variations string into wasm + the gpu iframe on every
+   * drag.  Axes without a slider fall back to the axis
+   * default. */
+  const axesEl = document.getElementById ("var-axes");
+  let currentAxes = [];  /* [{tag, min, def, max, name, slider, value}, ...] */
+  function variationsString () {
+    return currentAxes
+      .map ((a) => a.tag + "=" + a.value)
+      .join (",");
+  }
+  function updateVariations () {
+    const s = variationsString ();
+    const buf = Module._malloc (s.length + 1);
+    Module.stringToUTF8 (s, buf, s.length + 1);
+    Module._web_set_variations (buf);
+    Module._free (buf);
+    if (gpuReady)
+      postGpu ({ kind: "variations", value: s });
+    renderActive ();
+  }
+  function refreshAxes () {
+    const ptr = Module._web_font_axes (fontPtr, fontBuf.length);
+    const axes = JSON.parse (Module.UTF8ToString (ptr));
+    Module._web_free_string (ptr);
+    axesEl.innerHTML = "";
+    currentAxes = axes.map ((a) => {
+      const row = document.createElement ("label");
+      row.className = "axis";
+      const caption = document.createElement ("span");
+      caption.className = "axis-caption";
+      caption.textContent = (a.name || a.tag) + " (" + a.tag + ")";
+      const slider = document.createElement ("input");
+      slider.type = "range";
+      slider.min = a.min;
+      slider.max = a.max;
+      slider.step = (a.max - a.min) / 100;
+      slider.value = a.def;
+      const readout = document.createElement ("span");
+      readout.className = "axis-value";
+      readout.textContent = String (a.def);
+      row.append (caption, slider, readout);
+      axesEl.append (row);
+      const entry = { tag: a.tag, name: a.name, min: a.min, def: a.def,
+                      max: a.max, slider, readout, value: a.def };
+      slider.addEventListener ("input", () => {
+        entry.value = parseFloat (slider.value);
+        readout.textContent = (+slider.value).toFixed (2).replace (/\.?0+$/, "");
+        updateVariations ();
+      });
+      return entry;
+    });
+    axesEl.hidden = currentAxes.length === 0;
+    updateVariations ();
+  }
+
   /* Presets: one-click combos of text + font, covering the
    * three scripts we ship fonts for. */
   const PRESETS = {
@@ -343,7 +397,7 @@
     arabic:     { text: "مرحبا بالعالم",      font: "fonts/NotoSansArabic.ttf",     name: "NotoSansArabic" },
     devanagari: { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
     chinese:    { text: "你好世界！",          font: "fonts/NotoSansCJKsc-subset.otf", name: "NotoSansCJKsc" },
-    emoji:      { text: "🫠🌈❤️🦋🥰",         font: "fonts/NotoEmoji.ttf",          name: "NotoColorEmoji" },
+    emoji:      { text: "🫠🌈❤️🦋🥰",         font: "fonts/NotoColorEmoji.ttf",          name: "NotoColorEmoji" },
   };
   function applyPreset (key) {
     const p = PRESETS[key];

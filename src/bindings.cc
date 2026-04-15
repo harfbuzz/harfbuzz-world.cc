@@ -58,6 +58,88 @@ char *web_font_family (const uint8_t *font_bytes, unsigned font_len)
   return strdup ("");
 }
 
+/* Variation state.  Set once by web_set_variations() and
+ * applied to every font the render helpers create.  Kept as
+ * the raw comma-separated string so the common case (no
+ * variations) is a single empty-string check. */
+static char g_variations[256];
+
+EMSCRIPTEN_KEEPALIVE
+void web_set_variations (const char *s)
+{
+  if (!s) { g_variations[0] = 0; return; }
+  unsigned n = strlen (s);
+  if (n >= sizeof g_variations) n = sizeof g_variations - 1;
+  memcpy (g_variations, s, n);
+  g_variations[n] = 0;
+}
+
+static void
+apply_variations (hb_font_t *font)
+{
+  if (!g_variations[0]) return;
+  hb_variation_t vars[32];
+  unsigned n = 0;
+  const char *p = g_variations;
+  while (p && *p && n < 32)
+  {
+    const char *end = strchr (p, ',');
+    int len = end ? (int) (end - p) : (int) strlen (p);
+    if (hb_variation_from_string (p, len, &vars[n]))
+      n++;
+    p = end ? end + 1 : nullptr;
+  }
+  hb_font_set_variations (font, vars, n);
+}
+
+/* JSON-describe the font's fvar axes (tag, min, def, max,
+ * name).  Returns "[]" for fonts without an fvar table.
+ * Caller frees with web_free_string(). */
+EMSCRIPTEN_KEEPALIVE
+char *web_font_axes (const uint8_t *font_bytes, unsigned font_len)
+{
+  hb_blob_t *blob = hb_blob_create_or_fail ((const char *) font_bytes,
+                                             font_len,
+                                             HB_MEMORY_MODE_READONLY,
+                                             nullptr, nullptr);
+  if (!blob) return strdup ("[]");
+  hb_face_t *face = hb_face_create (blob, 0);
+  hb_blob_destroy (blob);
+
+  unsigned n = hb_ot_var_get_axis_count (face);
+  if (!n) { hb_face_destroy (face); return strdup ("[]"); }
+
+  hb_ot_var_axis_info_t axes[32];
+  unsigned got = sizeof axes / sizeof axes[0];
+  hb_ot_var_get_axis_infos (face, 0, &got, axes);
+
+  size_t cap = 64 + 160 * got + 1;
+  char *out = (char *) malloc (cap);
+  size_t off = 0;
+  off += snprintf (out + off, cap - off, "[");
+  for (unsigned i = 0; i < got; i++)
+  {
+    char name[64] = {0};
+    unsigned sz = sizeof name;
+    hb_ot_name_get_utf8 (face, axes[i].name_id, HB_LANGUAGE_INVALID, &sz, name);
+    char tag[5] = {
+      (char) ((axes[i].tag >> 24) & 0xff),
+      (char) ((axes[i].tag >> 16) & 0xff),
+      (char) ((axes[i].tag >> 8) & 0xff),
+      (char) (axes[i].tag & 0xff),
+      0
+    };
+    off += snprintf (out + off, cap - off,
+                     "%s{\"tag\":\"%s\",\"min\":%g,\"def\":%g,\"max\":%g,\"name\":\"%s\"}",
+                     i ? "," : "", tag,
+                     axes[i].min_value, axes[i].default_value, axes[i].max_value,
+                     name);
+  }
+  off += snprintf (out + off, cap - off, "]");
+  hb_face_destroy (face);
+  return out;
+}
+
 /* Common: produce a shaped buffer for (font_bytes, text). */
 static hb_buffer_t *
 shape (const uint8_t *font_bytes, unsigned font_len,
@@ -73,16 +155,7 @@ shape (const uint8_t *font_bytes, unsigned font_len,
   hb_blob_destroy (blob);
   hb_font_t *font = hb_font_create (face);
 
-  /* Default the common axes to their typical "Regular"
-   * values: Chinese/CJK VFs (and some non-Latin ones) pick
-   * wght=100 as their fvar default, which renders way too
-   * light for a preview.  Any font that doesn't have the
-   * axis just ignores the setting. */
-  hb_variation_t vars[] = {
-    { HB_TAG ('w','g','h','t'), 400.f },
-    { HB_TAG ('w','d','t','h'), 100.f },
-  };
-  hb_font_set_variations (font, vars, 2);
+  apply_variations (font);
 
   hb_buffer_t *buf = hb_buffer_create ();
   hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
