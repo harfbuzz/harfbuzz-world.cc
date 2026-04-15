@@ -91,6 +91,14 @@ header h1 {
   margin: 0;
   color: var(--accent);
   letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+header h1 .logo-img {
+  height: 1.2em;
+  width: auto;
+  display: block;
 }
 header h1 a,
 header h1 a:visited,
