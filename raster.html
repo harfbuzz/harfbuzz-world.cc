@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>raster — HarfBuzz World</title>
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<header>
+  <h1><a href="./">HarfBuzz World</a> / raster</h1>
+</header>
+
+<main>
+  <section class="demo">
+    <p>Pixel-perfect rendering at a chosen size.  The bytes are
+       produced by hb-raster and copied straight into a
+       <code>&lt;canvas&gt;</code>.</p>
+    <div class="controls">
+      <label>Text:
+        <input id="text" type="text" value="Pixels." size="40">
+      </label>
+      <label>Size:
+        <input id="size" type="number" value="64" min="8" max="200">
+      </label>
+    </div>
+    <canvas id="canvas" class="render"></canvas>
+  </section>
+</main>
+
+<script src="hb-world.js"></script>
+<script src="js/raster.js"></script>
+</body>
+</html>

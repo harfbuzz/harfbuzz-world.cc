@@ -10,6 +10,7 @@
 
 #include <hb.h>
 #include <hb-ot.h>
+#include <hb-raster.h>
 #include <hb-vector.h>
 
 #include <emscripten.h>
@@ -203,6 +204,119 @@ char *web_render_pdf (const uint8_t *font_bytes, unsigned font_len,
 {
   return render (HB_VECTOR_FORMAT_PDF, font_bytes, font_len,
                  utf8_text, font_size_px, out_len);
+}
+
+/* TODO: web_subset — pending HB upstream fix for harfbuzz-world.cc
+ * single-TU duplicate includes when HB_HAS_SUBSET is enabled. */
+
+
+/* Render shaped text via hb-raster and return a BGRA32 pixel
+ * buffer.  *out_width / *out_height receive the buffer's pixel
+ * dimensions.  Caller frees the returned buffer with
+ * web_free_string(). */
+EMSCRIPTEN_KEEPALIVE
+uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
+                            const char *utf8_text,
+                            float font_size_px,
+                            unsigned *out_width,
+                            unsigned *out_height)
+{
+  if (out_width)  *out_width  = 0;
+  if (out_height) *out_height = 0;
+
+  hb_face_t *face = nullptr;
+  hb_font_t *font = nullptr;
+  hb_buffer_t *buf = shape (font_bytes, font_len, utf8_text, &face, &font);
+  if (!buf) return nullptr;
+
+  hb_font_set_scale (font, (int) font_size_px, (int) font_size_px);
+  hb_buffer_clear_contents (buf);
+  hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
+  hb_buffer_guess_segment_properties (buf);
+  hb_shape (font, buf, nullptr, 0);
+
+  /* Compute total advance so we can size the raster buffer. */
+  unsigned len = hb_buffer_get_length (buf);
+  hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, nullptr);
+  float total_x = 0.f;
+  for (unsigned i = 0; i < len; i++) total_x += pos[i].x_advance;
+
+  /* Use font ascent/descent for vertical bounds (with a little
+   * padding).  Pixel dimensions: round up. */
+  hb_font_extents_t fe;
+  hb_font_get_h_extents (font, &fe);
+  float ascent  = (float) fe.ascender;
+  float descent = (float) -fe.descender;
+  unsigned w = (unsigned) (total_x + 0.999f);
+  unsigned h = (unsigned) (ascent + descent + 0.999f);
+
+  hb_bool_t is_color = hb_ot_color_has_paint (face) ||
+                       hb_ot_color_has_layers (face) ||
+                       hb_ot_color_has_png (face);
+
+  hb_raster_paint_t *p = nullptr;
+  hb_raster_draw_t  *d = nullptr;
+  hb_raster_extents_t ext = { 0, (int) -descent, w, h, 0 };
+
+  if (is_color)
+  {
+    p = hb_raster_paint_create_or_fail ();
+    hb_raster_paint_set_extents (p, &ext);
+  }
+  else
+  {
+    d = hb_raster_draw_create_or_fail ();
+    hb_raster_draw_set_extents (d, &ext);
+  }
+  if (!p && !d) goto fail;
+
+  {
+    hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, nullptr);
+    float pen_x = 0.f, pen_y = 0.f;
+    for (unsigned i = 0; i < len; i++)
+    {
+      if (p)
+        hb_raster_paint_glyph (p, font, info[i].codepoint,
+                               pen_x + pos[i].x_offset,
+                               pen_y + pos[i].y_offset);
+      else
+        hb_raster_draw_glyph (d, font, info[i].codepoint,
+                              pen_x + pos[i].x_offset,
+                              pen_y + pos[i].y_offset);
+      pen_x += pos[i].x_advance;
+      pen_y += pos[i].y_advance;
+    }
+  }
+
+  {
+    hb_raster_image_t *img = p ? hb_raster_paint_render (p)
+                               : hb_raster_draw_render  (d);
+    if (!img) goto fail;
+    const uint8_t *src = hb_raster_image_get_buffer (img);
+    hb_raster_extents_t ie;
+    hb_raster_image_get_extents (img, &ie);
+    size_t bytes = (size_t) ie.stride * ie.height;
+    uint8_t *out = (uint8_t *) malloc (bytes);
+    memcpy (out, src, bytes);
+    if (out_width)  *out_width  = ie.width;
+    if (out_height) *out_height = ie.height;
+    hb_raster_image_destroy (img);
+
+    hb_raster_paint_destroy (p);
+    hb_raster_draw_destroy (d);
+    hb_buffer_destroy (buf);
+    hb_font_destroy (font);
+    hb_face_destroy (face);
+    return out;
+  }
+
+fail:
+  hb_raster_paint_destroy (p);
+  hb_raster_draw_destroy (d);
+  hb_buffer_destroy (buf);
+  hb_font_destroy (font);
+  hb_face_destroy (face);
+  return nullptr;
 }
 
 } /* extern "C" */
