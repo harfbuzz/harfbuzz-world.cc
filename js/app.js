@@ -153,6 +153,7 @@
   const subsetSaving  = document.getElementById ("subset-saving");
   const subsetDl      = document.getElementById ("subset-download");
   const subsetPreview = document.getElementById ("subset-preview");
+  const subsetBarFill = document.getElementById ("subset-bar-fill");
   /* Dynamic @font-face rule; bytes change on every render. */
   const subsetStyle = document.createElement ("style");
   document.head.appendChild (subsetStyle);
@@ -189,9 +190,12 @@
       Module._web_free_string (dataPtr);
       Module._free (lenPtr);
 
+      subsetOrig.textContent = fmtBytes (fontBuf.length);
       subsetNew.textContent = fmtBytes (sublen);
-      const pct = (100 * (1 - sublen / fontBuf.length)).toFixed (1);
-      subsetSaving.textContent = pct + "% (" + fmtBytes (fontBuf.length - sublen) + ")";
+      const savedBytes = fontBuf.length - sublen;
+      const savedPct = (100 * savedBytes / fontBuf.length).toFixed (1);
+      subsetSaving.textContent = fmtBytes (savedBytes) + " (" + savedPct + "%)";
+      subsetBarFill.style.width = (100 * sublen / fontBuf.length).toFixed (2) + "%";
 
       if (subsetUrl) URL.revokeObjectURL (subsetUrl);
       subsetUrl = URL.createObjectURL (new Blob ([bytes], { type: "font/ttf" }));
