@@ -174,7 +174,7 @@ hb_face_destroy (face);
 hb_blob_destroy (blob);`
     },
     raster: {
-      headline: "hb_raster_paint_render",
+      headline: ["hb_raster_paint_render", "hb_raster_draw_render"],
       template:
 `#define FONT_SIZE_PX  {size}
 #define SUBPIXEL_BITS 6              /* 26.6 fixed-point, like FreeType */
@@ -238,7 +238,7 @@ hb_face_destroy (face);
 hb_blob_destroy (blob);`
     },
     vector: {
-      headline: "hb_vector_paint_render",
+      headline: ["hb_vector_paint_render", "hb_vector_draw_render"],
       template:
 `#define FONT_SIZE_PX  {size}
 #define SUBPIXEL_BITS 6              /* 26.6 fixed-point, like FreeType */
@@ -299,7 +299,7 @@ hb_face_destroy (face);
 hb_blob_destroy (blob);`
     },
     gpu: {
-      headline: "hb_gpu_paint_encode",
+      headline: ["hb_gpu_paint_encode", "hb_gpu_draw_encode"],
       template:
 `hb_blob_t *blob = hb_blob_create_from_file ("{font}");
 hb_face_t *face = hb_face_create (blob, 0);
@@ -373,12 +373,15 @@ hb_blob_destroy (blob);`
    * Unknown identifiers (or pseudocode placeholders) are
    * left as plain text. */
   function linkifyHbCalls (html, headline) {
+    const headlines = Array.isArray (headline) ? new Set (headline)
+                                               : new Set ([headline]);
     return html.replace (/(hb_[a-z0-9_]+|HB_[A-Z0-9_]+)/g, (m) => {
       const url = hbDocsUrl (m);
+      const isHeadline = headlines.has (m);
       if (!url)
-        return m === headline ? "<strong>" + m + "</strong>" : m;
+        return isHeadline ? "<strong>" + m + "</strong>" : m;
       const wrapped = "<a href=\"" + url + "\" target=\"_blank\" rel=\"noopener\">" + m + "</a>";
-      return m === headline ? "<strong>" + wrapped + "</strong>" : wrapped;
+      return isHeadline ? "<strong>" + wrapped + "</strong>" : wrapped;
     });
   }
   function renderSnippet (key) {
