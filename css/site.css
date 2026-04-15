@@ -79,11 +79,13 @@ header h1 {
   color: var(--accent);
   letter-spacing: 0.01em;
 }
-header h1 a {
-  color: inherit;
+header h1 a,
+header h1 a:visited,
+header h1 a:hover,
+header h1 a:active {
+  color: var(--accent);
   text-decoration: none;
 }
-header h1 a:hover { text-decoration: none; }
 header h1 code {
   font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
   font-weight: 700;
