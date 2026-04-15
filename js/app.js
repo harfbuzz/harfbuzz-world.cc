@@ -19,6 +19,10 @@
     fontPtr = Module._malloc (fontBuf.length);
     Module.HEAPU8.set (fontBuf, fontPtr);
     if (displayName) fontNameEl.textContent = displayName;
+    /* Push to the GPU iframe whenever it's loaded.  Cheap if
+     * the iframe hasn't been activated yet -- postGpu is a
+     * no-op on a missing contentWindow. */
+    postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
     renderActive ();
   }
 
@@ -132,6 +136,35 @@
     });
   }
 
+  /* GPU tab: live iframe of harfbuzz.github.io/hb-gpu-demo.
+   * We push text/size/font into it via postMessage; the demo
+   * has a small embed-mode listener for those messages.
+   * Initial values go in the iframe URL so the first render
+   * is already correct. */
+  const gpuFrame = document.getElementById ("gpu-frame");
+  const GPU_ORIGIN = "https://harfbuzz.github.io";
+  function postGpu (msg) {
+    if (gpuFrame.contentWindow)
+      gpuFrame.contentWindow.postMessage (msg, GPU_ORIGIN);
+  }
+  function gpuFrameUrl () {
+    const u = new URL ("https://harfbuzz.github.io/hb-gpu-demo/");
+    u.searchParams.set ("embed", "1");
+    u.searchParams.set ("text", textInput.value);
+    return u.toString ();
+  }
+  function renderGpu () {
+    /* On first activation just (re)point the iframe so it
+     * loads with the current text; after that, push live
+     * updates via postMessage. */
+    const want = gpuFrameUrl ();
+    if (gpuFrame.src !== want) gpuFrame.src = want;
+    else {
+      postGpu ({ kind: "text", value: textInput.value });
+      postGpu ({ kind: "size", value: currentSize () });
+    }
+  }
+
   const rasterCanvas = document.getElementById ("raster-canvas");
   const rasterCtx    = rasterCanvas.getContext ("2d");
   function renderRaster () {
@@ -173,7 +206,7 @@
     subset: { section: document.getElementById ("demo-subset"), render: renderSubset  },
     raster: { section: document.getElementById ("demo-raster"), render: renderRaster  },
     vector: { section: document.getElementById ("demo-vector"), render: renderVector  },
-    gpu:    { section: document.getElementById ("demo-gpu"),    render: noop          },
+    gpu:    { section: document.getElementById ("demo-gpu"),    render: renderGpu     },
   };
   const tabs = document.querySelectorAll (".tab");
 

@@ -9,9 +9,9 @@
 
 #define HB_HAS_RASTER 1
 #define HB_HAS_VECTOR 1
-#define HB_HAS_GPU    1
 #define HB_HAS_SUBSET 1
-/* Subset binding TODO: flag is on so the code is compiled in,
- * but bindings.cc has no web_subset() yet. */
+/* HB_HAS_GPU intentionally off here -- the gpu tab on this
+ * site embeds harfbuzz.github.io/hb-gpu-demo via iframe, so
+ * we don't need to ship hb-gpu's runtime in our own wasm. */
 
 #define HAVE_CONFIG_OVERRIDE_H 1

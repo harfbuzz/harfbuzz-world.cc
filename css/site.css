@@ -306,6 +306,14 @@ nav.tabs .tab.active:visited { color: var(--accent); }
    * must not stretch the canvas. */
   display: block;
 }
+iframe.render {
+  width: 100%;
+  height: 480px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0;
+  background: #000;
+}
 
 /* Prose / code blocks (embed tab) */
 
