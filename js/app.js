@@ -153,19 +153,32 @@
     u.searchParams.set ("text", textInput.value);
     return u.toString ();
   }
+  /* When the iframe's runtime is ready it posts { kind: 'ready' }.
+   * That's the point at which _web_set_text / _web_load_font
+   * are safe to drive via postMessage -- push the current
+   * text and font once we hear it. */
+  let gpuReady = false;
   window.addEventListener ("message", (e) => {
     if (e.origin !== GPU_ORIGIN) return;
-    if (e.data && e.data.kind === "ready" && fontBuf)
-      postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
+    if (e.data && e.data.kind === "ready") {
+      gpuReady = true;
+      postGpu ({ kind: "text", value: textInput.value });
+      if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
+    }
   });
+  /* Set the iframe src exactly once, lazily on first gpu-tab
+   * activation, with current text baked into the URL.  After
+   * that, every update flows through postMessage -- setting
+   * .src again would reload the iframe and hit all the
+   * failure modes of racing the wasm bootstrap. */
+  let gpuLoaded = false;
   function renderGpu () {
-    /* GPU view has no "font size" concept -- zoom is a user
-     * gesture on the canvas -- so we only sync text + font.
-     * On first activation (re)point the iframe; after that,
-     * push text updates via postMessage. */
-    const want = gpuFrameUrl ();
-    if (gpuFrame.src !== want) gpuFrame.src = want;
-    else
+    if (!gpuLoaded) {
+      gpuLoaded = true;
+      gpuFrame.src = gpuFrameUrl ();
+      return;
+    }
+    if (gpuReady)
       postGpu ({ kind: "text", value: textInput.value });
   }
 
