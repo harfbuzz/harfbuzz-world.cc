@@ -201,7 +201,13 @@
   function renderGpu () {
     if (!gpuLoaded) {
       gpuLoaded = true;
-      gpuFrame.src = gpuFrameUrl ();
+      /* Wait one frame so the section has layout before
+       * hb-gpu-demo's GLFW canvas measures itself -- direct
+       * #gpu page loads were otherwise coming up blank with
+       * a 0x0 canvas. */
+      requestAnimationFrame (() => {
+        gpuFrame.src = gpuFrameUrl ();
+      });
       return;
     }
     if (gpuReady)
