@@ -174,9 +174,28 @@
     if (e.dataTransfer.files.length) loadFontFile (e.dataTransfer.files[0]);
   });
 
-  /* Initial font: bundled NotoSans. */
-  const fontResp = await fetch ("fonts/NotoSans-Regular.ttf");
-  setFontBytes (new Uint8Array (await fontResp.arrayBuffer ()), "NotoSans-Regular");
+  /* Load a font from a URL.  Used both for the bundled default
+   * and for the ?font=URL query parameter.  Returns true on
+   * success so the caller can fall back. */
+  async function loadFontUrl (url, displayName) {
+    try {
+      const r = await fetch (url);
+      if (!r.ok) return false;
+      const bytes = new Uint8Array (await r.arrayBuffer ());
+      const name = displayName || url.replace (/^.*\//, "")
+                                     .replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
+      setFontBytes (bytes, name);
+      return true;
+    } catch { return false; }
+  }
+
+  /* Initial font: ?font=URL if present, else bundled NotoSans.
+   * On URL failure, fall back to the bundled default so the
+   * page is never left fontless. */
+  const params = new URLSearchParams (location.search);
+  const fontUrl = params.get ("font");
+  if (!fontUrl || !(await loadFontUrl (fontUrl)))
+    await loadFontUrl ("fonts/NotoSans-Regular.ttf", "NotoSans-Regular");
 
   fromHash ();
 }) ();
