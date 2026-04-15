@@ -113,7 +113,7 @@
         via WebGL2 / WebGPU.</li>
     </ul>
 
-    <h2>HarfBuzz</h2>
+    <h2>Resources</h2>
     <ul class="resources">
       <li><a href="https://github.com/harfbuzz/harfbuzz">github.com/harfbuzz/harfbuzz</a>
         — source, issues, releases.</li>
@@ -123,9 +123,14 @@
         — Meson / packaging guidance for systems that have
         a build system already.</li>
       <li><a href="https://github.com/harfbuzz/harfbuzz/blob/main/CONFIG.md">CONFIG.md</a>
-        — full list of the <code>HB_TINY</code> /
-        <code>HB_HAS_*</code> / <code>HB_NO_*</code> tuning
-        knobs the embed guide below alludes to.</li>
+        — overview of compile-time configuration.  The full
+        knob list lives in
+        <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/hb-config.hh">src/hb-config.hh</a>
+        (<code>HB_NO_*</code> feature gates and the
+        <code>HB_TINY</code> / <code>HB_LEAN</code> /
+        <code>HB_MINI</code> presets) and
+        <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/hb-features.h.in">src/hb-features.h.in</a>
+        (the <code>HB_HAS_*</code> subsystem flags).</li>
     </ul>
 
     <h2>Embedding <code>harfbuzz-world.cc</code></h2>
