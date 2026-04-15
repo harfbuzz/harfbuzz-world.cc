@@ -541,13 +541,33 @@ pre.code {
 .subset-bar-labels {
   display: flex;
   justify-content: space-between;
-  margin-top: 0.4rem;
-  font-size: 0.92rem;
+  margin-top: 0.5rem;
+  font-size: 1rem;
   color: var(--muted);
 }
 .subset-bar-labels strong { color: var(--fg); font-weight: 600; }
 .subset-bar-saved { color: var(--accent-hi); }
 .subset-bar-saved strong { color: var(--accent-hi); }
+.subset-hint {
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.subset-counts {
+  margin: 0.75rem 0 1rem;
+  color: var(--muted);
+  font-size: 1rem;
+}
+.subset-tables { margin-top: 0.5rem; }
+.subset-tables summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.95rem;
+  padding: 0.25rem 0;
+}
+.subset-table { margin-top: 0.5rem; }
+.subset-table tr.subset-grew td { color: var(--danger, #c0392b); }
+.subset-table tr.subset-same td { color: var(--muted); }
 
 .placeholder {
   color: var(--muted);

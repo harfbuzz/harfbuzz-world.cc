@@ -297,7 +297,13 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
           of <strong id="subset-orig-size">—</strong>
         </span>
       </div>
+      <p class="subset-hint" id="subset-hint" hidden></p>
     </div>
+    <div class="subset-counts" id="subset-counts"></div>
+    <details class="subset-tables" id="subset-tables-wrap" hidden>
+      <summary>Per-table breakdown</summary>
+      <div id="subset-tables"></div>
+    </details>
     <div class="controls demo-controls">
       <a id="subset-download" href="#" download="subset.ttf">Download subset</a>
     </div>

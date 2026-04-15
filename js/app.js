@@ -154,6 +154,42 @@
   const subsetDl      = document.getElementById ("subset-download");
   const subsetPreview = document.getElementById ("subset-preview");
   const subsetBarFill = document.getElementById ("subset-bar-fill");
+  const subsetHint    = document.getElementById ("subset-hint");
+  const subsetCounts  = document.getElementById ("subset-counts");
+  const subsetTablesWrap = document.getElementById ("subset-tables-wrap");
+  const subsetTables  = document.getElementById ("subset-tables");
+  function fontStats (ptr, len) {
+    const p = Module._web_font_stats (ptr, len);
+    const s = JSON.parse (Module.UTF8ToString (p));
+    Module._web_free_string (p);
+    return s;
+  }
+  function renderSubsetTables (orig, sub) {
+    const subBy = new Map (sub.tables.map ((t) => [t.tag, t.size]));
+    const allTags = new Set ([...orig.tables.map ((t) => t.tag), ...subBy.keys ()]);
+    const rows = [];
+    const origBy = new Map (orig.tables.map ((t) => [t.tag, t.size]));
+    for (const tag of allTags) {
+      const o = origBy.get (tag) || 0;
+      const n = subBy.get (tag) || 0;
+      rows.push ({ tag, before: o, after: n, delta: n - o });
+    }
+    rows.sort ((a, b) => (b.before - b.after) - (a.before - a.after));
+    let html = "<table class=\"glyph-table subset-table\"><thead><tr>"
+             + "<th>tag</th><th>before</th><th>after</th><th>saved</th>"
+             + "</tr></thead><tbody>";
+    for (const r of rows) {
+      const saved = r.before - r.after;
+      const cls = saved > 0 ? "" : (r.after > r.before ? " class=\"subset-grew\"" : " class=\"subset-same\"");
+      html += "<tr" + cls + "><td>" + r.tag
+            + "</td><td>" + fmtBytes (r.before)
+            + "</td><td>" + fmtBytes (r.after)
+            + "</td><td>" + (saved > 0 ? fmtBytes (saved) : "—")
+            + "</td></tr>";
+    }
+    html += "</tbody></table>";
+    subsetTables.innerHTML = html;
+  }
   /* Dynamic @font-face rule; bytes change on every render. */
   const subsetStyle = document.createElement ("style");
   document.head.appendChild (subsetStyle);
@@ -196,6 +232,33 @@
       const savedPct = (100 * savedBytes / fontBuf.length).toFixed (1);
       subsetSaving.textContent = fmtBytes (savedBytes) + " (" + savedPct + "%)";
       subsetBarFill.style.width = (100 * sublen / fontBuf.length).toFixed (2) + "%";
+
+      /* Per-table breakdown + glyph/Unicode counts.  Allocate a
+       * temp wasm buffer for the subset bytes since the existing
+       * fontPtr only holds the original font. */
+      const origStats = fontStats (fontPtr, fontBuf.length);
+      const subPtr = Module._malloc (sublen);
+      Module.HEAPU8.set (bytes, subPtr);
+      const subStats = fontStats (subPtr, sublen);
+      Module._free (subPtr);
+      subsetCounts.textContent =
+        "kept " + subStats.num_glyphs + " of " + origStats.num_glyphs + " glyphs"
+        + " · " + subStats.num_unicodes + " of " + origStats.num_unicodes + " Unicode codepoints";
+      renderSubsetTables (origStats, subStats);
+      subsetTablesWrap.hidden = false;
+
+      /* If the loaded font is itself already small (i.e. mostly
+       * meta + tiny glyf), the savings will be modest no matter
+       * what.  Surface that so users don't think the subsetter
+       * is broken. */
+      if (savedPct < 20 && origStats.num_glyphs < 5000) {
+        subsetHint.textContent = "Low savings: this font is already tight"
+          + " (" + origStats.num_glyphs + " glyphs)."
+          + " Try a large family like Noto Sans CJK to see the subsetter shine.";
+        subsetHint.hidden = false;
+      } else {
+        subsetHint.hidden = true;
+      }
 
       if (subsetUrl) URL.revokeObjectURL (subsetUrl);
       subsetUrl = URL.createObjectURL (new Blob ([bytes], { type: "font/ttf" }));

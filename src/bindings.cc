@@ -58,6 +58,63 @@ char *web_font_family (const uint8_t *font_bytes, unsigned font_len)
   return strdup ("");
 }
 
+/* JSON-describe a font's structure: total glyph count,
+ * total Unicode coverage, and per-table sizes (tag + bytes).
+ * Used by the subset tab to show before/after deltas.
+ * Caller frees with web_free_string(). */
+EMSCRIPTEN_KEEPALIVE
+char *web_font_stats (const uint8_t *font_bytes, unsigned font_len)
+{
+  hb_blob_t *blob = hb_blob_create_or_fail ((const char *) font_bytes,
+                                             font_len,
+                                             HB_MEMORY_MODE_READONLY,
+                                             nullptr, nullptr);
+  if (!blob) return strdup ("{\"num_glyphs\":0,\"num_unicodes\":0,\"tables\":[]}");
+  hb_face_t *face = hb_face_create (blob, 0);
+  hb_blob_destroy (blob);
+
+  unsigned num_glyphs = hb_face_get_glyph_count (face);
+  hb_set_t *unicodes = hb_set_create ();
+  hb_face_collect_unicodes (face, unicodes);
+  unsigned num_unicodes = hb_set_get_population (unicodes);
+  hb_set_destroy (unicodes);
+
+  unsigned table_count = hb_face_get_table_tags (face, 0, nullptr, nullptr);
+  hb_tag_t *tags = (hb_tag_t *) calloc (table_count ? table_count : 1, sizeof (hb_tag_t));
+  if (table_count) hb_face_get_table_tags (face, 0, &table_count, tags);
+
+  size_t cap = 64 + (size_t) table_count * 48 + 1;
+  char *out = (char *) malloc (cap);
+  size_t off = 0;
+  off += snprintf (out + off, cap - off,
+                   "{\"num_glyphs\":%u,\"num_unicodes\":%u,\"tables\":[",
+                   num_glyphs, num_unicodes);
+  for (unsigned i = 0; i < table_count; i++)
+  {
+    hb_blob_t *t = hb_face_reference_table (face, tags[i]);
+    unsigned len = hb_blob_get_length (t);
+    hb_blob_destroy (t);
+    char tag[5] = {
+      (char) ((tags[i] >> 24) & 0xff),
+      (char) ((tags[i] >> 16) & 0xff),
+      (char) ((tags[i] >>  8) & 0xff),
+      (char) ( tags[i]        & 0xff),
+      0
+    };
+    /* Tag chars are guaranteed printable ASCII per spec; no
+     * escape needed for the JSON-significant ones since they
+     * can't appear here. */
+    off += snprintf (out + off, cap - off,
+                     "%s{\"tag\":\"%s\",\"size\":%u}",
+                     i ? "," : "", tag, len);
+  }
+  off += snprintf (out + off, cap - off, "]}");
+
+  free (tags);
+  hb_face_destroy (face);
+  return out;
+}
+
 /* Variation state.  Set once by web_set_variations() and
  * applied to every font the render helpers create.  Kept as
  * the raw comma-separated string so the common case (no
