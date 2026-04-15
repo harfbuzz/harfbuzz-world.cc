@@ -10,29 +10,48 @@
 <header>
   <h1>HarfBuzz World</h1>
   <p class="tagline">The ffmpeg of text rendering.</p>
+  <nav class="tabs">
+    <a href="#shape"  class="tab" data-demo="shape">shape</a>
+    <a href="#vector" class="tab" data-demo="vector">vector</a>
+    <a href="#raster" class="tab" data-demo="raster">raster</a>
+  </nav>
 </header>
 
 <main>
-  <p>Live demos coming soon. First up:</p>
-  <nav class="tiles">
-    <a href="shape.html" class="tile">
-      <span class="tile-name">shape</span>
-      <span class="tile-desc">Shape text and render it.</span>
-    </a>
-    <a href="vector.html" class="tile">
-      <span class="tile-name">vector</span>
-      <span class="tile-desc">Render to SVG / PDF, downloadable.</span>
-    </a>
-    <a href="raster.html" class="tile">
-      <span class="tile-name">raster</span>
-      <span class="tile-desc">Pixel-perfect rendering at a given size.</span>
-    </a>
-  </nav>
+  <div class="controls" id="shared-controls">
+    <label>Text:
+      <input id="text" type="text" value="Shape me." size="40">
+    </label>
+    <label>Size:
+      <input id="size" type="number" value="48" min="8" max="200">
+    </label>
+  </div>
+
+  <section class="demo" id="demo-shape">
+    <div id="shape-render" class="render"></div>
+    <h2>Glyph data</h2>
+    <pre id="shape-glyphs"></pre>
+  </section>
+
+  <section class="demo" id="demo-vector" hidden>
+    <div class="controls demo-controls">
+      <a id="vector-dl-svg" href="#" download="text.svg">Download SVG</a>
+      <a id="vector-dl-pdf" href="#" download="text.pdf">Download PDF</a>
+    </div>
+    <div id="vector-render" class="render"></div>
+  </section>
+
+  <section class="demo" id="demo-raster" hidden>
+    <canvas id="raster-canvas" class="render"></canvas>
+  </section>
 </main>
 
 <footer>
   <p>© HarfBuzz Authors ·
      <a href="https://github.com/harfbuzz/harfbuzz">GitHub</a></p>
 </footer>
+
+<script src="hb-world.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

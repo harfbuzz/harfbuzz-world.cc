@@ -49,6 +49,28 @@ header h1 a {
   font-style: italic;
 }
 
+nav.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 1rem;
+}
+nav.tabs .tab {
+  font-family: "Prata", serif;
+  font-size: 1.05rem;
+  text-decoration: none;
+  color: var(--muted);
+  padding: 0.4rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem 0.25rem 0 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+nav.tabs .tab:hover { color: var(--fg); }
+nav.tabs .tab.active {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+
 main {
   max-width: 60rem;
   margin: 2rem auto;
@@ -85,18 +107,19 @@ main {
   margin-top: 0.25rem;
 }
 
-.demo .controls {
+.controls {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  align-items: center;
   margin-bottom: 1rem;
 }
-.demo .controls label {
+.controls label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-.demo .controls input[type="text"] {
+.controls input[type="text"] {
   font: inherit;
   padding: 0.4rem 0.6rem;
   border: 1px solid var(--rule);
@@ -104,7 +127,7 @@ main {
   background: var(--bg);
   color: var(--fg);
 }
-.demo .controls input[type="number"] {
+.controls input[type="number"] {
   font: inherit;
   padding: 0.4rem 0.6rem;
   width: 5rem;
@@ -113,6 +136,14 @@ main {
   background: var(--bg);
   color: var(--fg);
 }
+.controls a {
+  color: var(--accent);
+  text-decoration: none;
+  border: 1px solid var(--rule);
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.25rem;
+}
+.controls a:hover { border-color: var(--accent); }
 
 .render {
   border: 1px solid var(--rule);
