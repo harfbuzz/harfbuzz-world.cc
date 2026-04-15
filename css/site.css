@@ -430,4 +430,13 @@ pre.code {
     padding: 1.25rem;
   }
   header h1 { font-size: 2rem; }
+  .attribution {
+    position: static;
+    text-align: center;
+    background: none;
+    box-shadow: none;
+    padding: 1.25rem 0 0;
+    margin: 1.5rem 0 0;
+    border-top: 1px solid var(--rule);
+  }
 }
