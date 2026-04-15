@@ -285,6 +285,25 @@
   textInput.addEventListener ("input", renderActive);
   sizeInput.addEventListener ("input", renderActive);
 
+  /* Presets: one-click combos of text + font, covering the
+   * three scripts we ship fonts for. */
+  const PRESETS = {
+    latin:      { text: "hello-world!",      font: "fonts/NotoSans-Regular.ttf",   name: "NotoSans-Regular" },
+    arabic:     { text: "مرحبا بالعالم",      font: "fonts/NotoSansArabic.ttf",     name: "NotoSansArabic" },
+    devanagari: { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
+  };
+  document.querySelectorAll (".preset").forEach ((btn) => {
+    btn.addEventListener ("click", () => {
+      const p = PRESETS[btn.dataset.preset];
+      if (!p) return;
+      textInput.value = p.text;
+      loadFontUrl (p.font, p.name);
+      /* setFontBytes (called inside loadFontUrl) will
+       * renderActive with the new font; the text change
+       * rides along because we set textInput.value before. */
+    });
+  });
+
   /* Font picker: dropdown menu with three sources (shipped /
    * file / URL), plus drag-and-drop anywhere on the page. */
   async function loadFontFile (file) {

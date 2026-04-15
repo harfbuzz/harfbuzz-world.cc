@@ -212,6 +212,33 @@ nav.tabs .tab.active:visited { color: var(--accent); }
   margin-bottom: 1.25rem;
 }
 .demo-controls { margin: 1rem 0 0; }
+
+.presets {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: -0.25rem 0 1.25rem;
+}
+.presets-label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.preset {
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--fg);
+  transition: border-color 0.15s, background 0.15s;
+}
+.preset:hover {
+  border-color: var(--accent);
+  background: var(--highlight);
+}
 .controls label {
   display: flex;
   align-items: center;
