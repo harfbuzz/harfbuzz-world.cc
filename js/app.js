@@ -459,13 +459,7 @@
       });
       return entry;
     });
-    if (currentAxes.length === 0) {
-      const empty = document.createElement ("span");
-      empty.className = "axes-empty";
-      empty.textContent = "no variations";
-      axesEl.append (empty);
-    }
-    axesEl.hidden = false;
+    axesEl.hidden = currentAxes.length === 0;
     /* If the URL carries an explicit variations= setting,
      * apply it to the sliders before pushing wasm + GPU
      * state.  Lets a shared link reproduce the view. */
