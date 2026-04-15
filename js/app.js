@@ -53,13 +53,31 @@
   /* Demos.  Each exposes a render() that reads the shared
    * controls and updates its DOM. */
 
+  /* hb-vector emits short SVG ids (c0, gr0, clip-g10, ...)
+   * for clipPath / defs references.  Multiple sections on
+   * the page (shape, vector, subset-preview) all carry
+   * such SVGs in the DOM simultaneously, so url(#c0) can
+   * resolve to the wrong section's clipPath and we get
+   * wild cross-tab paint bleed (giant colored rects
+   * clipped to the wrong glyph shape).  Prefix every id
+   * and url(#...) with a per-injection unique token. */
+  let svgNs = 0;
+  function namespaceSvg (svg) {
+    const ns = "n" + (++svgNs) + "-";
+    return svg
+      .replace (/\bid="([^"]+)"/g, (_, id) => 'id="' + ns + id + '"')
+      .replace (/url\(#([^)]+)\)/g, (_, id) => 'url(#' + ns + id + ')')
+      .replace (/\bxlink:href="#([^"]+)"/g, (_, id) => 'xlink:href="#' + ns + id + '"')
+      .replace (/\bhref="#([^"]+)"/g, (_, id) => 'href="#' + ns + id + '"');
+  }
+
   const shapeRender  = document.getElementById ("shape-render");
   const shapeGlyphs  = document.getElementById ("shape-glyphs");
   function renderShape () {
     withText ((textPtr) => {
       const svgPtr = Module._web_render_svg (fontPtr, fontBuf.length,
                                               textPtr, currentSize ());
-      shapeRender.innerHTML = Module.UTF8ToString (svgPtr);
+      shapeRender.innerHTML = namespaceSvg (Module.UTF8ToString (svgPtr));
       Module._web_free_string (svgPtr);
 
       const jsonPtr = Module._web_shape_json (fontPtr, fontBuf.length, textPtr);
@@ -79,7 +97,11 @@
                                               textPtr, currentSize ());
       const svg = Module.UTF8ToString (svgPtr);
       Module._web_free_string (svgPtr);
-      vectorRender.innerHTML = svg;
+      /* Namespace IDs for the inline preview so it can't
+       * collide with shape's injected SVG.  The downloaded
+       * SVG (svgUrl) uses the raw bytes -- a standalone
+       * file has no collision risk. */
+      vectorRender.innerHTML = namespaceSvg (svg);
       if (svgUrl) URL.revokeObjectURL (svgUrl);
       svgUrl = URL.createObjectURL (new Blob ([svg], { type: "image/svg+xml" }));
       dlSvg.href = svgUrl;
