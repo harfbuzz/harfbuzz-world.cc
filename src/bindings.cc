@@ -139,6 +139,15 @@ render (hb_vector_format_t format,
     p = hb_vector_paint_create_or_fail (format);
   else
     d = hb_vector_draw_create_or_fail (format);
+
+  /* Flat mode: inline every path, no <defs>/id+url() reuse.
+   * The per-render SVGs are embedded side-by-side in the
+   * page (shape tab next to vector tab) and hb-vector's
+   * short IDs (c0, gr0, clip-g10, ...) collide across
+   * them; flat output sidesteps the problem. */
+  if (p) hb_vector_paint_set_flat (p, true);
+  if (d) hb_vector_draw_set_flat  (d, true);
+
   if (!p && !d)
   {
     hb_buffer_destroy (buf);
