@@ -130,6 +130,10 @@
       <li><a href="#gpu">gpu</a> — slug-based GPU rendering
         via WebGL2.</li>
     </ul>
+    <p>Each demo tab above also has a <strong>Code snippet</strong>
+       section showing the live API call sequence it would
+       take to reproduce that demo's output, with function
+       names linked to their HarfBuzz reference.</p>
 
     <h2>Embedding <code>harfbuzz-world.cc</code></h2>
     <p>Add HarfBuzz to your project as a submodule (or vendor
@@ -161,10 +165,6 @@ unsigned len;
 hb_glyph_info_t      *info = hb_buffer_get_glyph_infos     (buf, &amp;len);
 hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 /* …draw the glyphs… */</code></pre>
-    <p>Each demo tab below also has a <strong>Code snippet</strong>
-       section at the bottom showing the live API call sequence
-       it would take to reproduce that demo's output, with
-       function names linked to their HarfBuzz reference.</p>
 
     <h3>Customizing the build</h3>
     <p>HarfBuzz reads a handful of compile-time
