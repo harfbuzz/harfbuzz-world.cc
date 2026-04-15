@@ -260,9 +260,10 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 
   <section class="demo" id="demo-vector" hidden>
     <p>Resolution-independent output via hb-vector: the same
-       shaped text emitted as an SVG (inline preview) and a
-       PDF (download).  Both embed the outlines directly so
-       the receiver needs no font.</p>
+       shaped text emitted as SVG and PDF, both downloadable;
+       the SVG is also rendered inline below as a preview.
+       Both embed the outlines directly so the receiver
+       needs no font.</p>
     <div id="vector-render" class="render"></div>
     <div class="controls demo-controls">
       <a id="vector-dl-svg" href="#" download="text.svg">Download SVG</a>
