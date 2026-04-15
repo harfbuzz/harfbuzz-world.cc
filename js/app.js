@@ -213,12 +213,7 @@
    * .src again would reload the iframe and hit all the
    * failure modes of racing the wasm bootstrap. */
   let gpuLoaded = false;
-  function focusGpu () {
-    try { gpuFrame.contentWindow.focus (); } catch {}
-    try { gpuFrame.focus (); } catch {}
-  }
   function renderGpu () {
-    setTimeout (focusGpu, 0);
     if (!gpuLoaded) {
       gpuLoaded = true;
       /* Two-frame delay so both visibility and layout have
@@ -327,6 +322,7 @@
       else                                             url.searchParams.delete ("size");
       url.searchParams.delete ("preset");
       history.replaceState (null, "", url);
+    reflectActivePreset ();
     }, 200);
   }
   textInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
@@ -335,9 +331,10 @@
   /* Presets: one-click combos of text + font, covering the
    * three scripts we ship fonts for. */
   const PRESETS = {
-    latin:      { text: "hello-world!",      font: "fonts/NotoSans-Regular.ttf",   name: "NotoSans-Regular" },
+    latin:      { text: "hello-world!",      font: "fonts/NotoSans.ttf",   name: "NotoSans" },
     arabic:     { text: "مرحبا بالعالم",      font: "fonts/NotoSansArabic.ttf",     name: "NotoSansArabic" },
     devanagari: { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
+    chinese:    { text: "你好世界！",          font: "fonts/NotoSansCJKsc-subset.otf", name: "NotoSansCJKsc" },
     emoji:      { text: "😘🌈❤️🦋🥰",         font: "fonts/NotoEmoji.ttf",          name: "NotoColorEmoji" },
   };
   function applyPreset (key) {
@@ -355,11 +352,25 @@
     url.searchParams.delete ("font");
     url.searchParams.set ("preset", key);
     history.replaceState (null, "", url);
+    reflectActivePreset ();
     return true;
   }
-  document.querySelectorAll (".preset").forEach ((btn) => {
+  const presetButtons = document.querySelectorAll (".preset");
+  presetButtons.forEach ((btn) => {
     btn.addEventListener ("click", () => applyPreset (btn.dataset.preset));
   });
+
+  /* Highlight the preset button currently reflected in the
+   * URL -- but only when URL is a "clean" preset state (no
+   * ?text / ?font overrides).  Gets called from syncUrl and
+   * applyPreset so it stays in sync with location.search. */
+  function reflectActivePreset () {
+    const p = new URLSearchParams (location.search);
+    const key = (!p.has ("text") && !p.has ("font")) ? p.get ("preset") : null;
+    presetButtons.forEach ((btn) => {
+      btn.classList.toggle ("active", btn.dataset.preset === key);
+    });
+  }
 
   /* Font picker: dropdown menu with three sources (shipped /
    * file / URL), plus drag-and-drop anywhere on the page. */
@@ -373,6 +384,7 @@
     const u = new URL (location.href);
     u.searchParams.delete ("font");
     history.replaceState (null, "", u);
+    reflectActivePreset ();
   }
 
   function openFontMenu () { fontMenu.hidden = false; }
@@ -447,6 +459,7 @@
         const u = new URL (location.href);
         u.searchParams.set ("font", url);
         history.replaceState (null, "", u);
+    reflectActivePreset ();
       }
       return true;
     } catch { return false; }
@@ -471,7 +484,8 @@
     const nameChoice = fontUrlParam ? null : PRESETS[presetParam].name;
     await loadFontUrl (fontChoice, nameChoice, { silentUrl: true });
   } else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam, null, { silentUrl: true })))
-    await loadFontUrl ("fonts/NotoSans-Regular.ttf", "NotoSans-Regular", { silentUrl: true });
+    await loadFontUrl ("fonts/NotoSans.ttf", "NotoSans", { silentUrl: true });
 
+  reflectActivePreset ();
   fromHash ();
 }) ();

@@ -248,6 +248,11 @@ body[data-active="gpu"] .size-label { display: none; }
   border-color: var(--accent);
   background: var(--highlight);
 }
+.preset.active {
+  border-color: var(--accent);
+  background: var(--highlight);
+  color: var(--accent);
+}
 .controls label {
   display: flex;
   align-items: center;
