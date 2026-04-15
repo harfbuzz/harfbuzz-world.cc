@@ -308,8 +308,24 @@
     history.pushState (null, "", location.pathname + location.search);
     activate ("embed");
   });
-  textInput.addEventListener ("input", renderActive);
-  sizeInput.addEventListener ("input", renderActive);
+  /* Reflect current text/size in the URL so the view is
+   * shareable.  Debounced so we don't replaceState per
+   * keystroke. */
+  let urlSyncTimer = 0;
+  function syncUrl () {
+    clearTimeout (urlSyncTimer);
+    urlSyncTimer = setTimeout (() => {
+      const url = new URL (location.href);
+      if (textInput.value) url.searchParams.set ("text", textInput.value);
+      else                 url.searchParams.delete ("text");
+      if (sizeInput.value && sizeInput.value !== "48") url.searchParams.set ("size", sizeInput.value);
+      else                                             url.searchParams.delete ("size");
+      url.searchParams.delete ("preset");
+      history.replaceState (null, "", url);
+    }, 200);
+  }
+  textInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
+  sizeInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
 
   /* Presets: one-click combos of text + font, covering the
    * three scripts we ship fonts for. */
@@ -414,8 +430,12 @@
    * bundled NotoSans.  ?preset wins because it owns both
    * text and font, so a preset link reproduces the view. */
   const params = new URLSearchParams (location.search);
+  const textParam = params.get ("text");
+  const sizeParam = params.get ("size");
   const presetParam = params.get ("preset");
   const fontUrlParam = params.get ("font");
+  if (textParam !== null) textInput.value = textParam;
+  if (sizeParam !== null) sizeInput.value = sizeParam;
   if (presetParam && PRESETS[presetParam])
     applyPreset (presetParam);
   else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam)))
