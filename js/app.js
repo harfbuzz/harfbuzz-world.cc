@@ -343,7 +343,7 @@
     arabic:     { text: "مرحبا بالعالم",      font: "fonts/NotoSansArabic.ttf",     name: "NotoSansArabic" },
     devanagari: { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
     chinese:    { text: "你好世界！",          font: "fonts/NotoSansCJKsc-subset.otf", name: "NotoSansCJKsc" },
-    emoji:      { text: "😘🌈❤️🦋🥰",         font: "fonts/NotoEmoji.ttf",          name: "NotoColorEmoji" },
+    emoji:      { text: "🫠🌈❤️🦋🥰",         font: "fonts/NotoEmoji.ttf",          name: "NotoColorEmoji" },
   };
   function applyPreset (key) {
     const p = PRESETS[key];
