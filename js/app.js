@@ -125,16 +125,23 @@
     });
   }
 
+  /* Static tabs (embed, subset, gpu) have no live render --
+   * their content is inert HTML.  They still get an entry so
+   * activation/hash routing is uniform. */
+  const noop = () => {};
   const demos = {
-    shape:  { section: document.getElementById ("demo-shape"),  render: renderShape  },
-    vector: { section: document.getElementById ("demo-vector"), render: renderVector },
-    raster: { section: document.getElementById ("demo-raster"), render: renderRaster },
+    embed:  { section: document.getElementById ("demo-embed"),  render: noop          },
+    shape:  { section: document.getElementById ("demo-shape"),  render: renderShape   },
+    subset: { section: document.getElementById ("demo-subset"), render: noop          },
+    raster: { section: document.getElementById ("demo-raster"), render: renderRaster  },
+    vector: { section: document.getElementById ("demo-vector"), render: renderVector  },
+    gpu:    { section: document.getElementById ("demo-gpu"),    render: noop          },
   };
   const tabs = document.querySelectorAll (".tab");
 
   let activeName = null;
   function activate (name) {
-    if (!demos[name]) name = "shape";
+    if (!demos[name]) name = "embed";
     if (name === activeName) return;
     activeName = name;
     for (const [n, d] of Object.entries (demos))
@@ -150,7 +157,7 @@
 
   function fromHash () {
     const h = (location.hash || "").replace (/^#/, "");
-    activate (h || "shape");
+    activate (h || "embed");
   }
   window.addEventListener ("hashchange", fromHash);
   textInput.addEventListener ("input", renderActive);

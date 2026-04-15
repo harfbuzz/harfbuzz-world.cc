@@ -284,6 +284,36 @@ nav.tabs .tab.active:visited { color: var(--accent); }
   display: block;
 }
 
+/* Prose / code blocks (embed tab) */
+
+.demo p { margin: 1rem 0; }
+.demo ul { margin: 1rem 0 1rem 1.5rem; padding: 0; }
+.demo li { margin-bottom: 0.4rem; }
+.demo code {
+  font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+  background: var(--soft);
+  color: var(--accent-hi);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+pre.code {
+  font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+  font-size: 0.85rem;
+  background: var(--soft);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow: auto;
+  line-height: 1.45;
+}
+.placeholder {
+  color: var(--muted);
+  font-style: italic;
+  padding: 1.5rem;
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+}
+
 /* Glyph data */
 
 #shape-glyphs {
