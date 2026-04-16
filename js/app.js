@@ -439,7 +439,12 @@ hb_blob_destroy (blob);`
     for (const key of Object.keys (SNIPPETS)) renderSnippet (key);
     if (window.hljs) {
       document.querySelectorAll ("pre.code code[class*=\"language-\"]")
-        .forEach ((el) => hljs.highlightElement (el));
+        .forEach ((el) => {
+          hljs.highlightElement (el);
+          /* Linkify hb_* / HB_* identifiers to their docs,
+           * same as the live snippet path does. */
+          el.innerHTML = linkifyHbCalls (el.innerHTML, null);
+        });
     }
   });
 
