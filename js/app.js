@@ -832,7 +832,7 @@ hb_blob_destroy (blob);`
       rasterCtx.putImageData (imageData, 0, 0);
       rasterStats.textContent =
         w + " × " + h + " px"
-        + " (" + (w / dpr).toFixed (0) + " × " + (h / dpr).toFixed (0) + " CSS px"
+        + " (" + (w / dpr) + " × " + (h / dpr) + " CSS px"
         + " · " + dpr + "× DPR)";
       /* Re-encode the canvas as PNG for the download link.
        * toBlob is async; the previous URL is revoked once the
