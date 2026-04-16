@@ -149,6 +149,18 @@ void web_set_palette (unsigned idx)
   g_palette = idx;
 }
 
+/* Shape cluster level.  Applied to every buffer created by
+ * the shape() helper.  Values match hb_buffer_cluster_level_t
+ * (0 = MONOTONE_GRAPHEMES, 1 = MONOTONE_CHARACTERS,
+ * 2 = CHARACTERS). */
+static unsigned g_cluster_level = 0;
+
+EMSCRIPTEN_KEEPALIVE
+void web_set_cluster_level (unsigned lvl)
+{
+  g_cluster_level = lvl;
+}
+
 static void
 apply_variations (hb_font_t *font)
 {
@@ -289,6 +301,7 @@ shape (const uint8_t *font_bytes, unsigned font_len,
   apply_variations (font);
 
   hb_buffer_t *buf = hb_buffer_create ();
+  hb_buffer_set_cluster_level (buf, (hb_buffer_cluster_level_t) g_cluster_level);
   hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
   hb_buffer_guess_segment_properties (buf);
   hb_shape (font, buf, nullptr, 0);

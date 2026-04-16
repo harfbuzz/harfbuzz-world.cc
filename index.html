@@ -287,6 +287,14 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         <input type="checkbox" id="shape-show-names" checked>
         glyph names
       </label>
+      <label class="glyph-id-toggle">
+        clusters:
+        <select id="shape-cluster-level">
+          <option value="0">monotone graphemes</option>
+          <option value="1">monotone characters</option>
+          <option value="2">characters</option>
+        </select>
+      </label>
     </h2>
     <div id="shape-glyphs"></div>
     <details class="snippet" data-snippet="shape">

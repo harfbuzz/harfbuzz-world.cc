@@ -72,6 +72,11 @@
   const shapeRender  = document.getElementById ("shape-render");
   const shapeGlyphs    = document.getElementById ("shape-glyphs");
   const shapeShowNames = document.getElementById ("shape-show-names");
+  const shapeClusterLvl = document.getElementById ("shape-cluster-level");
+  shapeClusterLvl.addEventListener ("change", () => {
+    Module._web_set_cluster_level (parseInt (shapeClusterLvl.value, 10) || 0);
+    renderActive ();
+  });
   let lastShapeGlyphs  = [];
   /* Render the shaped-glyph stream as a table so columns line
    * up and a faint divider visually groups consecutive glyphs
