@@ -2,30 +2,13 @@
 """Regenerate js/hb-docs.js from harfbuzz's docs/harfbuzz-sections.txt.
 
 Usage:
-  scripts/gen-hb-docs.py [PATH_TO_harfbuzz-sections.txt]
-
-If no path is given, the script auto-detects the HarfBuzz source
-tree the same way scripts/build.sh does: $HB_SRC, then
-./harfbuzz/ next to this repo, then ~/harfbuzz.
+  scripts/gen-hb-docs.py PATH_TO_harfbuzz-sections.txt
 """
 import os
 import re
 import sys
 
 HERE = os.path.dirname (os.path.dirname (os.path.abspath (__file__)))
-
-
-def find_sections_txt ():
-    env = os.environ.get ("HB_SRC")
-    candidates = []
-    if env:
-        candidates.append (os.path.join (env, "docs", "harfbuzz-sections.txt"))
-    candidates.append (os.path.join (HERE, "harfbuzz", "docs", "harfbuzz-sections.txt"))
-    candidates.append (os.path.expanduser ("~/harfbuzz/docs/harfbuzz-sections.txt"))
-    for c in candidates:
-        if os.path.isfile (c):
-            return c
-    return None
 
 
 def parse (path):
@@ -60,13 +43,12 @@ def parse (path):
 
 
 def main (argv):
-    if len (argv) > 2:
+    if len (argv) != 2:
         print (__doc__, file = sys.stderr)
         return 2
-    sections_txt = argv[1] if len (argv) == 2 else find_sections_txt ()
-    if not sections_txt or not os.path.isfile (sections_txt):
-        print ("error: cannot find harfbuzz-sections.txt", file = sys.stderr)
-        print ("       set HB_SRC=/path/to/harfbuzz or pass the path", file = sys.stderr)
+    sections_txt = argv[1]
+    if not os.path.isfile (sections_txt):
+        print ("error: %s: no such file" % sections_txt, file = sys.stderr)
         return 1
 
     pairs = list (parse (sections_txt))
