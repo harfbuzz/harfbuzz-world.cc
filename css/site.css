@@ -542,11 +542,9 @@ pre.code {
   font-weight: normal;
   color: var(--muted);
   margin-left: 1rem;
-}
-.glyph-id-toggle input { margin-right: 0.25rem; vertical-align: middle; }
-.cluster-level-toggle {
   cursor: help;
 }
+.glyph-id-toggle input { margin-right: 0.25rem; vertical-align: middle; }
 .cluster-level-toggle select {
   font: inherit;
   font-size: 0.92rem;
