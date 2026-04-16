@@ -37,7 +37,7 @@ echo "Using HarfBuzz source at: $HB_SRC"
 # Refresh js/hb-docs.js from this HarfBuzz tree so the snippet
 # linkifier stays in sync with the docs the wasm was built
 # against.
-HB_SRC="$HB_SRC" python3 "$HERE/scripts/gen-hb-docs.py"
+python3 "$HERE/scripts/gen-hb-docs.py" "$HB_SRC/docs/harfbuzz-sections.txt"
 
 em++ \
   -std=c++17 \
