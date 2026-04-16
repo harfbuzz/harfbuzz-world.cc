@@ -5,6 +5,7 @@
 # Prerequisites:
 #   - HarfBuzz checkout at $HB_SRC (default ~/harfbuzz).
 #   - Emscripten toolchain on PATH:  source emsdk/emsdk_env.sh
+#   - python3 (used to regenerate js/hb-docs.js from the tree).
 #
 # Outputs hb-world.js + hb-world.wasm at the repo root, where
 # the static HTML can load them via <script src="hb-world.js">.
@@ -32,6 +33,11 @@ if [ -z "$HB_SRC" ] || [ ! -f "$HB_SRC/src/harfbuzz-world.cc" ]; then
   exit 1
 fi
 echo "Using HarfBuzz source at: $HB_SRC"
+
+# Refresh js/hb-docs.js from this HarfBuzz tree so the snippet
+# linkifier stays in sync with the docs the wasm was built
+# against.
+HB_SRC="$HB_SRC" python3 "$HERE/scripts/gen-hb-docs.py"
 
 em++ \
   -std=c++17 \
