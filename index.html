@@ -287,12 +287,14 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         <input type="checkbox" id="shape-show-names" checked>
         glyph names
       </label>
-      <label class="glyph-id-toggle">
+      <label class="cluster-level-toggle"
+             title="How HarfBuzz groups cluster values. MONOTONE variants preserve left-to-right ordering; GRAPHEMES merge combining marks with their base character. Change to see the cluster column update.">
         clusters:
         <select id="shape-cluster-level">
-          <option value="0">monotone graphemes</option>
+          <option value="0">monotone graphemes (default)</option>
           <option value="1">monotone characters</option>
           <option value="2">characters</option>
+          <option value="3">graphemes</option>
         </select>
       </label>
     </h2>

@@ -536,13 +536,28 @@ pre.code {
 .glyph-table tbody tr.cluster-break td {
   border-top: 2px solid var(--accent);
 }
-.glyph-id-toggle {
+.glyph-id-toggle,
+.cluster-level-toggle {
   font-size: 1rem;
   font-weight: normal;
   color: var(--muted);
   margin-left: 1rem;
 }
 .glyph-id-toggle input { margin-right: 0.25rem; vertical-align: middle; }
+.cluster-level-toggle {
+  cursor: help;
+}
+.cluster-level-toggle select {
+  font: inherit;
+  font-size: 0.92rem;
+  margin-left: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--fg);
+  cursor: pointer;
+}
 
 /* Subset tab: visual savings indicator. */
 .subset-stats {
