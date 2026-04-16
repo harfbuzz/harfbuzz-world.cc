@@ -599,6 +599,7 @@ pre.code {
   color: var(--muted);
   cursor: help;
 }
+.subset-instantiate[hidden] { display: none; }
 .subset-instantiate input { margin-right: 0.25rem; vertical-align: middle; }
 .subset-counts {
   margin: 0.75rem 0 1rem;
