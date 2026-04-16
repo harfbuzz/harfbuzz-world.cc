@@ -16,6 +16,7 @@
 
 #include <emscripten.h>
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -656,21 +657,52 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
   hb_buffer_guess_segment_properties (buf);
   hb_shape (font, buf, nullptr, 0);
 
-  /* Total advance + metrics in pixel*SCALE; divide by SCALE
-   * to get the pixel-sized buffer dimensions. */
+  /* Seed extents with the logical line box (advance × ascender+descender)
+   * in pixel*SCALE Y-up units, then union with each glyph's translated ink
+   * box so descender ink and italic LSBs aren't clipped — matching the
+   * EXPAND mode the vector path uses. */
   unsigned len = hb_buffer_get_length (buf);
   hb_glyph_info_t    *info = hb_buffer_get_glyph_infos (buf, nullptr);
   hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, nullptr);
-  float total_x = 0.f;
-  for (unsigned i = 0; i < len; i++) total_x += pos[i].x_advance;
   hb_font_extents_t fe;
   hb_font_get_h_extents (font, &fe);
-  float ascent  = (float) fe.ascender;
-  float descent = (float) -fe.descender;
+  float ascent  = (float) fe.ascender;   /* positive */
+  float descent = (float) -fe.descender; /* positive */
+  float total_x = 0.f;
+  for (unsigned i = 0; i < len; i++) total_x += pos[i].x_advance;
+
+  float box_x_min = 0.f,        box_x_max = total_x;
+  float box_y_min = -descent,   box_y_max = ascent;
+  {
+    float pen_x = 0.f, pen_y = 0.f;
+    for (unsigned i = 0; i < len; i++)
+    {
+      hb_glyph_extents_t ge;
+      if (hb_font_get_glyph_extents (font, info[i].codepoint, &ge))
+      {
+        float gx = pen_x + (float) pos[i].x_offset;
+        float gy = pen_y + (float) pos[i].y_offset;
+        float ix1 = gx + (float) ge.x_bearing;
+        float ix2 = ix1 + (float) ge.width;
+        float iy2 = gy + (float) ge.y_bearing;       /* top in Y-up */
+        float iy1 = iy2 + (float) ge.height;         /* height is negative */
+        if (ix1 < box_x_min) box_x_min = ix1;
+        if (ix2 > box_x_max) box_x_max = ix2;
+        if (iy1 < box_y_min) box_y_min = iy1;
+        if (iy2 > box_y_max) box_y_max = iy2;
+      }
+      pen_x += (float) pos[i].x_advance;
+      pen_y += (float) pos[i].y_advance;
+    }
+  }
 
   const float inv_scale = 1.f / (float) SCALE;
-  unsigned w = (unsigned) (total_x * inv_scale + 0.999f);
-  unsigned h = (unsigned) ((ascent + descent) * inv_scale + 0.999f);
+  int ext_x = (int) floorf (box_x_min * inv_scale);
+  int ext_y = (int) floorf (box_y_min * inv_scale);
+  int ext_x2 = (int) ceilf  (box_x_max * inv_scale);
+  int ext_y2 = (int) ceilf  (box_y_max * inv_scale);
+  unsigned w = (unsigned) (ext_x2 - ext_x);
+  unsigned h = (unsigned) (ext_y2 - ext_y);
   if (!w || !h)
   {
     hb_buffer_destroy (buf);
@@ -693,13 +725,11 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
   else
     d = hb_raster_draw_create_or_fail ();
 
-  /* Extents live in pixel space (Y-up): bottom edge at
-   * -descent_px places the descender row at row 0 of the buffer
-   * and the ascender row at the top.  pen_y stays at 0
-   * (baseline) and gets scaled by set_scale_factor below. */
+  /* Extents in pixel space, Y-up: ext_y is the bottom edge of the
+   * unioned box (negative for typical horizontal text since the
+   * baseline sits above the descender ink). */
   unsigned stride = w * 4;
-  int descent_px = (int) (descent * inv_scale);
-  hb_raster_extents_t ext = { 0, -descent_px, w, h, stride };
+  hb_raster_extents_t ext = { ext_x, ext_y, w, h, stride };
 
   uint8_t *out = (p || d) ? (uint8_t *) calloc ((size_t) stride * h, 1)
                           : nullptr;
