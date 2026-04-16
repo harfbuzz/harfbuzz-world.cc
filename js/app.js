@@ -63,7 +63,7 @@
   }
 
   function currentSize () {
-    return parseFloat (sizeInput.value) || 48;
+    return parseFloat (sizeInput.value) || 72;
   }
 
   /* Demos.  Each exposes a render() that reads the shared
@@ -883,7 +883,7 @@ hb_blob_destroy (blob);`
         url.searchParams.set ("text", textInput.value);
       else
         url.searchParams.delete ("text");
-      if (sizeInput.value && sizeInput.value !== "48") url.searchParams.set ("size", sizeInput.value);
+      if (sizeInput.value && sizeInput.value !== "72") url.searchParams.set ("size", sizeInput.value);
       else                                             url.searchParams.delete ("size");
       /* Only touch ?variations when the current font has
        * sliders to read.  If we're on a font with no axes
