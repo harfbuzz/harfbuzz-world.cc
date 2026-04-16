@@ -521,6 +521,7 @@ hb_blob_destroy (blob);`
   });
 
   const vectorRender = document.getElementById ("vector-render");
+  const vectorStats  = document.getElementById ("vector-stats");
   const dlSvg        = document.getElementById ("vector-dl-svg");
   const dlPdf        = document.getElementById ("vector-dl-pdf");
   const svgSizeEl    = document.getElementById ("vector-svg-size");
@@ -533,6 +534,15 @@ hb_blob_destroy (blob);`
       const svg = Module.UTF8ToString (svgPtr);
       Module._web_free_string (svgPtr);
       vectorRender.innerHTML = svg;
+      const svgEl = vectorRender.querySelector ("svg");
+      if (svgEl) {
+        const w = svgEl.getAttribute ("width");
+        const h = svgEl.getAttribute ("height");
+        const vb = svgEl.getAttribute ("viewBox");
+        vectorStats.textContent = w + " × " + h + " px (viewBox: " + vb + ")";
+      } else {
+        vectorStats.textContent = "";
+      }
       if (svgUrl) URL.revokeObjectURL (svgUrl);
       const svgBlob = new Blob ([svg], { type: "image/svg+xml" });
       svgUrl = URL.createObjectURL (svgBlob);
