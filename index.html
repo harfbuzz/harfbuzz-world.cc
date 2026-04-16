@@ -317,14 +317,14 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
        glyph that could participate in shaping survives.  The
        preview renders with the produced subset font, so what
        you see is what it can shape.</p>
+    <div id="subset-render" class="render">
+      <span id="subset-preview"></span>
+    </div>
     <label class="subset-instantiate" id="subset-instantiate-label" hidden
            title="Pin every variation axis to its current slider value. Result is a static font (no fvar / gvar) at the current instance; smaller and portable to places that don't support variable fonts.">
       <input type="checkbox" id="subset-instantiate" checked>
       Instantiate variations (pin to current values)
     </label>
-    <div id="subset-render" class="render">
-      <span id="subset-preview"></span>
-    </div>
     <div class="subset-stats">
       <div class="subset-bar">
         <div class="subset-bar-fill" id="subset-bar-fill"></div>
