@@ -466,6 +466,14 @@ body[data-active="gpu"] .size-label { display: none; }
   max-width: 100%;
   height: auto;
 }
+/* Subset tab renders text via the DOM (not SVG/canvas), so
+ * set line-height: 1 so flex-centering lines up the glyph em
+ * box with the other demos' tight-bbox previews instead of a
+ * taller line box with half-leading. */
+.render #subset-preview {
+  display: block;
+  line-height: 1;
+}
 .render canvas {
   /* Display at native pixel-buffer size; .render's min-height
    * must not stretch the canvas. */
