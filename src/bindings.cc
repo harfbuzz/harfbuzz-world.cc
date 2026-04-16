@@ -379,7 +379,6 @@ render (hb_vector_format_t format,
    * pixels in the produced SVG/PDF. */
   int fsp = (int) (font_size_px * (float) SCALE);
   hb_font_set_scale (font, fsp, fsp);
-  /* Re-shape with the new scale. */
   hb_buffer_clear_contents (buf);
   hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
   hb_buffer_guess_segment_properties (buf);
@@ -447,16 +446,10 @@ render (hb_vector_format_t format,
   hb_font_get_h_extents (font, &fe);
   float asc = (float) fe.ascender;   /* positive */
   float desc = (float) fe.descender; /* negative */
-  /* Advances and h_extents come back in pixel*SCALE; the
-   * output extents we hand to set_extents go through as-is
-   * (no scale_factor applied), so divide down to pixels. */
-  const float inv_scale = 1.f / (float) SCALE;
-  hb_vector_extents_t logical = {
-    0.f,
-    -asc * inv_scale,
-    total_x * inv_scale,
-    (asc - desc) * inv_scale,
-  };
+  /* Advances and h_extents are in input space (pixel*SCALE);
+   * set_extents divides by the context's scale_factor, so we
+   * pass them through without pre-scaling. */
+  hb_vector_extents_t logical = { 0.f, -asc, total_x, asc - desc };
   if (p) hb_vector_paint_set_extents (p, &logical);
   else   hb_vector_draw_set_extents  (d, &logical);
 
