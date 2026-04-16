@@ -556,6 +556,12 @@ hb_blob_destroy (blob);`
   const subsetDlSize  = document.getElementById ("subset-dl-size");
   const subsetPreview = document.getElementById ("subset-preview");
   const subsetBarFill = document.getElementById ("subset-bar-fill");
+  const subsetInstantiate = document.getElementById ("subset-instantiate");
+  const subsetInstantiateLabel = document.getElementById ("subset-instantiate-label");
+  subsetInstantiate.addEventListener ("change", () => {
+    Module._web_set_subset_instantiate (subsetInstantiate.checked ? 1 : 0);
+    renderActive ();
+  });
   const subsetHint    = document.getElementById ("subset-hint");
   const subsetCounts  = document.getElementById ("subset-counts");
   const subsetTablesWrap = document.getElementById ("subset-tables-wrap");
@@ -996,6 +1002,9 @@ hb_blob_destroy (blob);`
       return entry;
     });
     axesEl.hidden = currentAxes.length === 0;
+    /* Subset's "Instantiate variations" toggle only matters
+     * for variable fonts; hide it when there are no axes. */
+    subsetInstantiateLabel.hidden = currentAxes.length === 0;
     /* If the URL carries an explicit variations= setting,
      * apply it to the sliders before pushing wasm + GPU
      * state.  Lets a shared link reproduce the view. */

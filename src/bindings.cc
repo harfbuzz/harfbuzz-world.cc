@@ -161,6 +161,18 @@ void web_set_cluster_level (unsigned lvl)
   g_cluster_level = lvl;
 }
 
+/* When set, web_subset() pins every fvar axis in the input
+ * font to its current g_variations value (and omits any
+ * axis not mentioned).  Result: a static instance rather
+ * than a trimmed variable font. */
+static bool g_subset_instantiate = true;
+
+EMSCRIPTEN_KEEPALIVE
+void web_set_subset_instantiate (int on)
+{
+  g_subset_instantiate = !!on;
+}
+
 static void
 apply_variations (hb_font_t *font)
 {
@@ -547,6 +559,39 @@ uint8_t *web_subset (const uint8_t *font_bytes, unsigned font_len,
   {
     hb_face_destroy (face);
     return nullptr;
+  }
+
+  /* Pin each fvar axis at its current g_variations value
+   * so the subset comes out as a static instance.  Axes not
+   * mentioned in g_variations are pinned at their default. */
+  if (g_subset_instantiate)
+  {
+    unsigned axis_count = hb_ot_var_get_axis_count (face);
+    if (axis_count)
+    {
+      hb_ot_var_axis_info_t axes[32];
+      unsigned got = sizeof axes / sizeof axes[0];
+      hb_ot_var_get_axis_infos (face, 0, &got, axes);
+      for (unsigned i = 0; i < got; i++)
+      {
+        float value = axes[i].default_value;
+        /* Scan g_variations for "tag=value" matching this axis. */
+        const char *p = g_variations;
+        while (p && *p)
+        {
+          const char *end = strchr (p, ',');
+          int len = end ? (int) (end - p) : (int) strlen (p);
+          hb_variation_t v;
+          if (hb_variation_from_string (p, len, &v) && v.tag == axes[i].tag)
+          {
+            value = v.value;
+            break;
+          }
+          p = end ? end + 1 : nullptr;
+        }
+        hb_subset_input_pin_axis_location (input, face, axes[i].tag, value);
+      }
+    }
   }
 
   /* Add every Unicode codepoint in the text to the subset's
