@@ -1176,16 +1176,7 @@ hb_blob_destroy (blob);`
 
   /* Presets: one-click combos of text + font, covering the
    * three scripts we ship fonts for. */
-  const PRESETS = {
-    english:    { text: "hello-world!",      font: "fonts/NotoSans.ttf",   name: "NotoSans" },
-    hebrew:     { text: "שלום עולם",          font: "fonts/NotoSansHebrew.ttf",     name: "NotoSansHebrew" },
-    arabic:     { text: "مرحبا بالعالم",      font: "fonts/NotoNaskhArabic.ttf",    name: "NotoNaskhArabic" },
-    urdu:       { text: "ہیلو دنیا",          font: "fonts/NotoNastaliqUrdu.ttf",   name: "NotoNastaliqUrdu" },
-    hindi:      { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
-    thai:       { text: "สวัสดีชาวโลก",       font: "fonts/NotoSansThaiLooped.ttf", name: "NotoSansThaiLooped" },
-    chinese:    { text: "你好世界！",          font: "fonts/NotoSansCJKsc-subset.otf", name: "NotoSansCJKsc" },
-    emoji:      { text: "🫠🌈❤️🦋🥰",         font: "fonts/NotoColorEmoji.ttf",          name: "NotoColorEmoji" },
-  };
+  /* PRESETS is defined in js/presets.js, loaded before this script. */
   function applyPreset (key) {
     const p = PRESETS[key];
     if (!p) return false;
