@@ -5,6 +5,42 @@
  * Active demo is driven by the URL hash (#shape, #vector,
  * #raster) so links and back/forward navigation work. */
 
+/* IndexedDB font cache — persists uploaded font bytes across
+ * page reloads, keyed by a short SHA-256 hash prefix. */
+const FONT_DB = "hb-font-cache";
+const FONT_STORE = "fonts";
+function fontDbOpen () {
+  return new Promise ((resolve, reject) => {
+    const req = indexedDB.open (FONT_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore (FONT_STORE);
+    req.onsuccess = () => resolve (req.result);
+    req.onerror = () => reject (req.error);
+  });
+}
+function fontDbPut (db, key, value) {
+  return new Promise ((resolve, reject) => {
+    const tx = db.transaction (FONT_STORE, "readwrite");
+    const store = tx.objectStore (FONT_STORE);
+    store.clear ();
+    store.put (value, key);
+    tx.oncomplete = () => resolve ();
+    tx.onerror = () => reject (tx.error);
+  });
+}
+function fontDbGet (db, key) {
+  return new Promise ((resolve, reject) => {
+    const tx = db.transaction (FONT_STORE, "readonly");
+    const req = tx.objectStore (FONT_STORE).get (key);
+    req.onsuccess = () => resolve (req.result);
+    req.onerror = () => reject (req.error);
+  });
+}
+async function fontHash (bytes) {
+  const digest = await crypto.subtle.digest ("SHA-256", bytes);
+  const arr = Array.from (new Uint8Array (digest));
+  return arr.slice (0, 8).map (b => b.toString (16).padStart (2, "0")).join ("");
+}
+
 (async function main () {
   const Module = await createHbWorld ();
 
@@ -1179,11 +1215,18 @@ hb_blob_destroy (blob);`
     const name = file.name.replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
     setFontBytes (bytes, name);
     customFontActive = true;
-    /* File-uploaded fonts have no URL to point at; drop
-     * any lingering ?font= so the location bar doesn't lie.
-     * Keep any ?preset= -- its text still applies. */
+    /* Cache in IndexedDB so the font survives page refresh.
+     * Put font=@<hash> in the URL so the reload path can
+     * look it up. */
     const u = new URL (location.href);
-    u.searchParams.delete ("font");
+    try {
+      const hash = await fontHash (bytes);
+      const db = await fontDbOpen ();
+      await fontDbPut (db, hash, { bytes, name });
+      u.searchParams.set ("font", "@" + hash);
+    } catch {
+      u.searchParams.delete ("font");
+    }
     history.replaceState (null, "", u);
     reflectActivePreset ();
   }
@@ -1348,9 +1391,22 @@ hb_blob_destroy (blob);`
     } catch { return false; }
   }
 
-  /* Initial state.  Priority: ?preset=<name> > ?font=URL >
-   * bundled NotoSans.  ?preset wins because it owns both
-   * text and font, so a preset link reproduces the view. */
+  /* Try to restore a cached font from IndexedDB.
+   * Returns true if font=@hash was found and loaded. */
+  async function loadFontFromCache (hash) {
+    try {
+      const db = await fontDbOpen ();
+      const entry = await fontDbGet (db, hash);
+      if (!entry) return false;
+      setFontBytes (new Uint8Array (entry.bytes), entry.name);
+      customFontActive = true;
+      return true;
+    } catch { return false; }
+  }
+
+  /* Initial state.  Priority: ?preset=<name> > ?font=@hash >
+   * ?font=URL > bundled NotoSans.  ?preset wins because it owns
+   * both text and font, so a preset link reproduces the view. */
   const params = new URLSearchParams (location.search);
   const textParam = params.get ("text");
   const sizeParam = params.get ("size");
@@ -1359,18 +1415,18 @@ hb_blob_destroy (blob);`
   if (textParam !== null) textInput.value = textParam;
   if (sizeParam !== null) sizeInput.value = sizeParam;
   if (presetParam && PRESETS[presetParam]) {
-    /* ?text= and ?font= in the URL override the preset's
-     * defaults -- the explicit URL wins.  textInput.value
-     * was already set from ?text= above.  When ?font= is
-     * present we treat it as a user-custom font (so subsequent
-     * preset clicks won't replace it); otherwise it's the
-     * preset's bundled font. */
     if (textParam === null) textInput.value = PRESETS[presetParam].text;
     const fontChoice = fontUrlParam || PRESETS[presetParam].font;
     const nameChoice = fontUrlParam ? null : PRESETS[presetParam].name;
-    await loadFontUrl (fontChoice, nameChoice,
-                       fontUrlParam ? { silentUrl: true }
-                                    : { silentUrl: true, preset: true });
+    if (fontUrlParam && fontUrlParam.startsWith ("@"))
+      await loadFontFromCache (fontUrlParam.slice (1));
+    else
+      await loadFontUrl (fontChoice, nameChoice,
+                         fontUrlParam ? { silentUrl: true }
+                                      : { silentUrl: true, preset: true });
+  } else if (fontUrlParam && fontUrlParam.startsWith ("@")) {
+    if (!(await loadFontFromCache (fontUrlParam.slice (1))))
+      await loadFontUrl ("fonts/NotoSans.ttf", "NotoSans", { silentUrl: true, preset: true });
   } else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam, null, { silentUrl: true })))
     await loadFontUrl ("fonts/NotoSans.ttf", "NotoSans", { silentUrl: true, preset: true });
 
