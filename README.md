@@ -8,7 +8,7 @@ single-file HarfBuzz amalgamation) in a real project.
 ## Tabs
 
 - **embed** — how to drop `harfbuzz-world.cc` into your own
-  C/C++ build, with HB_TINY + HB_HAS_* flags explained.
+  C/C++ build, with configuration flags explained.
 - **shape** — text → glyph stream as JSON, with an SVG
   preview of the laid-out result.
 - **subset** — subsets the current font for the current
