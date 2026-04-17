@@ -131,15 +131,29 @@ async function fontHash (bytes) {
     const idCol = useName ? "name" : "gid";
 
     /* Build a cluster → input-codepoints map.  Cluster values
-     * are UTF-8 byte offsets; convert via TextEncoder. */
+     * are UTF-8 byte offsets.  Collect the set of cluster values
+     * from the glyph output, then map each byte offset in the
+     * input to the cluster it belongs to. */
     const text = textInput.value;
-    const clusterCodes = {};
+    const clusterSet = new Set (glyphs.map ((g) => g.cluster));
+    const sortedClusters = [...clusterSet].sort ((a, b) => a - b);
+
+    const byteToChar = [];
     let byteIdx = 0;
     for (const ch of text) {
+      const cp = ch.codePointAt (0);
       const charBytes = new TextEncoder ().encode (ch).length;
-      if (!(byteIdx in clusterCodes)) clusterCodes[byteIdx] = [];
-      clusterCodes[byteIdx].push (ch.codePointAt (0));
+      byteToChar.push ({ byteIdx, cp });
       byteIdx += charBytes;
+    }
+
+    const clusterCodes = {};
+    for (const { byteIdx: bi, cp } of byteToChar) {
+      let owner = 0;
+      for (const c of sortedClusters)
+        if (c <= bi) owner = c; else break;
+      if (!(owner in clusterCodes)) clusterCodes[owner] = [];
+      clusterCodes[owner].push (cp);
     }
 
     function formatInput (cluster) {

@@ -300,13 +300,11 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         glyph names
       </label>
       <label class="cluster-level-toggle"
-             title="How HarfBuzz groups cluster values. MONOTONE variants keep clusters monotonically ordered (same direction as the buffer — LTR or RTL); GRAPHEMES merge combining marks with their base. Mostly matters for text with combining marks (Arabic, Hebrew, Thai) or reordering shapers (Indic, Khmer). Change to see the cluster column update.">
+             title="Graphemes merge combining marks with their base character. Characters keep each codepoint as a separate cluster.">
         clusters:
         <select id="shape-cluster-level">
-          <option value="0">monotone graphemes (default)</option>
-          <option value="1">monotone characters</option>
-          <option value="2">characters</option>
-          <option value="3">graphemes</option>
+          <option value="0">graphemes (default)</option>
+          <option value="1">characters</option>
         </select>
       </label>
     </div>
