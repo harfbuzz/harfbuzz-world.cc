@@ -607,6 +607,7 @@ pre.code {
   margin: 0.6rem 0 0;
   color: var(--muted);
   font-size: 0.95rem;
+  text-align: center;
 }
 .subset-instantiate {
   display: block;

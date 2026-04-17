@@ -992,7 +992,7 @@ hb_blob_destroy (blob);`
        * own text if a preset is selected, otherwise the
        * site-wide default (hello-world!).  Only emit ?text
        * when the user has typed something different. */
-      const defaultText = (cur && PRESETS[cur]) ? PRESETS[cur].text : "hello-world!";
+      const defaultText = (cur && PRESETS[cur]) ? PRESETS[cur].text : PRESETS[DEFAULT_PRESET].text;
       if (textInput.value && textInput.value !== defaultText)
         url.searchParams.set ("text", textInput.value);
       else
@@ -1179,6 +1179,7 @@ hb_blob_destroy (blob);`
   /* Presets: one-click combos of text + font, covering the
    * three scripts we ship fonts for. */
   /* PRESETS is defined in js/presets.js, loaded before this script. */
+  const DEFAULT_PRESET = "emoji";
   function applyPreset (key) {
     const p = PRESETS[key];
     if (!p) return false;
@@ -1415,7 +1416,7 @@ hb_blob_destroy (blob);`
   }
 
   /* Initial state.  Priority: ?preset=<name> > ?font=@hash >
-   * ?font=URL > bundled NotoSans.  ?preset wins because it owns
+   * ?font=URL > emoji preset.  ?preset wins because it owns
    * both text and font, so a preset link reproduces the view. */
   const params = new URLSearchParams (location.search);
   const textParam = params.get ("text");
@@ -1436,9 +1437,9 @@ hb_blob_destroy (blob);`
                                       : { silentUrl: true, preset: true });
   } else if (fontUrlParam && fontUrlParam.startsWith ("@")) {
     if (!(await loadFontFromCache (fontUrlParam.slice (1))))
-      await loadFontUrl ("fonts/NotoSans.ttf", "NotoSans", { silentUrl: true, preset: true });
+      applyPreset (DEFAULT_PRESET);
   } else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam, null, { silentUrl: true })))
-    await loadFontUrl ("fonts/NotoSans.ttf", "NotoSans", { silentUrl: true, preset: true });
+    applyPreset (DEFAULT_PRESET);
 
   reflectActivePreset ();
   fromHash ();
