@@ -245,7 +245,7 @@ body[data-active="gpu"] .size-label { display: none; }
   align-items: center;
   margin-bottom: 1.25rem;
 }
-.demo-controls { margin: 1rem 0 0; text-align: center; }
+.demo-controls { margin: 1rem 0 0; justify-content: center; }
 
 .axes[hidden] { display: none; }
 .axes {
@@ -615,6 +615,7 @@ pre.code {
   margin: 0.75rem 0 1rem;
   color: var(--muted);
   font-size: 1rem;
+  text-align: center;
 }
 .subset-tables { margin-top: 1rem; }
 .subset-tables h3 {

@@ -469,25 +469,17 @@ hb_blob_destroy (blob);`
     applyTheme (effectiveTheme () === "dark" ? "light" : "dark");
   });
 
-  /* All snippet <details> share an open/closed state, and it
-   * round-trips via ?snippet=1 in the URL so a shared link
-   * lands in the same view. */
+  /* All snippet <details> share an open/closed state. */
   const snippetEls = () => document.querySelectorAll ("details.snippet");
   function applySnippetOpen (open) {
     snippetEls ().forEach ((d) => { d.open = open; });
   }
-  applySnippetOpen (new URLSearchParams (location.search).get ("snippet") === "1");
   snippetEls ().forEach ((d) => {
     d.addEventListener ("toggle", () => {
       const open = d.open;
-      /* Mirror to siblings without recursing back into toggle. */
       snippetEls ().forEach ((other) => {
         if (other !== d && other.open !== open) other.open = open;
       });
-      const u = new URL (location.href);
-      if (open) u.searchParams.set ("snippet", "1");
-      else      u.searchParams.delete ("snippet");
-      history.replaceState (null, "", u);
     });
     /* Buttons in the summary: action without toggling the
      * details.  preventDefault on click stops the native
@@ -499,16 +491,25 @@ hb_blob_destroy (blob);`
     }
     const linkBtn = d.querySelector (".snippet-link");
     const copyBtn = d.querySelector (".snippet-copy");
-    if (linkBtn)
+    if (linkBtn) {
+      function linkUrl () {
+        const tab = d.dataset.snippet || activeName || "embed";
+        const sub = d.classList.contains ("subset-tables") ? "tables" : "code";
+        const u = new URL (location.href);
+        u.hash = tab + "/" + sub;
+        return u.toString ();
+      }
+      linkBtn.addEventListener ("mouseenter", () => {
+        linkBtn.title = linkUrl ();
+      });
       linkBtn.addEventListener ("click", (e) => {
         e.preventDefault ();
         e.stopPropagation ();
-        const u = new URL (location.href);
-        u.searchParams.set ("snippet", "1");
-        navigator.clipboard.writeText (u.toString ()).then (
+        navigator.clipboard.writeText (linkUrl ()).then (
           () => flash (linkBtn, "✓"),
           () => flash (linkBtn, "✗"));
       });
+    }
     if (copyBtn)
       copyBtn.addEventListener ("click", (e) => {
         e.preventDefault ();
@@ -896,7 +897,17 @@ hb_blob_destroy (blob);`
 
   function fromHash () {
     const h = (location.hash || "").replace (/^#/, "");
-    activate (h || "embed");
+    const parts = h.split ("/");
+    const tab = parts[0] || "embed";
+    const sub = parts[1] || "";
+    activate (tab);
+    /* Open a sub-section if the hash requests it. */
+    if (sub === "code")
+      applySnippetOpen (true);
+    if (sub === "tables") {
+      const tw = document.getElementById ("subset-tables-wrap");
+      if (tw) { tw.hidden = false; tw.open = true; }
+    }
   }
   window.addEventListener ("hashchange", fromHash);
 
