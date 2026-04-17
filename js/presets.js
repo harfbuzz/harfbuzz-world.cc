@@ -10,5 +10,5 @@ const PRESETS = {
   thai:       { text: "สวัสดีชาวโลก",       font: "fonts/NotoSansThaiLooped.ttf", name: "NotoSansThaiLooped" },
   khmer:      { text: "សួស្ដីពិភពលោក",      font: "fonts/NotoSansKhmer.ttf",      name: "NotoSansKhmer" },
   chinese:    { text: "你好世界！",          font: "fonts/NotoSansCJKsc-subset.otf", name: "NotoSansCJKsc" },
-  emoji:      { text: "🫠🌈👨🏼‍❤️‍👩🏻🦋🥰",   font: "fonts/NotoColorEmoji-subset.ttf",   name: "NotoColorEmoji" },
+  emoji:      { text: "🫠🌈👩🏻‍❤️‍👨🏼🦋🥰",   font: "fonts/NotoColorEmoji-subset.ttf",   name: "NotoColorEmoji" },
 };
