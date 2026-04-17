@@ -245,7 +245,7 @@ body[data-active="gpu"] .size-label { display: none; }
   align-items: center;
   margin-bottom: 1.25rem;
 }
-.demo-controls { margin: 1rem 0 0; }
+.demo-controls { margin: 1rem 0 0; text-align: center; }
 
 .axes[hidden] { display: none; }
 .axes {
@@ -538,16 +538,21 @@ pre.code {
   font-weight: 600;
   color: var(--muted);
   background: var(--soft);
+  border-bottom: 3px solid var(--accent);
 }
 .glyph-table tbody tr.cluster-break td {
   border-top: 2px solid var(--accent);
+}
+.shape-controls {
+  margin: 0.75rem 0 1rem;
+  text-align: center;
 }
 .glyph-id-toggle,
 .cluster-level-toggle {
   font-size: 1rem;
   font-weight: normal;
   color: var(--muted);
-  margin-left: 1rem;
+  margin-right: 1rem;
   cursor: help;
 }
 .glyph-id-toggle input { margin-right: 0.25rem; vertical-align: middle; }
@@ -598,6 +603,7 @@ pre.code {
 .subset-instantiate {
   display: block;
   margin: 0.75rem 0 0.25rem;
+  text-align: center;
   font-size: 1rem;
   font-weight: normal;
   color: var(--muted);

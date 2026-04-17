@@ -838,9 +838,9 @@ hb_blob_destroy (blob);`
       const imageData = new ImageData (new Uint8ClampedArray (bgra.buffer), w, h);
       rasterCtx.putImageData (imageData, 0, 0);
       rasterStats.textContent =
-        w + " × " + h + " px"
-        + " (" + (w / dpr) + " × " + (h / dpr) + " CSS px"
-        + " · " + dpr + "× DPR)";
+        w + " \u00d7 " + h + " px"
+        + " (" + Math.round (w / dpr) + " \u00d7 " + Math.round (h / dpr) + " CSS px"
+        + " \u00b7 " + (Math.round (dpr * 100) / 100) + "\u00d7 DPR)";
       /* Re-encode the canvas as PNG for the download link.
        * toBlob is async; the previous URL is revoked once the
        * new one lands so we don't leak. */
