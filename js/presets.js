@@ -8,6 +8,7 @@ const PRESETS = {
   urdu:       { text: "ہیلو دنیا",          font: "fonts/NotoNastaliqUrdu.ttf",   name: "NotoNastaliqUrdu" },
   hindi:      { text: "नमस्ते दुनिया",       font: "fonts/NotoSansDevanagari.ttf", name: "NotoSansDevanagari" },
   thai:       { text: "สวัสดีชาวโลก",       font: "fonts/NotoSansThaiLooped.ttf", name: "NotoSansThaiLooped" },
+  khmer:      { text: "សួស្ដីពិភពលោក",      font: "fonts/NotoSansKhmer.ttf",      name: "NotoSansKhmer" },
   chinese:    { text: "你好世界！",          font: "fonts/NotoSansCJKsc-subset.otf", name: "NotoSansCJKsc" },
   emoji:      { text: "🫠🌈❤️🦋🥰",         font: "fonts/NotoColorEmoji.ttf",          name: "NotoColorEmoji" },
 };
