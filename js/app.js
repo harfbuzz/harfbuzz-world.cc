@@ -713,14 +713,16 @@ hb_blob_destroy (blob);`
       renderSnippet ("subset");
       subsetTablesWrap.hidden = false;
 
-      /* If the loaded font is itself already small (i.e. mostly
-       * meta + tiny glyf), the savings will be modest no matter
-       * what.  Surface that so users don't think the subsetter
-       * is broken. */
-      if (savedPct < 20 && origStats.num_glyphs < 5000) {
-        subsetHint.textContent = "Low savings: this font is already tight"
-          + " (" + origStats.num_glyphs + " glyphs)."
-          + " Try a large family to see the subsetter shine.";
+      /* Detect pre-subsetted fonts (e.g. NotoSansCJKsc-subset.otf)
+       * and hint that low savings are expected. */
+      const u = new URL (location.href);
+      const fontParam = u.searchParams.get ("font") || "";
+      const presetKey = u.searchParams.get ("preset") || "";
+      const fontPath = fontParam || (PRESETS[presetKey] && PRESETS[presetKey].font) || "";
+      const preSubsetted = fontPath.includes ("-subset.");
+      if (preSubsetted) {
+        subsetHint.innerHTML = "<b>Note:</b> this font is already subsetted"
+          + " to just a few characters, hence showing little savings.";
         subsetHint.hidden = false;
       } else {
         subsetHint.hidden = true;
