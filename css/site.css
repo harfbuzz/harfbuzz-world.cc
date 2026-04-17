@@ -108,13 +108,9 @@ header {
   display: block;
   border-radius: 16px;
   background: #e8c870;
-  padding: 0;
   transition: opacity 0.3s ease;
 }
 .logo-corner img.logo-out { opacity: 0; }
-.logo-corner img.logo-padded {
-  padding: 6px;
-}
 #theme-toggle {
   margin-left: auto;
   align-self: center;

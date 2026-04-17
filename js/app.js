@@ -929,11 +929,9 @@ hb_blob_destroy (blob);`
     const logo = document.getElementById ("site-logo");
     if (logo) {
       const newSrc = logoMap[name] || "hb-world.png";
-      const padded = name === "shape" || name === "embed";
       if (!logo.src.endsWith (newSrc)) {
         const next = logo.cloneNode (false);
         next.src = newSrc;
-        next.classList.toggle ("logo-padded", padded);
         next.classList.add ("logo-out");
         next.id = "";
         logo.parentNode.appendChild (next);
@@ -944,8 +942,6 @@ hb_blob_destroy (blob);`
           logo.remove ();
           next.id = "site-logo";
         }, 350);
-      } else {
-        logo.classList.toggle ("logo-padded", padded);
       }
     }
     demos[name].render ();
