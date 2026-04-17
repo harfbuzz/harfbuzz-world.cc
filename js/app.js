@@ -184,7 +184,8 @@ async function fontHash (bytes) {
     const advCols = ["x_advance", "y_advance"].filter ((c) => glyphs.some ((g) => g[c] !== 0));
     const visibleOpt = [...advCols, "x_offset", "y_offset"];
     const glyphCols = [idCol, ...visibleOpt];
-    const headers = ["char", "code", "glyph", ...visibleOpt];
+    const colLabels = { x_advance: "advance", y_advance: "y-advance", x_offset: "x-offset", y_offset: "y-offset" };
+    const headers = ["char", "code", "glyph", ...visibleOpt.map ((c) => colLabels[c] || c)];
     let html = "<table class=\"glyph-table\"><thead><tr>";
     for (const h of headers) html += "<th>" + h + "</th>";
     html += "</tr></thead><tbody>";
