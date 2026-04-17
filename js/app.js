@@ -817,10 +817,17 @@ hb_blob_destroy (blob);`
       Module._web_free_string (dataPtr);
       Module._free (wPtr); Module._free (hPtr);
 
-      /* BGRA -> RGBA in place. */
+      /* BGRA premultiplied -> RGBA non-premultiplied in place.
+       * ImageData expects non-premultiplied RGBA. */
       for (let i = 0; i < bgra.length; i += 4) {
-        const b = bgra[i], r = bgra[i + 2];
-        bgra[i] = r; bgra[i + 2] = b;
+        const b = bgra[i], g = bgra[i + 1], r = bgra[i + 2], a = bgra[i + 3];
+        if (a > 0 && a < 255) {
+          bgra[i]     = Math.min (255, (r * 255 / a + 0.5) | 0);
+          bgra[i + 1] = Math.min (255, (g * 255 / a + 0.5) | 0);
+          bgra[i + 2] = Math.min (255, (b * 255 / a + 0.5) | 0);
+        } else {
+          bgra[i] = r; bgra[i + 2] = b;
+        }
       }
       rasterCanvas.width = w;
       rasterCanvas.height = h;
