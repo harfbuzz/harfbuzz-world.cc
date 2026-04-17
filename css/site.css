@@ -102,6 +102,7 @@ header {
   height: 96px;
   display: block;
   border-radius: 16px;
+  background: #e8c870;
 }
 #theme-toggle {
   margin-left: auto;
