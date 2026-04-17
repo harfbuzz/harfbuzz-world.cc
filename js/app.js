@@ -179,9 +179,10 @@ async function fontHash (bytes) {
     for (const s of clusterSpans)
       if (s) spanMap.set (s.start, s.span);
 
-    /* Only show columns that have non-zero values. */
-    const optCols = ["x_advance", "y_advance", "x_offset", "y_offset"];
-    const visibleOpt = optCols.filter ((c) => glyphs.some ((g) => g[c] !== 0));
+    /* Hide advance columns that are all zero (e.g. y_advance
+     * in horizontal text); always show offsets. */
+    const advCols = ["x_advance", "y_advance"].filter ((c) => glyphs.some ((g) => g[c] !== 0));
+    const visibleOpt = [...advCols, "x_offset", "y_offset"];
     const glyphCols = [idCol, ...visibleOpt];
     const headers = ["char", "code", "glyph", ...visibleOpt];
     let html = "<table class=\"glyph-table\"><thead><tr>";
