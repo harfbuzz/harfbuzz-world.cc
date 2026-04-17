@@ -875,6 +875,11 @@ hb_blob_destroy (blob);`
       d.section.hidden = (n !== name);
     for (const t of tabs)
       t.classList.toggle ("active", t.dataset.demo === name);
+    const logoMap = { embed: "hb-world.png", shape: "hb-shape.png",
+                      subset: "hb-subset.png", raster: "hb-raster.png",
+                      vector: "hb-vector.png", gpu: "hb-gpu.png" };
+    const logo = document.getElementById ("site-logo");
+    if (logo) logo.src = logoMap[name] || "hb-world.png";
     demos[name].render ();
   }
 

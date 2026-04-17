@@ -39,6 +39,12 @@ echo "Using HarfBuzz source at: $HB_SRC"
 # against.
 python3 "$HERE/scripts/gen-hb-docs.py" "$HB_SRC/docs/harfbuzz-sections.txt"
 
+# Copy library logos from the harfbuzz docs tree.
+cp "$HB_SRC/docs/HarfBuzz.png" "$HERE/hb-shape.png"
+for lib in subset raster vector gpu; do
+  cp "$HB_SRC/docs/hb-$lib.png" "$HERE/hb-$lib.png"
+done
+
 em++ \
   -std=c++17 \
   -Oz -flto \
