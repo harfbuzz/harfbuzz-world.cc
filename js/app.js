@@ -889,7 +889,10 @@ hb_blob_destroy (blob);`
                       subset: "hb-subset.png", raster: "hb-raster.png",
                       vector: "hb-vector.png", gpu: "hb-gpu.png" };
     const logo = document.getElementById ("site-logo");
-    if (logo) logo.src = logoMap[name] || "hb-world.png";
+    if (logo) {
+      logo.src = logoMap[name] || "hb-world.png";
+      logo.classList.toggle ("logo-padded", name === "shape" || name === "embed");
+    }
     demos[name].render ();
   }
 

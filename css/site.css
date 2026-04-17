@@ -103,6 +103,10 @@ header {
   display: block;
   border-radius: 16px;
   background: #e8c870;
+  padding: 0;
+}
+.logo-corner img.logo-padded {
+  padding: 6px;
 }
 #theme-toggle {
   margin-left: auto;
