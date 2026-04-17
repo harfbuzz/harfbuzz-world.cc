@@ -156,13 +156,11 @@ async function fontHash (bytes) {
       clusterCodes[owner].push (cp);
     }
 
-    function formatInput (cluster) {
+    function formatInputCols (cluster) {
       const codes = clusterCodes[cluster] || [];
-      return codes.map ((cp) => {
-        const ch = String.fromCodePoint (cp);
-        const hex = "U+" + cp.toString (16).toUpperCase ().padStart (4, "0");
-        return escapeHtml (ch) + " " + hex;
-      }).join ("<br>");
+      const chars = codes.map ((cp) => escapeHtml (String.fromCodePoint (cp))).join ("<br>");
+      const hexes = codes.map ((cp) => "U+" + cp.toString (16).toUpperCase ().padStart (4, "0")).join ("<br>");
+      return { chars, hexes };
     }
 
     /* Count how many consecutive glyphs share each cluster
@@ -181,8 +179,11 @@ async function fontHash (bytes) {
     for (const s of clusterSpans)
       if (s) spanMap.set (s.start, s.span);
 
-    const glyphCols = [idCol, "x_advance", "y_advance", "x_offset", "y_offset"];
-    const headers = ["text", "glyph", "x_advance", "y_advance", "x_offset", "y_offset"];
+    /* Only show columns that have non-zero values. */
+    const optCols = ["x_advance", "y_advance", "x_offset", "y_offset"];
+    const visibleOpt = optCols.filter ((c) => glyphs.some ((g) => g[c] !== 0));
+    const glyphCols = [idCol, ...visibleOpt];
+    const headers = ["char", "code", "glyph", ...visibleOpt];
     let html = "<table class=\"glyph-table\"><thead><tr>";
     for (const h of headers) html += "<th>" + h + "</th>";
     html += "</tr></thead><tbody>";
@@ -193,8 +194,10 @@ async function fontHash (bytes) {
       html += "<tr" + cls + ">";
       if (spanMap.has (i)) {
         const span = spanMap.get (i);
-        html += "<td" + (span > 1 ? " rowspan=\"" + span + "\"" : "") + ">"
-              + formatInput (g.cluster) + "</td>";
+        const rs = span > 1 ? " rowspan=\"" + span + "\"" : "";
+        const { chars, hexes } = formatInputCols (g.cluster);
+        html += "<td" + rs + ">" + chars + "</td>";
+        html += "<td" + rs + ">" + hexes + "</td>";
       }
       for (const c of glyphCols) html += "<td>" + escapeHtml (g[c]) + "</td>";
       html += "</tr>";
