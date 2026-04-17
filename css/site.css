@@ -557,6 +557,12 @@ pre.code {
 .glyph-table tbody tr.cluster-break td {
   border-top: 2px solid var(--accent);
 }
+.shape-note {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
+}
 .shape-controls {
   margin: 0.75rem 0 1rem;
   text-align: center;
