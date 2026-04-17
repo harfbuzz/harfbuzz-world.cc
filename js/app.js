@@ -530,7 +530,9 @@ hb_blob_destroy (blob);`
     const linkBtn = d.querySelector (".snippet-link");
     const copyBtn = d.querySelector (".snippet-copy");
     if (linkBtn) {
-      const sub = d.dataset.snippet ? "code" : "tables";
+      const sub = d.dataset.snippet ? "code"
+                : d.dataset.section ? d.dataset.section
+                : "tables";
       function linkUrl () {
         const tab = d.dataset.snippet || activeName || "embed";
         const u = new URL (location.href);
@@ -964,10 +966,12 @@ hb_blob_destroy (blob);`
     if (sub === "code") {
       applySnippetOpen (true);
       scrollTarget = document.querySelector ("#demo-" + tab + " details[data-snippet]");
-    }
-    if (sub === "tables") {
+    } else if (sub === "tables") {
       const tw = document.getElementById ("subset-tables-wrap");
       if (tw) { tw.hidden = false; tw.open = true; scrollTarget = tw; }
+    } else if (sub) {
+      const el = document.querySelector ("#demo-" + tab + " details[data-section=\"" + sub + "\"]");
+      if (el) { el.open = true; scrollTarget = el; }
     }
     if (scrollTarget)
       setTimeout (() => scrollTarget.scrollIntoView ({ behavior: "smooth", block: "start" }), 100);
