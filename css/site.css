@@ -353,6 +353,8 @@ body[data-active="gpu"] .size-label { display: none; }
   border: 1px solid var(--accent);
   padding: 0.4rem 0.8rem;
   border-radius: 4px;
+  color: var(--accent);
+  cursor: pointer;
 }
 .controls a:hover {
   background: var(--highlight);
@@ -360,24 +362,28 @@ body[data-active="gpu"] .size-label { display: none; }
 }
 
 /* Font picker: button + dropdown menu with three sources. */
-.font-picker { position: relative; }
+.font-picker { position: relative; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+.font-label { color: var(--muted); font-size: 0.95rem; }
 .font-button {
   font: inherit;
   cursor: pointer;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--accent);
   padding: 0.4rem 0.7rem;
   border-radius: 4px;
-  color: var(--fg);
+  color: var(--accent);
   background: var(--bg-card);
   min-width: 14rem;
   text-align: left;
   transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
 }
 .font-button:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-hi);
   background: var(--highlight);
 }
 .font-prefix { color: var(--muted); margin-right: 0.25rem; }
+.font-arrow { margin-left: auto; font-size: 0.8em; }
 
 .font-menu[hidden] { display: none; }
 .font-menu {
