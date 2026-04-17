@@ -130,34 +130,59 @@ async function fontHash (bytes) {
     const useName = shapeShowNames.checked;
     const idCol = useName ? "name" : "gid";
 
-    /* Build a cluster → input-characters map.  Cluster values
+    /* Build a cluster → input-codepoints map.  Cluster values
      * are UTF-8 byte offsets; convert via TextEncoder. */
     const text = textInput.value;
-    const utf8 = new TextEncoder ().encode (text);
-    const clusterChars = {};
+    const clusterCodes = {};
     let byteIdx = 0;
     for (const ch of text) {
       const charBytes = new TextEncoder ().encode (ch).length;
-      if (!(byteIdx in clusterChars)) clusterChars[byteIdx] = "";
-      clusterChars[byteIdx] += ch;
+      if (!(byteIdx in clusterCodes)) clusterCodes[byteIdx] = [];
+      clusterCodes[byteIdx].push (ch.codePointAt (0));
       byteIdx += charBytes;
     }
 
-    const cols = [idCol, "input", "x_advance", "y_advance", "x_offset", "y_offset"];
-    const headers = ["glyph", "input", "x_advance", "y_advance", "x_offset", "y_offset"];
+    function formatInput (cluster) {
+      const codes = clusterCodes[cluster] || [];
+      return codes.map ((cp) => {
+        const ch = String.fromCodePoint (cp);
+        const hex = "U+" + cp.toString (16).toUpperCase ().padStart (4, "0");
+        return escapeHtml (ch) + " " + hex;
+      }).join ("<br>");
+    }
+
+    /* Count how many consecutive glyphs share each cluster
+     * so the input cell can use rowspan. */
+    const clusterSpans = [];
+    for (let i = 0; i < glyphs.length; ) {
+      let j = i + 1;
+      while (j < glyphs.length && glyphs[j].cluster === glyphs[i].cluster) j++;
+      clusterSpans.push ({ start: i, span: j - i });
+      for (let k = i; k < j; k++) clusterSpans.push (null);
+      i = j;
+    }
+    /* clusterSpans[i] is non-null only for the first glyph of
+     * each cluster run; null entries are the continuation rows. */
+    const spanMap = new Map ();
+    for (const s of clusterSpans)
+      if (s) spanMap.set (s.start, s.span);
+
+    const glyphCols = [idCol, "x_advance", "y_advance", "x_offset", "y_offset"];
+    const headers = ["text", "glyph", "x_advance", "y_advance", "x_offset", "y_offset"];
     let html = "<table class=\"glyph-table\"><thead><tr>";
     for (const h of headers) html += "<th>" + h + "</th>";
     html += "</tr></thead><tbody>";
     let prevCluster = glyphs[0].cluster;
-    for (const g of glyphs) {
+    for (let i = 0; i < glyphs.length; i++) {
+      const g = glyphs[i];
       const cls = g.cluster !== prevCluster ? " class=\"cluster-break\"" : "";
       html += "<tr" + cls + ">";
-      for (const c of cols) {
-        if (c === "input")
-          html += "<td>" + escapeHtml (clusterChars[g.cluster] || "") + "</td>";
-        else
-          html += "<td>" + escapeHtml (g[c]) + "</td>";
+      if (spanMap.has (i)) {
+        const span = spanMap.get (i);
+        html += "<td" + (span > 1 ? " rowspan=\"" + span + "\"" : "") + ">"
+              + formatInput (g.cluster) + "</td>";
       }
+      for (const c of glyphCols) html += "<td>" + escapeHtml (g[c]) + "</td>";
       html += "</tr>";
       prevCluster = g.cluster;
     }
