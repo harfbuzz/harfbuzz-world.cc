@@ -143,8 +143,8 @@ async function fontHash (bytes) {
       byteIdx += charBytes;
     }
 
-    const cols = [idCol, "cluster", "input", "x_advance", "y_advance", "x_offset", "y_offset"];
-    const headers = ["glyph", "cluster", "input", "x_advance", "y_advance", "x_offset", "y_offset"];
+    const cols = [idCol, "input", "x_advance", "y_advance", "x_offset", "y_offset"];
+    const headers = ["glyph", "input", "x_advance", "y_advance", "x_offset", "y_offset"];
     let html = "<table class=\"glyph-table\"><thead><tr>";
     for (const h of headers) html += "<th>" + h + "</th>";
     html += "</tr></thead><tbody>";
