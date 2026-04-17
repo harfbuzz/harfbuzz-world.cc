@@ -350,6 +350,7 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
       <input type="checkbox" id="subset-instantiate" checked>
       Instantiate variations (pin to current values)
     </label>
+    <p class="subset-hint" id="subset-hint" hidden></p>
     <div class="subset-stats">
       <div class="subset-bar">
         <div class="subset-bar-fill" id="subset-bar-fill"></div>
@@ -365,7 +366,6 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
           of <strong id="subset-orig-size">—</strong>
         </span>
       </div>
-      <p class="subset-hint" id="subset-hint" hidden></p>
     </div>
     <div class="subset-counts" id="subset-counts"></div>
     <div class="controls demo-controls">
