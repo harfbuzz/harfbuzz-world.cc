@@ -686,6 +686,9 @@ pre.code {
   background: var(--soft);
   border-color: var(--rule);
 }
+.snippet-body {
+  padding: 0.5rem 1rem;
+}
 .snippet pre {
   margin: 0;
   padding: 0.55rem 1rem;
