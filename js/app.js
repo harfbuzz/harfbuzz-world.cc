@@ -182,10 +182,9 @@ async function fontHash (bytes) {
     /* Hide advance columns that are all zero (e.g. y_advance
      * in horizontal text); always show offsets. */
     const advCols = ["x_advance", "y_advance"].filter ((c) => glyphs.some ((g) => g[c] !== 0));
-    const visibleOpt = [...advCols, "x_offset", "y_offset"];
-    const glyphCols = [idCol, ...visibleOpt];
-    const colLabels = { x_advance: "advance", y_advance: "y-advance", x_offset: "x-offset", y_offset: "y-offset" };
-    const headers = ["char", "code", "glyph", ...visibleOpt.map ((c) => colLabels[c] || c)];
+    const glyphCols = [idCol, ...advCols, "_position"];
+    const colLabels = { x_advance: "advance", y_advance: "y-advance", _position: "position" };
+    const headers = ["char", "code", "glyph", ...advCols.map ((c) => colLabels[c] || c), "position"];
     let html = "<table class=\"glyph-table\"><thead><tr>";
     for (const h of headers) html += "<th>" + h + "</th>";
     html += "</tr></thead><tbody>";
@@ -201,7 +200,12 @@ async function fontHash (bytes) {
         html += "<td" + rs + ">" + chars + "</td>";
         html += "<td" + rs + ">" + hexes + "</td>";
       }
-      for (const c of glyphCols) html += "<td>" + escapeHtml (g[c]) + "</td>";
+      for (const c of glyphCols) {
+        if (c === "_position")
+          html += "<td>" + g.x_offset + ", " + g.y_offset + "</td>";
+        else
+          html += "<td>" + escapeHtml (g[c]) + "</td>";
+      }
       html += "</tr>";
       prevCluster = g.cluster;
     }
