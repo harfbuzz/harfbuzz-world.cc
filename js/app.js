@@ -469,32 +469,34 @@ hb_blob_destroy (blob);`
     applyTheme (effectiveTheme () === "dark" ? "light" : "dark");
   });
 
-  /* All snippet <details> share an open/closed state. */
-  const snippetEls = () => document.querySelectorAll ("details.snippet");
+  /* Code snippet <details> (those with data-snippet) share
+   * open/closed state so toggling one opens/closes all. */
+  const codeSnippetEls = () => document.querySelectorAll ("details[data-snippet]");
   function applySnippetOpen (open) {
-    snippetEls ().forEach ((d) => { d.open = open; });
+    codeSnippetEls ().forEach ((d) => { d.open = open; });
   }
-  snippetEls ().forEach ((d) => {
+  /* Sync code snippets open/close together. */
+  codeSnippetEls ().forEach ((d) => {
     d.addEventListener ("toggle", () => {
       const open = d.open;
-      snippetEls ().forEach ((other) => {
+      codeSnippetEls ().forEach ((other) => {
         if (other !== d && other.open !== open) other.open = open;
       });
     });
-    /* Buttons in the summary: action without toggling the
-     * details.  preventDefault on click stops the native
-     * "summary toggles details" behavior. */
-    function flash (btn, msg) {
-      const old = btn.textContent;
-      btn.textContent = msg;
-      setTimeout (() => { btn.textContent = old; }, 1200);
-    }
+  });
+  /* Wire up buttons on all .snippet details (code + tables). */
+  function flash (btn, msg) {
+    const old = btn.textContent;
+    btn.textContent = msg;
+    setTimeout (() => { btn.textContent = old; }, 1200);
+  }
+  document.querySelectorAll ("details.snippet").forEach ((d) => {
     const linkBtn = d.querySelector (".snippet-link");
     const copyBtn = d.querySelector (".snippet-copy");
     if (linkBtn) {
+      const sub = d.dataset.snippet ? "code" : "tables";
       function linkUrl () {
         const tab = d.dataset.snippet || activeName || "embed";
-        const sub = d.classList.contains ("subset-tables") ? "tables" : "code";
         const u = new URL (location.href);
         u.hash = tab + "/" + sub;
         return u.toString ();
@@ -902,12 +904,17 @@ hb_blob_destroy (blob);`
     const sub = parts[1] || "";
     activate (tab);
     /* Open a sub-section if the hash requests it. */
-    if (sub === "code")
+    let scrollTarget = null;
+    if (sub === "code") {
       applySnippetOpen (true);
+      scrollTarget = document.querySelector ("#demo-" + tab + " details[data-snippet]");
+    }
     if (sub === "tables") {
       const tw = document.getElementById ("subset-tables-wrap");
-      if (tw) { tw.hidden = false; tw.open = true; }
+      if (tw) { tw.hidden = false; tw.open = true; scrollTarget = tw; }
     }
+    if (scrollTarget)
+      setTimeout (() => scrollTarget.scrollIntoView ({ behavior: "smooth", block: "start" }), 100);
   }
   window.addEventListener ("hashchange", fromHash);
 
