@@ -129,9 +129,22 @@ async function fontHash (bytes) {
     if (!glyphs.length) { shapeGlyphs.innerHTML = ""; return; }
     const useName = shapeShowNames.checked;
     const idCol = useName ? "name" : "gid";
-    const idHeader = useName ? "glyph name" : "glyph index";
-    const cols = [idCol, "cluster", "x_advance", "y_advance", "x_offset", "y_offset"];
-    const headers = [idHeader, "cluster", "x_advance", "y_advance", "x_offset", "y_offset"];
+
+    /* Build a cluster → input-characters map.  Cluster values
+     * are UTF-8 byte offsets; convert via TextEncoder. */
+    const text = textInput.value;
+    const utf8 = new TextEncoder ().encode (text);
+    const clusterChars = {};
+    let byteIdx = 0;
+    for (const ch of text) {
+      const charBytes = new TextEncoder ().encode (ch).length;
+      if (!(byteIdx in clusterChars)) clusterChars[byteIdx] = "";
+      clusterChars[byteIdx] += ch;
+      byteIdx += charBytes;
+    }
+
+    const cols = [idCol, "cluster", "input", "x_advance", "y_advance", "x_offset", "y_offset"];
+    const headers = ["glyph", "cluster", "input", "x_advance", "y_advance", "x_offset", "y_offset"];
     let html = "<table class=\"glyph-table\"><thead><tr>";
     for (const h of headers) html += "<th>" + h + "</th>";
     html += "</tr></thead><tbody>";
@@ -139,7 +152,12 @@ async function fontHash (bytes) {
     for (const g of glyphs) {
       const cls = g.cluster !== prevCluster ? " class=\"cluster-break\"" : "";
       html += "<tr" + cls + ">";
-      for (const c of cols) html += "<td>" + escapeHtml (g[c]) + "</td>";
+      for (const c of cols) {
+        if (c === "input")
+          html += "<td>" + escapeHtml (clusterChars[g.cluster] || "") + "</td>";
+        else
+          html += "<td>" + escapeHtml (g[c]) + "</td>";
+      }
       html += "</tr>";
       prevCluster = g.cluster;
     }
