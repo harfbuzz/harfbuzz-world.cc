@@ -926,8 +926,25 @@ hb_blob_destroy (blob);`
                       vector: "hb-vector.png", gpu: "hb-gpu.png" };
     const logo = document.getElementById ("site-logo");
     if (logo) {
-      logo.src = logoMap[name] || "hb-world.png";
-      logo.classList.toggle ("logo-padded", name === "shape" || name === "embed");
+      const newSrc = logoMap[name] || "hb-world.png";
+      const padded = name === "shape" || name === "embed";
+      if (!logo.src.endsWith (newSrc)) {
+        const next = logo.cloneNode (false);
+        next.src = newSrc;
+        next.classList.toggle ("logo-padded", padded);
+        next.classList.add ("logo-out");
+        next.id = "";
+        logo.parentNode.appendChild (next);
+        next.offsetHeight; /* force reflow */
+        next.classList.remove ("logo-out");
+        logo.classList.add ("logo-out");
+        setTimeout (() => {
+          logo.remove ();
+          next.id = "site-logo";
+        }, 350);
+      } else {
+        logo.classList.toggle ("logo-padded", padded);
+      }
     }
     demos[name].render ();
   }

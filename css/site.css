@@ -96,15 +96,22 @@ header {
   right: 0;
   display: block;
   line-height: 0;
+  width: 96px;
+  height: 96px;
 }
 .logo-corner img {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 96px;
   height: 96px;
   display: block;
   border-radius: 16px;
   background: #e8c870;
   padding: 0;
+  transition: opacity 0.3s ease;
 }
+.logo-corner img.logo-out { opacity: 0; }
 .logo-corner img.logo-padded {
   padding: 6px;
 }
