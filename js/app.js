@@ -183,8 +183,8 @@ async function fontHash (bytes) {
      * in horizontal text); always show offsets. */
     const advCols = ["x_advance", "y_advance"].filter ((c) => glyphs.some ((g) => g[c] !== 0));
     const glyphCols = [idCol, ...advCols, "_position"];
-    const colLabels = { x_advance: "advance", y_advance: "y-advance", _position: "position" };
-    const headers = ["char", "code", "glyph", ...advCols.map ((c) => colLabels[c] || c), "position"];
+    const colLabels = { x_advance: "advance", y_advance: "y-advance", _position: "offset" };
+    const headers = ["char", "code", "glyph", ...advCols.map ((c) => colLabels[c] || c), "offset"];
     let html = "<table class=\"glyph-table\"><thead><tr>";
     for (const h of headers) html += "<th>" + h + "</th>";
     html += "</tr></thead><tbody>";
