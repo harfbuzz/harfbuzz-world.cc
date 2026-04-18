@@ -840,7 +840,7 @@ hb_blob_destroy (blob);`
         'src: url(data:font/ttf;base64,' + b64 + ') format("truetype"); } ' +
         '@font-palette-values --hbPalette { font-family: "' + family + '"; ' +
         'base-palette: ' + palIdx + '; }';
-      subsetPreview.style.fontFamily = '"' + family + '", system-ui, sans-serif';
+      subsetPreview.style.fontFamily = '"' + family + '"';
       subsetPreview.style.fontSize = currentSize () + "px";
       subsetPreview.style.fontVariationSettings = cssVariationSettings ();
       subsetPreview.style.fontPalette = "--hbPalette";
