@@ -264,7 +264,24 @@ body[data-active="gpu"] .size-label { display: none; }
   align-items: center;
   margin-bottom: 0.5rem;
 }
-.controls-row2 { margin-bottom: 1.25rem; }
+.controls-row2 { margin-bottom: 0.5rem; }
+.script-warning {
+  text-align: center;
+  color: #a03030;
+  font-size: 0.95rem;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 1rem;
+  background: #fde8e8;
+  border: 1px solid #e8a0a0;
+  border-radius: 6px;
+}
+.script-warning[hidden] { display: none; }
+:root[data-theme="dark"] .script-warning,
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .script-warning {
+  color: #f0a0a0;
+  background: #3a2020;
+  border-color: #5a3030;
+} }
 .demo-controls { margin: 1rem 0 0; justify-content: center; }
 
 .var-picker { position: relative; }
@@ -471,7 +488,7 @@ body[data-active="gpu"] .size-label { display: none; }
   border-radius: 4px;
   color: var(--accent);
   background: var(--bg-card);
-  min-width: 10rem;
+  min-width: 14rem;
   text-align: left;
   transition: border-color 0.15s, background 0.15s;
   display: flex;

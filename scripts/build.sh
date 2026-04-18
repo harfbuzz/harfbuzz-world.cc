@@ -55,7 +55,7 @@ em++ \
   -sALLOW_MEMORY_GROWTH=1 \
   -sMODULARIZE=1 \
   -sEXPORT_NAME=createHbWorld \
-  -sEXPORTED_FUNCTIONS='["_web_render_svg","_web_render_pdf","_web_render_raster","_web_shape_json","_web_subset","_web_font_family","_web_font_axes","_web_font_features","_web_set_variations","_web_set_features","_web_set_foreground","_web_set_background","_web_free_string","_malloc","_free"]' \
+  -sEXPORTED_FUNCTIONS='["_web_render_svg","_web_render_pdf","_web_render_raster","_web_shape_json","_web_subset","_web_font_family","_web_font_axes","_web_font_features","_web_is_multi_script","_web_set_variations","_web_set_features","_web_set_foreground","_web_set_background","_web_free_string","_malloc","_free"]' \
   -sEXPORTED_RUNTIME_METHODS='["UTF8ToString","stringToUTF8","HEAPU8","lengthBytesUTF8"]' \
   -o "$HERE/hb-world.js"
 

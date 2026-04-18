@@ -454,6 +454,36 @@ char *web_font_features (const uint8_t *font_bytes, unsigned font_len,
   return out;
 }
 
+/* Returns true if @utf8_text contains codepoints from more than
+ * one Unicode script (ignoring Common and Inherited). */
+EMSCRIPTEN_KEEPALIVE
+int web_is_multi_script (const char *utf8_text)
+{
+  hb_buffer_t *buf = hb_buffer_create ();
+  hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
+  unsigned len = hb_buffer_get_length (buf);
+  hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, nullptr);
+
+  hb_unicode_funcs_t *uf = hb_unicode_funcs_get_default ();
+  hb_script_t first = HB_SCRIPT_INVALID;
+  bool multi = false;
+  for (unsigned i = 0; i < len; i++)
+  {
+    hb_script_t s = hb_unicode_script (uf, info[i].codepoint);
+    if (s == HB_SCRIPT_COMMON || s == HB_SCRIPT_INHERITED)
+      continue;
+    if (first == HB_SCRIPT_INVALID)
+      first = s;
+    else if (s != first)
+    {
+      multi = true;
+      break;
+    }
+  }
+  hb_buffer_destroy (buf);
+  return multi;
+}
+
 /* Common: produce a shaped buffer for (font_bytes, text). */
 static hb_buffer_t *
 shape (const uint8_t *font_bytes, unsigned font_len,

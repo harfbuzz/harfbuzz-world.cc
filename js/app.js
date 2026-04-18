@@ -70,6 +70,7 @@ async function fontHash (bytes) {
     refreshAxes ();
     refreshPalettes ();
     refreshFeatures ();
+    checkMultiScript ();
     renderActive ();
   }
 
@@ -1136,7 +1137,14 @@ hb_blob_destroy (blob);`
       reflectActivePreset ();
     }, 200);
   }
-  textInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
+  const scriptWarn = document.getElementById ("script-warning");
+  function checkMultiScript () {
+    withText ((textPtr) => {
+      const multi = Module._web_is_multi_script (textPtr);
+      if (scriptWarn) scriptWarn.hidden = !multi;
+    });
+  }
+  textInput.addEventListener ("input", () => { renderActive (); checkMultiScript (); syncUrl (); });
   sizeInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
 
   /* Variable axes: pull fvar info from the current font,
