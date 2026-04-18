@@ -569,6 +569,17 @@ hb_blob_destroy (blob);`
   }
   let gpuReady = false;
   let gpuDark = false;
+  let currentPalettes = [];
+  function bestPaletteForTheme (theme) {
+    const flag = theme === "dark" ? 2 : 1;
+    return currentPalettes.findIndex ((p) => p.flags & flag);
+  }
+  function applyPalette (idx) {
+    paletteSelect.value = String (idx);
+    Module._web_set_palette (idx);
+    if (gpuReady)
+      postGpu ({ kind: "palette", value: idx });
+  }
   function syncRenderColors (theme) {
     if (theme === "dark") {
       Module._web_set_foreground (255, 255, 255, 255);
@@ -582,6 +593,9 @@ hb_blob_destroy (blob);`
       postGpu ({ kind: "dark", value: wantDark });
       gpuDark = wantDark;
     }
+    const themePal = bestPaletteForTheme (theme);
+    if (themePal >= 0)
+      applyPalette (themePal);
   }
   function applyTheme (t) {
     document.documentElement.dataset.theme = t;
@@ -1239,17 +1253,15 @@ hb_blob_destroy (blob);`
   }
   function refreshPalettes () {
     const ptr = Module._web_font_palettes (fontPtr, fontBuf.length);
-    const palettes = JSON.parse (Module.UTF8ToString (ptr));
+    currentPalettes = JSON.parse (Module.UTF8ToString (ptr));
     Module._web_free_string (ptr);
     paletteSelect.innerHTML = "";
-    Module._web_set_palette (0);
-    if (gpuReady)
-      postGpu ({ kind: "palette", value: 0 });
-    if (palettes.length < 2) {
+    applyPalette (0);
+    if (currentPalettes.length < 2) {
       paletteLabel.hidden = true;
       return;
     }
-    palettes.forEach ((p, i) => {
+    currentPalettes.forEach ((p, i) => {
       const opt = document.createElement ("option");
       opt.value = i;
       opt.textContent = paletteLabelFor (p, i);
@@ -1259,20 +1271,14 @@ hb_blob_destroy (blob);`
      * the picker.  Falls back to 0 (and any out-of-range index
      * also lands on 0) so we never load with an invalid pick. */
     const urlPal = parseInt (new URLSearchParams (location.search).get ("palette"), 10);
-    const startIdx = (urlPal >= 0 && urlPal < palettes.length) ? urlPal : 0;
-    paletteSelect.value = String (startIdx);
-    if (startIdx) {
-      Module._web_set_palette (startIdx);
-      if (gpuReady)
-        postGpu ({ kind: "palette", value: startIdx });
-    }
+    const themePal = bestPaletteForTheme (effectiveTheme ());
+    const startIdx = (urlPal >= 0 && urlPal < currentPalettes.length) ? urlPal
+                   : themePal >= 0 ? themePal : 0;
+    applyPalette (startIdx);
     paletteLabel.hidden = false;
   }
   paletteSelect.addEventListener ("change", () => {
-    const idx = parseInt (paletteSelect.value, 10) || 0;
-    Module._web_set_palette (idx);
-    if (gpuReady)
-      postGpu ({ kind: "palette", value: idx });
+    applyPalette (parseInt (paletteSelect.value, 10) || 0);
     renderActive ();
     syncUrl ();
   });
