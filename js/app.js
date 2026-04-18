@@ -1312,6 +1312,8 @@ hb_blob_destroy (blob);`
     Module.stringToUTF8 (s, buf, s.length + 1);
     Module._web_set_features (buf);
     Module._free (buf);
+    if (gpuReady)
+      postGpu ({ kind: "features", value: s });
     renderActive ();
     syncUrl ();
   }
