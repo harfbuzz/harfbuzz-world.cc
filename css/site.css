@@ -536,6 +536,25 @@ body[data-active="gpu"] .size-label { display: none; }
 .font-prefix { color: var(--muted); margin-right: 0.25rem; }
 .font-arrow { margin-left: auto; font-size: 0.8em; }
 
+.font-full-load[hidden] { display: none; }
+.font-full-load {
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px dashed var(--accent);
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  color: var(--accent);
+  background: var(--bg-card);
+  transition: border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.font-full-load:hover:not(:disabled) {
+  border-style: solid;
+  background: var(--highlight);
+}
+.font-full-load:disabled { cursor: progress; opacity: 0.75; }
+
 .font-menu[hidden] { display: none; }
 .font-menu {
   position: absolute;

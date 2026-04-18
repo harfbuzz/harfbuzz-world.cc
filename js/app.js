@@ -5,14 +5,26 @@
  * Active demo is driven by the URL hash (#shape, #vector,
  * #raster) so links and back/forward navigation work. */
 
-/* IndexedDB font cache — persists uploaded font bytes across
- * page reloads, keyed by a short SHA-256 hash prefix. */
+/* IndexedDB font cache.
+ *  - FONT_STORE: the last uploaded custom font, keyed by SHA-256
+ *    hash prefix, cleared on each put (LRU-of-1).
+ *  - FULL_FONT_STORE: full versions of shipped subset presets
+ *    (emoji, CJK) that the user explicitly opted into
+ *    downloading, keyed by the full-font URL, never cleared so
+ *    subsequent uploads don't wipe the expensive download. */
 const FONT_DB = "hb-font-cache";
 const FONT_STORE = "fonts";
+const FULL_FONT_STORE = "fullFonts";
 function fontDbOpen () {
   return new Promise ((resolve, reject) => {
-    const req = indexedDB.open (FONT_DB, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore (FONT_STORE);
+    const req = indexedDB.open (FONT_DB, 2);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains (FONT_STORE))
+        db.createObjectStore (FONT_STORE);
+      if (!db.objectStoreNames.contains (FULL_FONT_STORE))
+        db.createObjectStore (FULL_FONT_STORE);
+    };
     req.onsuccess = () => resolve (req.result);
     req.onerror = () => reject (req.error);
   });
@@ -31,6 +43,22 @@ function fontDbGet (db, key) {
   return new Promise ((resolve, reject) => {
     const tx = db.transaction (FONT_STORE, "readonly");
     const req = tx.objectStore (FONT_STORE).get (key);
+    req.onsuccess = () => resolve (req.result);
+    req.onerror = () => reject (req.error);
+  });
+}
+function fontDbPutFull (db, url, value) {
+  return new Promise ((resolve, reject) => {
+    const tx = db.transaction (FULL_FONT_STORE, "readwrite");
+    tx.objectStore (FULL_FONT_STORE).put (value, url);
+    tx.oncomplete = () => resolve ();
+    tx.onerror = () => reject (tx.error);
+  });
+}
+function fontDbGetFull (db, url) {
+  return new Promise ((resolve, reject) => {
+    const tx = db.transaction (FULL_FONT_STORE, "readonly");
+    const req = tx.objectStore (FULL_FONT_STORE).get (url);
     req.onsuccess = () => resolve (req.result);
     req.onerror = () => reject (req.error);
   });
@@ -76,6 +104,7 @@ async function fontHash (bytes) {
     refreshPalettes ();
     refreshFeatures ();
     checkMultiScript ();
+    refreshFullNote ();
     renderActive ();
   }
 
@@ -91,6 +120,7 @@ async function fontHash (bytes) {
   const fontGfList    = document.getElementById ("font-gf-list");
   const fontGfLoad    = document.getElementById ("font-gf-load");
   const fontNameEl    = document.getElementById ("font-name");
+  const fontFullLoad  = document.getElementById ("font-full-load");
   const dropOverlay   = document.getElementById ("drop-overlay");
   const paletteLabel  = document.getElementById ("palette-label");
   const paletteSelect = document.getElementById ("palette");
@@ -841,12 +871,14 @@ hb_blob_destroy (blob);`
       subsetTablesWrap.hidden = false;
 
       /* Detect pre-subsetted fonts (e.g. NotoSansCJKsc-subset.otf)
-       * and hint that low savings are expected. */
+       * and hint that low savings are expected.  Skip when the
+       * user has opted into the full version of a preset — they
+       * get real savings against the full font. */
       const u = new URL (location.href);
       const fontParam = u.searchParams.get ("font") || "";
       const presetKey = u.searchParams.get ("preset") || "";
       const fontPath = fontParam || (PRESETS[presetKey] && PRESETS[presetKey].font) || "";
-      const preSubsetted = fontPath.includes ("-subset.");
+      const preSubsetted = fontPath.includes ("-subset.") && !currentIsPresetFull;
       if (preSubsetted) {
         subsetHint.innerHTML = "<b>Note:</b> this font is already subsetted"
           + " to just a few characters, hence showing little savings.";
@@ -1075,6 +1107,7 @@ hb_blob_destroy (blob);`
       }
     }
     demos[name].render ();
+    refreshFullNote ();
   }
 
   function renderActive () {
@@ -1179,7 +1212,7 @@ hb_blob_destroy (blob);`
     checkMultiScript ();
     syncUrl ();
   });
-  textInput.addEventListener ("input", () => { renderActive (); checkMultiScript (); updateTextReset (); syncUrl (); });
+  textInput.addEventListener ("input", () => { renderActive (); checkMultiScript (); updateTextReset (); refreshFullNote (); syncUrl (); });
   sizeInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
 
   /* Variable axes: pull fvar info from the current font,
@@ -1432,9 +1465,97 @@ hb_blob_destroy (blob);`
    * three scripts we ship fonts for. */
   /* PRESETS is defined in js/presets.js, loaded before this script. */
   const DEFAULT_PRESET = "emoji";
+
+  /* Full-font opt-in.  A few presets ship a small subset but
+   * advertise a larger full version at `fullUrl`.  We surface a
+   * note offering the upgrade, cache opted-in downloads in
+   * IndexedDB keyed by URL, and prefer the cached full on
+   * subsequent preset hops.  The note only appears when the
+   * subset is likely to actually bite: user has typed custom
+   * text, or the subset demo is active. */
+  let currentPresetKey = null;
+  let currentIsPresetFull = false;
+  let activeFullDownload = null;
+  function formatBytes (n) {
+    return (n / 1048576).toFixed (1).replace (/\.0$/, "") + "MB";
+  }
+  function refreshFullNote () {
+    const p = currentPresetKey && PRESETS[currentPresetKey];
+    const edited = p && textInput.value !== p.text;
+    const onSubset = activeName === "subset";
+    const show = p && p.fullUrl && !customFontActive && !currentIsPresetFull
+              && !activeFullDownload && (edited || onSubset);
+    if (!show) { fontFullLoad.hidden = true; return; }
+    fontFullLoad.hidden = false;
+    fontFullLoad.disabled = false;
+    fontFullLoad.textContent = "↓ Full " + p.fullName
+                             + " (" + formatBytes (p.fullSize) + ")";
+  }
+  async function tryLoadFullFromCache (p) {
+    try {
+      const db = await fontDbOpen ();
+      const entry = await fontDbGetFull (db, p.fullUrl);
+      if (!entry) return false;
+      currentIsPresetFull = true;
+      setFontBytes (new Uint8Array (entry.bytes), entry.name);
+      return true;
+    } catch { return false; }
+  }
+  async function loadPresetFont (p) {
+    if (p.fullUrl && await tryLoadFullFromCache (p)) return;
+    currentIsPresetFull = false;
+    await loadFontUrl (p.font, p.name, { silentUrl: true, preset: true });
+  }
+  async function downloadFullFont () {
+    const p = currentPresetKey && PRESETS[currentPresetKey];
+    if (!p || !p.fullUrl || activeFullDownload) return;
+    const preset = currentPresetKey;
+    const ctrl = new AbortController ();
+    activeFullDownload = ctrl;
+    fontFullLoad.disabled = true;
+    try {
+      const r = await fetch (p.fullUrl, { signal: ctrl.signal });
+      if (!r.ok) throw new Error ("HTTP " + r.status);
+      const total = parseInt (r.headers.get ("content-length") || "", 10) || p.fullSize;
+      const reader = r.body.getReader ();
+      const chunks = [];
+      let loaded = 0;
+      while (true) {
+        const { done, value } = await reader.read ();
+        if (done) break;
+        chunks.push (value);
+        loaded += value.length;
+        fontFullLoad.textContent = "Downloading… " + formatBytes (loaded)
+                                 + " / " + formatBytes (total);
+      }
+      const bytes = new Uint8Array (loaded);
+      let off = 0;
+      for (const c of chunks) { bytes.set (c, off); off += c.length; }
+      /* Cache regardless so the bytes aren't wasted if the user
+       * switched presets mid-download; only swap the active
+       * font if we're still on the preset that requested it. */
+      try {
+        const db = await fontDbOpen ();
+        await fontDbPutFull (db, p.fullUrl, { bytes, name: p.fullName });
+      } catch { /* quota / private-mode: swallow */ }
+      if (currentPresetKey === preset) {
+        currentIsPresetFull = true;
+        setFontBytes (bytes, p.fullName);
+      }
+    } catch (e) {
+      if (e.name !== "AbortError")
+        fontFullLoad.textContent = "Download failed — retry";
+    } finally {
+      activeFullDownload = null;
+      refreshFullNote ();
+    }
+  }
+  fontFullLoad.addEventListener ("click", downloadFullFont);
+
   function applyPreset (key) {
     const p = PRESETS[key];
     if (!p) return false;
+    currentPresetKey = key;
     textInput.value = p.text;
     /* If the user has loaded a custom font (URL / file / GF),
      * presets become text-only so they can compare scripts
@@ -1449,7 +1570,7 @@ hb_blob_destroy (blob);`
       renderActive ();
     } else {
       url.searchParams.delete ("font");
-      loadFontUrl (p.font, p.name, { silentUrl: true, preset: true });
+      loadPresetFont (p);
     }
     history.replaceState (null, "", url);
     reflectActivePreset ();
@@ -1688,15 +1809,14 @@ hb_blob_destroy (blob);`
         currentFeatures.push ({ tag, name: "", state: val === "1" ? "on" : "off", btn: null });
     });
   if (presetParam && PRESETS[presetParam]) {
+    currentPresetKey = presetParam;
     if (textParam === null) textInput.value = PRESETS[presetParam].text;
-    const fontChoice = fontUrlParam || PRESETS[presetParam].font;
-    const nameChoice = fontUrlParam ? null : PRESETS[presetParam].name;
     if (fontUrlParam && fontUrlParam.startsWith ("@"))
       await loadFontFromCache (fontUrlParam.slice (1));
+    else if (fontUrlParam)
+      await loadFontUrl (fontUrlParam, null, { silentUrl: true });
     else
-      await loadFontUrl (fontChoice, nameChoice,
-                         fontUrlParam ? { silentUrl: true }
-                                      : { silentUrl: true, preset: true });
+      await loadPresetFont (PRESETS[presetParam]);
   } else if (fontUrlParam && fontUrlParam.startsWith ("@")) {
     if (!(await loadFontFromCache (fontUrlParam.slice (1))))
       applyPreset (DEFAULT_PRESET);
