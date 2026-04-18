@@ -1327,15 +1327,20 @@ hb_blob_destroy (blob);`
       const ptr = Module._web_font_features (fontPtr, fontBuf.length, textPtr);
       const features = JSON.parse (Module.UTF8ToString (ptr));
       Module._web_free_string (ptr);
+      /* Preserve toggle states from the previous feature list. */
+      const prevStates = {};
+      for (const f of currentFeatures)
+        if (f.state !== "default") prevStates[f.tag] = f.state;
       featList.innerHTML = "";
       currentFeatures = features.map ((f) => {
         const btn = document.createElement ("button");
         btn.type = "button";
         btn.className = "feat-toggle";
-        btn.dataset.state = "default";
+        const saved = prevStates[f.tag] || "default";
+        btn.dataset.state = saved;
         btn.textContent = f.name || f.tag;
         btn.title = f.tag + (f.name ? " — " + f.name : "");
-        const entry = { tag: f.tag, name: f.name, state: "default", btn };
+        const entry = { tag: f.tag, name: f.name, state: saved, btn };
         btn.addEventListener ("click", () => {
           const next = { default: "on", on: "off", off: "default" };
           entry.state = next[entry.state];
@@ -1346,6 +1351,7 @@ hb_blob_destroy (blob);`
         return entry;
       });
       featPicker.hidden = currentFeatures.length === 0;
+      updateFeatures ();
     });
   }
 
@@ -1604,6 +1610,15 @@ hb_blob_destroy (blob);`
   const fontUrlParam = params.get ("font");
   if (textParam !== null) textInput.value = textParam;
   if (sizeParam !== null) sizeInput.value = sizeParam;
+  /* Seed feature states from URL so refreshFeatures preserves
+   * them on the first font load. */
+  const featParam = params.get ("features");
+  if (featParam)
+    featParam.split (",").forEach ((pair) => {
+      const [tag, val] = pair.split ("=");
+      if (tag && val !== undefined)
+        currentFeatures.push ({ tag, name: "", state: val === "1" ? "on" : "off", btn: null });
+    });
   if (presetParam && PRESETS[presetParam]) {
     if (textParam === null) textInput.value = PRESETS[presetParam].text;
     const fontChoice = fontUrlParam || PRESETS[presetParam].font;
@@ -1621,20 +1636,5 @@ hb_blob_destroy (blob);`
     applyPreset (DEFAULT_PRESET);
 
   reflectActivePreset ();
-
-  /* Restore feature toggles from URL after everything is set up. */
-  const featParam = params.get ("features");
-  if (featParam) {
-    featParam.split (",").forEach ((pair) => {
-      const [tag, val] = pair.split ("=");
-      const feat = currentFeatures.find ((f) => f.tag === tag);
-      if (feat && val !== undefined) {
-        feat.state = val === "1" ? "on" : "off";
-        feat.btn.dataset.state = feat.state;
-      }
-    });
-    updateFeatures ();
-  }
-
   fromHash ();
 }) ();
