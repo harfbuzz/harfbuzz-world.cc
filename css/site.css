@@ -403,13 +403,14 @@ body[data-active="gpu"] .size-label { display: none; }
 .font-label { color: var(--muted); font-size: 0.95rem; }
 .font-button {
   font: inherit;
+  font-size: 0.95rem;
   cursor: pointer;
   border: 1px solid var(--accent);
-  padding: 0.4rem 0.7rem;
+  padding: 0.35rem 0.7rem;
   border-radius: 4px;
   color: var(--accent);
   background: var(--bg-card);
-  min-width: 14rem;
+  min-width: 10rem;
   text-align: left;
   transition: border-color 0.15s, background 0.15s;
   display: flex;
@@ -461,7 +462,23 @@ body[data-active="gpu"] .size-label { display: none; }
   background: var(--bg-card);
   color: var(--fg);
 }
-.font-menu-row input[type="file"] { font: inherit; flex: 1; }
+.font-menu-row input[type="file"] {
+  font: inherit;
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.font-menu-row input[type="file"]::file-selector-button {
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--accent);
+  margin-right: 0.5rem;
+}
 .font-menu-row button {
   font: inherit;
   cursor: pointer;
