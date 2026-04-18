@@ -268,7 +268,7 @@ body[data-active="gpu"] .size-label { display: none; }
 .demo-controls { margin: 1rem 0 0; justify-content: center; }
 
 .var-picker { position: relative; }
-.var-picker[hidden] { display: none; }
+.var-picker[hidden] { visibility: hidden; }
 .var-button {
   font: inherit;
   cursor: pointer;
