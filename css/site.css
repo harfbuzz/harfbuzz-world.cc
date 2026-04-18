@@ -1,6 +1,11 @@
 /* HarfBuzz World — site styles, modeled on behdad.org with a
  * gold accent in place of the coral/pink. */
 
+@font-face {
+  font-family: "AdobeBlank";
+  src: url("../fonts/AdobeBlank.otf") format("opentype");
+}
+
 :root {
   --bg-page:   #faf6ea;
   --bg-card:   #fff;
