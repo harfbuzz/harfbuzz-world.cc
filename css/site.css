@@ -287,6 +287,10 @@ body[data-active="gpu"] .size-label { display: none; }
   border-color: var(--accent-hi);
   background: var(--highlight);
 }
+.var-button.has-changes {
+  background: var(--highlight);
+  font-weight: 600;
+}
 .var-panel {
   position: absolute;
   top: 100%;
@@ -332,6 +336,20 @@ body[data-active="gpu"] .size-label { display: none; }
   opacity: 0.6;
 }
 .feat-toggle:hover { border-color: var(--accent); }
+.panel-reset {
+  display: block;
+  margin: 0.4rem 0.25rem 0;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--muted);
+  float: right;
+}
+.panel-reset:hover { border-color: var(--accent); color: var(--accent); }
 .axes {
   width: 100%;
   border-collapse: collapse;

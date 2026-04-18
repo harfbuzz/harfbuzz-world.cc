@@ -893,6 +893,9 @@ hb_blob_destroy (blob);`
       const pIdx = parseInt (paletteSelect.value, 10) || 0;
       if (pIdx)
         postGpu ({ kind: "palette", value: pIdx });
+      const fs = featuresString ();
+      if (fs)
+        postGpu ({ kind: "features", value: fs });
       if (effectiveTheme () === "dark") {
         postGpu ({ kind: "dark", value: true });
         gpuDark = true;
@@ -1147,6 +1150,7 @@ hb_blob_destroy (blob);`
   varButton.addEventListener ("click", () => {
     varPanel.hidden = !varPanel.hidden;
   });
+  document.getElementById ("var-reset").addEventListener ("click", resetVariations);
   document.addEventListener ("click", (e) => {
     if (!varPanel.hidden &&
         !varPanel.contains (e.target) &&
@@ -1175,8 +1179,18 @@ hb_blob_destroy (blob);`
     /* Reflect non-default variations in the URL so the
      * view is shareable.  Skip when sliders are still at
      * the font's defaults (no point cluttering URL). */
+    varButton.classList.toggle ("has-changes",
+      currentAxes.some ((a) => a.value !== a.startValue));
     syncUrl ();
     renderActive ();
+  }
+  function resetVariations () {
+    for (const a of currentAxes) {
+      a.value = a.startValue;
+      a.slider.value = a.startValue;
+      a.readout.textContent = String (a.startValue);
+    }
+    updateVariations ();
   }
   function variationsForUrl () {
     /* Only include axes the user moved off the slider
@@ -1294,6 +1308,7 @@ hb_blob_destroy (blob);`
   featButton.addEventListener ("click", () => {
     featPanel.hidden = !featPanel.hidden;
   });
+  document.getElementById ("feat-reset").addEventListener ("click", resetFeatures);
   document.addEventListener ("click", (e) => {
     if (!featPanel.hidden &&
         !featPanel.contains (e.target) &&
@@ -1319,8 +1334,17 @@ hb_blob_destroy (blob);`
     Module._free (buf);
     if (gpuReady)
       postGpu ({ kind: "features", value: s });
+    featButton.classList.toggle ("has-changes",
+      currentFeatures.some ((f) => f.state !== "default"));
     renderActive ();
     syncUrl ();
+  }
+  function resetFeatures () {
+    for (const f of currentFeatures) {
+      f.state = "default";
+      f.btn.dataset.state = "default";
+    }
+    updateFeatures ();
   }
   function refreshFeatures () {
     withText ((textPtr) => {
