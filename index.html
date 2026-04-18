@@ -351,6 +351,13 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </span>
       </summary>
       <div class="snippet-body">
+      <p>Text shaping is what HarfBuzz is primarily known for:
+         turn a Unicode string + font into a positioned glyph
+         stream.  HarfBuzz handles complex scripts (Arabic,
+         Indic, Khmer, …), OpenType features, variable fonts
+         including cutting-edge technology like avar2,
+         as well as Apple Advanced
+         Typography (AAT).</p>
       <ul>
         <li><a href="https://harfbuzz.github.io/">User manual and API reference</a></li>
       </ul>
@@ -423,6 +430,13 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </span>
       </summary>
       <div class="snippet-body">
+      <p>The subsetter produces a minimal font covering just the
+         glyphs needed for your text.  It closes over OpenType
+         layout rules so shaping still works on the subset.
+         Common workflows: webfont serving (cut to page text),
+         custom subsets for embedding, instancing (pin axes to
+         produce a static font), limiting or reshaping the
+         variation space, and changing default axis values.</p>
       <ul>
         <li><a href="https://harfbuzz.github.io/harfbuzz-hb-subset.html">API reference</a></li>
       </ul>
@@ -462,6 +476,12 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </span>
       </summary>
       <div class="snippet-body">
+      <p>Software rasterizer with full COLRv1 support — gradients,
+         compositing, transforms, and embedded PNG images all
+         render correctly.  Mono outlines produce A8 coverage
+         masks; color glyphs produce BGRA32 premultiplied pixels.
+         Unhinted — designed for high-DPI and embedding use
+         cases rather than screen-optimized small sizes.</p>
       <ul>
         <li><a href="https://harfbuzz.github.io/harfbuzz-hb-raster.html">API reference</a></li>
       </ul>
@@ -503,6 +523,13 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </span>
       </summary>
       <div class="snippet-body">
+      <p>Converts shaped text to resolution-independent vector
+         output with full COLRv1 support.  SVG output is useful
+         for quick previews, web embedding, and debugging.  PDF
+         output is designed for production: embed COLRv1 color
+         glyphs as scalable vector artwork in PDF documents
+         (e.g. via Type 3 fonts), giving tools like LibreOffice
+         infinitely-scalable emoji rendering.</p>
       <ul>
         <li><a href="https://harfbuzz.github.io/harfbuzz-hb-vector.html">API reference</a></li>
       </ul>
@@ -539,6 +566,14 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </span>
       </summary>
       <div class="snippet-body">
+      <p>GPU text rendering with full COLRv1 support, designed
+         for games, UI frameworks, and any real-time context
+         where CPU rasterization is too slow.  Glyph outlines
+         and color paint trees are encoded into compact blobs
+         that a fragment shader decodes and rasterizes — the
+         client manages a blob atlas, but there is no bitmap
+         atlas and glyphs scale to any size.  Shader sources
+         are provided in GLSL, WGSL, MSL, and HLSL.</p>
       <ul>
         <li><a href="https://harfbuzz.github.io/harfbuzz-hb-gpu.html">API reference</a></li>
       </ul>
