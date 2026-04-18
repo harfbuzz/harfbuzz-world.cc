@@ -644,6 +644,8 @@ body[data-active="gpu"] .size-label { display: none; }
 }
 #subset-preview {
   display: block;
+  white-space: nowrap;
+  overflow-x: auto;
 }
 .render canvas {
   /* Display at native pixel-buffer size; .render's min-height

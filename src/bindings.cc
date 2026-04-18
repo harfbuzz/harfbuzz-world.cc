@@ -454,6 +454,12 @@ char *web_font_features (const uint8_t *font_bytes, unsigned font_len,
   return out;
 }
 
+EMSCRIPTEN_KEEPALIVE
+const char *web_hb_version ()
+{
+  return hb_version_string ();
+}
+
 /* Returns true if @utf8_text contains codepoints from more than
  * one Unicode script (ignoring Common and Inherited). */
 EMSCRIPTEN_KEEPALIVE

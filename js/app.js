@@ -44,6 +44,11 @@ async function fontHash (bytes) {
 (async function main () {
   const Module = await createHbWorld ();
 
+  /* Show HarfBuzz version in the attribution footer. */
+  const versionEl = document.getElementById ("hb-version");
+  if (versionEl)
+    versionEl.textContent = Module.UTF8ToString (Module._web_hb_version ());
+
   /* Single owner of the wasm-side font blob.  Swapped in place
    * when the user picks a different font; the old buffer is
    * freed before the new one is allocated. */
