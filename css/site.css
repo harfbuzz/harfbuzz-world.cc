@@ -323,6 +323,8 @@ body[data-active="gpu"] .size-label { display: none; }
   color: var(--accent);
   font-size: 0.9rem;
   text-align: right;
+  min-width: 3.5em;
+  white-space: nowrap;
 }
 .axes input[type="range"] {
   width: 100%;

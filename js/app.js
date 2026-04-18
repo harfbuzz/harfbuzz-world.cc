@@ -1195,7 +1195,7 @@ hb_blob_destroy (blob);`
       slider.type = "range";
       slider.min = a.min;
       slider.max = a.max;
-      slider.step = (a.max - a.min) / 100;
+      slider.step = (a.max - a.min) > 10 ? 1 : 0.01;
       const startValue = a.tag === "wght"
         ? Math.min (a.max, Math.max (a.min, 400))
         : a.def;
