@@ -632,6 +632,16 @@ hb_blob_destroy (blob);`
       });
     });
   });
+  /* Sync learn-more sections open/close together. */
+  const learnMoreEls = () => document.querySelectorAll ("details[data-section='learn-more']");
+  learnMoreEls ().forEach ((d) => {
+    d.addEventListener ("toggle", () => {
+      const open = d.open;
+      learnMoreEls ().forEach ((other) => {
+        if (other !== d && other.open !== open) other.open = open;
+      });
+    });
+  });
   /* Wire up buttons on all .snippet details (code + tables). */
   function flash (btn, msg) {
     const old = btn.textContent;
