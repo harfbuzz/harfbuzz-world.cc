@@ -208,8 +208,12 @@ async function fontHash (bytes) {
         html += "<td" + rs + ">" + hexes + "</td>";
       }
       for (const c of glyphCols) {
-        if (c === "_position")
-          html += "<td>" + g.x_offset + ", " + g.y_offset + "</td>";
+        if (c === "_position") {
+          if (g.x_offset === 0 && g.y_offset === 0)
+            html += "<td></td>";
+          else
+            html += "<td>x=" + g.x_offset + " y=" + g.y_offset + "</td>";
+        }
         else
           html += "<td>" + escapeHtml (g[c]) + "</td>";
       }
