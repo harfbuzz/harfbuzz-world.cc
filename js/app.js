@@ -1113,6 +1113,11 @@ hb_blob_destroy (blob);`
         if (v) url.searchParams.set ("variations", v);
         else   url.searchParams.delete ("variations");
       }
+      if (currentFeatures.length) {
+        const f = featuresString ();
+        if (f) url.searchParams.set ("features", f);
+        else   url.searchParams.delete ("features");
+      }
       /* Same convention as variations: only touch ?palette
        * when the current font actually has multi-palette,
        * so a font switch doesn't clobber a prior selection. */
@@ -1341,6 +1346,17 @@ hb_blob_destroy (blob);`
         return entry;
       });
       featPicker.hidden = currentFeatures.length === 0;
+      const urlFeats = new URLSearchParams (location.search).get ("features");
+      if (urlFeats)
+        urlFeats.split (",").forEach ((pair) => {
+          const [tag, val] = pair.split ("=");
+          const feat = currentFeatures.find ((f) => f.tag === tag);
+          if (feat && val !== undefined) {
+            feat.state = val === "1" ? "on" : "off";
+            feat.btn.dataset.state = feat.state;
+          }
+        });
+      updateFeatures ();
     });
   }
 
