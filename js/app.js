@@ -1346,17 +1346,6 @@ hb_blob_destroy (blob);`
         return entry;
       });
       featPicker.hidden = currentFeatures.length === 0;
-      const urlFeats = new URLSearchParams (location.search).get ("features");
-      if (urlFeats)
-        urlFeats.split (",").forEach ((pair) => {
-          const [tag, val] = pair.split ("=");
-          const feat = currentFeatures.find ((f) => f.tag === tag);
-          if (feat && val !== undefined) {
-            feat.state = val === "1" ? "on" : "off";
-            feat.btn.dataset.state = feat.state;
-          }
-        });
-      updateFeatures ();
     });
   }
 
@@ -1632,5 +1621,20 @@ hb_blob_destroy (blob);`
     applyPreset (DEFAULT_PRESET);
 
   reflectActivePreset ();
+
+  /* Restore feature toggles from URL after everything is set up. */
+  const featParam = params.get ("features");
+  if (featParam) {
+    featParam.split (",").forEach ((pair) => {
+      const [tag, val] = pair.split ("=");
+      const feat = currentFeatures.find ((f) => f.tag === tag);
+      if (feat && val !== undefined) {
+        feat.state = val === "1" ? "on" : "off";
+        feat.btn.dataset.state = feat.state;
+      }
+    });
+    updateFeatures ();
+  }
+
   fromHash ();
 }) ();
