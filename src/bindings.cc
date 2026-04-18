@@ -150,6 +150,23 @@ void web_set_palette (unsigned idx)
   g_palette = idx;
 }
 
+/* Foreground / background colors for rendering.
+ * RGBA packed as HB_COLOR (blue, green, red, alpha). */
+static hb_color_t g_foreground = HB_COLOR (0, 0, 0, 255);
+static hb_color_t g_background = HB_COLOR (0, 0, 0, 0);
+
+EMSCRIPTEN_KEEPALIVE
+void web_set_foreground (unsigned r, unsigned g, unsigned b, unsigned a)
+{
+  g_foreground = HB_COLOR (b, g, r, a);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void web_set_background (unsigned r, unsigned g, unsigned b, unsigned a)
+{
+  g_background = HB_COLOR (b, g, r, a);
+}
+
 /* Shape cluster level.  Applied to every buffer created by
  * the shape() helper.  Values match hb_buffer_cluster_level_t
  * (0 = MONOTONE_GRAPHEMES, 1 = MONOTONE_CHARACTERS,
@@ -427,12 +444,19 @@ render (hb_vector_format_t format,
     {
       hb_vector_paint_set_palette (p, g_palette);
       hb_vector_paint_set_scale_factor (p, (float) SCALE, (float) SCALE);
+      hb_vector_paint_set_foreground (p, g_foreground);
+      hb_vector_paint_set_background (p, g_background);
     }
   }
   else
   {
     d = hb_vector_draw_create_or_fail (format);
-    if (d) hb_vector_draw_set_scale_factor (d, (float) SCALE, (float) SCALE);
+    if (d)
+    {
+      hb_vector_draw_set_scale_factor (d, (float) SCALE, (float) SCALE);
+      hb_vector_draw_set_foreground (d, g_foreground);
+      hb_vector_draw_set_background (d, g_background);
+    }
   }
 
   /* Namespace SVG ids per render so multiple hb-vector
@@ -720,7 +744,11 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
   if (is_color)
   {
     p = hb_raster_paint_create_or_fail ();
-    if (p) hb_raster_paint_set_palette (p, g_palette);
+    if (p)
+    {
+      hb_raster_paint_set_palette (p, g_palette);
+      hb_raster_paint_set_foreground (p, g_foreground);
+    }
   }
   else
     d = hb_raster_draw_create_or_fail ();
@@ -731,8 +759,18 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
   unsigned stride = w * 4;
   hb_raster_extents_t ext = { ext_x, ext_y, w, h, stride };
 
-  uint8_t *out = (p || d) ? (uint8_t *) calloc ((size_t) stride * h, 1)
+  uint8_t *out = (p || d) ? (uint8_t *) malloc ((size_t) stride * h)
                           : nullptr;
+  if (out)
+  {
+    /* Pre-fill with background color (BGRA). */
+    uint32_t bg_px = (uint32_t) hb_color_get_blue (g_background)
+                   | ((uint32_t) hb_color_get_green (g_background) << 8)
+                   | ((uint32_t) hb_color_get_red (g_background) << 16)
+                   | ((uint32_t) hb_color_get_alpha (g_background) << 24);
+    uint32_t *px = (uint32_t *) out;
+    for (size_t i = 0; i < (size_t) w * h; i++) px[i] = bg_px;
+  }
   if (!out)
   {
     hb_raster_paint_destroy (p);
@@ -817,13 +855,16 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
           if (!cov) continue;
           uint32_t dpx;
           memcpy (&dpx, out + dy * stride + x * 4, 4);
-          if (cov == 255) { dpx = 0xFF000000u; }
-          else
-          {
+          uint8_t fr = hb_color_get_red (g_foreground);
+          uint8_t fg = hb_color_get_green (g_foreground);
+          uint8_t fb = hb_color_get_blue (g_foreground);
+          if (cov == 255) {
+            dpx = (uint32_t) fb | ((uint32_t) fg << 8) | ((uint32_t) fr << 16) | 0xFF000000u;
+          } else {
             unsigned inv = 255 - cov;
-            uint8_t rb = (uint8_t) (((dpx & 0xFF) * inv + 127) / 255);
-            uint8_t rg = (uint8_t) ((((dpx >> 8) & 0xFF) * inv + 127) / 255);
-            uint8_t rr = (uint8_t) ((((dpx >> 16) & 0xFF) * inv + 127) / 255);
+            uint8_t rb = (uint8_t) (((dpx & 0xFF) * inv + 127) / 255 + fb * cov / 255);
+            uint8_t rg = (uint8_t) ((((dpx >> 8) & 0xFF) * inv + 127) / 255 + fg * cov / 255);
+            uint8_t rr = (uint8_t) ((((dpx >> 16) & 0xFF) * inv + 127) / 255 + fr * cov / 255);
             uint8_t ra = (uint8_t) ((((dpx >> 24) & 0xFF) * inv + 127) / 255) + cov;
             dpx = (uint32_t) rb | ((uint32_t) rg << 8) | ((uint32_t) rr << 16) | ((uint32_t) ra << 24);
           }

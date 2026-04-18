@@ -561,11 +561,36 @@ hb_blob_destroy (blob);`
     if (pinned === "light" || pinned === "dark") return pinned;
     return matchMedia ("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
+  const gpuFrame = document.getElementById ("gpu-frame");
+  const GPU_ORIGIN = "https://harfbuzz.github.io";
+  function postGpu (msg) {
+    if (gpuFrame.contentWindow)
+      gpuFrame.contentWindow.postMessage (msg, GPU_ORIGIN);
+  }
+  let gpuReady = false;
+  let gpuDark = false;
+  function syncRenderColors (theme) {
+    if (theme === "dark") {
+      Module._web_set_foreground (255, 255, 255, 255);
+      Module._web_set_background (34, 34, 34, 255);
+    } else {
+      Module._web_set_foreground (0, 0, 0, 255);
+      Module._web_set_background (255, 255, 255, 255);
+    }
+    const wantDark = theme === "dark";
+    if (gpuReady && wantDark !== gpuDark) {
+      postGpu ({ kind: "dark", value: wantDark });
+      gpuDark = wantDark;
+    }
+  }
   function applyTheme (t) {
     document.documentElement.dataset.theme = t;
     try { localStorage.setItem ("theme", t); } catch {}
     themeToggle.textContent = t === "dark" ? "☾" : "☀";
+    syncRenderColors (t);
+    renderActive ();
   }
+  syncRenderColors (effectiveTheme ());
   themeToggle.textContent = effectiveTheme () === "dark" ? "☾" : "☀";
   themeToggle.addEventListener ("click", () => {
     applyTheme (effectiveTheme () === "dark" ? "light" : "dark");
@@ -828,12 +853,6 @@ hb_blob_destroy (blob);`
    * { kind: 'font', bytes } via postMessage and sends back a
    * { kind: 'ready' } once its wasm runtime is up.  Initial
    * text rides the URL; font bytes have to wait for ready.  */
-  const gpuFrame = document.getElementById ("gpu-frame");
-  const GPU_ORIGIN = "https://harfbuzz.github.io";
-  function postGpu (msg) {
-    if (gpuFrame.contentWindow)
-      gpuFrame.contentWindow.postMessage (msg, GPU_ORIGIN);
-  }
   function gpuFrameUrl () {
     const u = new URL ("https://harfbuzz.github.io/hb-gpu-demo/");
     u.searchParams.set ("embed", "1");
@@ -844,7 +863,6 @@ hb_blob_destroy (blob);`
    * That's the point at which _web_set_text / _web_load_font
    * are safe to drive via postMessage -- push the current
    * text and font once we hear it. */
-  let gpuReady = false;
   window.addEventListener ("message", (e) => {
     if (e.origin !== GPU_ORIGIN) return;
     if (e.data && e.data.kind === "ready") {
@@ -859,6 +877,10 @@ hb_blob_destroy (blob);`
       const pIdx = parseInt (paletteSelect.value, 10) || 0;
       if (pIdx)
         postGpu ({ kind: "palette", value: pIdx });
+      if (effectiveTheme () === "dark") {
+        postGpu ({ kind: "dark", value: true });
+        gpuDark = true;
+      }
       /* First rebuild_buffer on a freshly-loaded font
        * sometimes leaves the atlas half-uploaded and the
        * first composite blank.  A second text push forces

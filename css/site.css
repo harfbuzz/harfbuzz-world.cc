@@ -13,6 +13,8 @@
   --soft:      #f5edd6;   /* code / pre background */
   --highlight: #fcf4dc;
   --shadow:    0 0 12px rgba(0,0,0,0.06);
+  --render-bg: #fff;
+  --render-fg: #000;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -28,6 +30,8 @@
     --soft:      #2c2820;
     --highlight: #2e2a1f;
     --shadow:    0 0 12px rgba(0,0,0,0.4);
+    --render-bg: #222;
+    --render-fg: #fff;
   }
 }
 :root[data-theme="dark"] {
@@ -42,6 +46,8 @@
   --soft:      #2c2820;
   --highlight: #2e2a1f;
   --shadow:    0 0 12px rgba(0,0,0,0.4);
+  --render-bg: #222;
+  --render-fg: #fff;
 }
 
 * { box-sizing: border-box; }
@@ -469,11 +475,8 @@ body[data-active="gpu"] .size-label { display: none; }
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Render stages always show white paper + black ink,
-   * regardless of site theme -- that's what the demos are
-   * actually producing and what users would download. */
-  background: #fff;
-  color: #000;
+  background: var(--render-bg);
+  color: var(--render-fg);
 }
 .render svg {
   display: block;
