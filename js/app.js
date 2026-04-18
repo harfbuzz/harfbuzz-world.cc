@@ -858,6 +858,7 @@ hb_blob_destroy (blob);`
       subsetPreview.style.fontFamily = '"' + family + '", "AdobeBlank"';
       subsetPreview.style.fontSize = currentSize () + "px";
       subsetPreview.style.fontVariationSettings = cssVariationSettings ();
+      subsetPreview.style.fontFeatureSettings = cssFeatureSettings ();
       subsetPreview.style.fontPalette = "--hbPalette";
       subsetPreview.textContent = textInput.value;
     });
@@ -1299,6 +1300,11 @@ hb_blob_destroy (blob);`
       .filter ((f) => f.state !== "default")
       .map ((f) => f.tag + "=" + (f.state === "on" ? "1" : "0"))
       .join (",");
+  }
+  function cssFeatureSettings () {
+    const active = currentFeatures.filter ((f) => f.state !== "default");
+    if (!active.length) return "";
+    return active.map ((f) => '"' + f.tag + '" ' + (f.state === "on" ? "1" : "0")).join (", ");
   }
   function updateFeatures () {
     const s = featuresString ();
