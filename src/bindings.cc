@@ -523,7 +523,8 @@ shape (const uint8_t *font_bytes, unsigned font_len,
  * Caller frees with web_free_string(). */
 EMSCRIPTEN_KEEPALIVE
 char *web_shape_json (const uint8_t *font_bytes, unsigned font_len,
-                      const char *utf8_text)
+                      const char *utf8_text,
+                      float font_size_px)
 {
   hb_face_t *face = nullptr;
   hb_font_t *font = nullptr;
@@ -531,9 +532,18 @@ char *web_shape_json (const uint8_t *font_bytes, unsigned font_len,
   if (!buf)
     return strdup ("[]");
 
+  int scale = (int) (font_size_px * 64.f);
+  hb_font_set_scale (font, scale, scale);
+  hb_buffer_clear_contents (buf);
+  hb_buffer_set_cluster_level (buf, (hb_buffer_cluster_level_t) g_cluster_level);
+  hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
+  hb_buffer_guess_segment_properties (buf);
+  hb_shape (font, buf, g_feature_list, g_feature_count);
+
   unsigned len = hb_buffer_get_length (buf);
   hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, nullptr);
   hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, nullptr);
+  const float div = 64.f;
 
   /* Estimate JSON capacity:  ~160 bytes per glyph entry leaves
    * room for a 64-char name on top of the numeric fields. */
@@ -557,12 +567,12 @@ char *web_shape_json (const uint8_t *font_bytes, unsigned font_len,
     esc[eo] = 0;
     off += snprintf (out + off, cap - off,
                      "%s{\"gid\":%u,\"name\":\"%s\",\"cluster\":%u,"
-                     "\"x_offset\":%d,\"y_offset\":%d,"
-                     "\"x_advance\":%d,\"y_advance\":%d}",
+                     "\"x_offset\":%g,\"y_offset\":%g,"
+                     "\"x_advance\":%g,\"y_advance\":%g}",
                      i ? "," : "",
                      info[i].codepoint, esc, info[i].cluster,
-                     pos[i].x_offset, pos[i].y_offset,
-                     pos[i].x_advance, pos[i].y_advance);
+                     pos[i].x_offset / div, pos[i].y_offset / div,
+                     pos[i].x_advance / div, pos[i].y_advance / div);
   }
   off += snprintf (out + off, cap - off, "]");
 

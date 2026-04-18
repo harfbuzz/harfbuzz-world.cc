@@ -231,7 +231,7 @@ async function fontHash (bytes) {
       shapeRender.innerHTML = Module.UTF8ToString (svgPtr);
       Module._web_free_string (svgPtr);
 
-      const jsonPtr = Module._web_shape_json (fontPtr, fontBuf.length, textPtr);
+      const jsonPtr = Module._web_shape_json (fontPtr, fontBuf.length, textPtr, currentSize ());
       const glyphs = JSON.parse (Module.UTF8ToString (jsonPtr));
       Module._web_free_string (jsonPtr);
       renderGlyphTable (glyphs);
