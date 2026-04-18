@@ -655,7 +655,6 @@ render (hb_vector_format_t format,
     char pfx[16];
     snprintf (pfx, sizeof pfx, "v%u-", ++s_counter);
     if (p) hb_vector_paint_set_svg_prefix (p, pfx);
-    if (d) hb_vector_draw_set_svg_prefix  (d, pfx);
   }
 
   if (!p && !d)
@@ -694,16 +693,20 @@ render (hb_vector_format_t format,
   float pen_y = 0.f;
   for (unsigned i = 0; i < len; i++)
   {
+    float gx = pen_x + pos[i].x_offset;
+    float gy = pen_y + pos[i].y_offset;
     if (p)
+    {
+      hb_vector_paint_set_transform (p, 1.f, 0.f, 0.f, 1.f, gx, gy);
       hb_vector_paint_glyph (p, font, info[i].codepoint,
-                             pen_x + pos[i].x_offset,
-                             pen_y + pos[i].y_offset,
                              HB_VECTOR_EXTENTS_MODE_EXPAND);
+    }
     else
+    {
+      hb_vector_draw_set_transform (d, 1.f, 0.f, 0.f, 1.f, gx, gy);
       hb_vector_draw_glyph (d, font, info[i].codepoint,
-                            pen_x + pos[i].x_offset,
-                            pen_y + pos[i].y_offset,
                             HB_VECTOR_EXTENTS_MODE_EXPAND);
+    }
     pen_x += pos[i].x_advance;
     pen_y += pos[i].y_advance;
   }
@@ -996,7 +999,8 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
     {
       hb_raster_paint_set_extents (p, &ext);
       hb_raster_paint_set_scale_factor (p, (float) SCALE, (float) SCALE);
-      hb_raster_paint_glyph (p, font, info[i].codepoint, gx, gy);
+      hb_raster_paint_set_transform (p, 1.f, 0.f, 0.f, 1.f, gx, gy);
+      hb_raster_paint_glyph (p, font, info[i].codepoint);
       img = hb_raster_paint_render (p);
     }
     else
@@ -1004,7 +1008,8 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
       hb_raster_draw_reset (d);
       hb_raster_draw_set_extents (d, &ext);
       hb_raster_draw_set_scale_factor (d, (float) SCALE, (float) SCALE);
-      hb_raster_draw_glyph (d, font, info[i].codepoint, gx, gy);
+      hb_raster_draw_set_transform (d, 1.f, 0.f, 0.f, 1.f, gx, gy);
+      hb_raster_draw_glyph (d, font, info[i].codepoint);
       img = hb_raster_draw_render (d);
     }
     if (!img) continue;
