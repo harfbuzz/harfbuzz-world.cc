@@ -301,6 +301,37 @@ body[data-active="gpu"] .size-label { display: none; }
   padding: 0.5rem;
 }
 .var-panel[hidden] { display: none; }
+.feat-picker { position: relative; }
+.feat-picker[hidden] { visibility: hidden; }
+.feat-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.25rem;
+}
+.feat-toggle {
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--muted);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.feat-toggle[data-state="on"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--highlight);
+}
+.feat-toggle[data-state="off"] {
+  border-color: var(--rule);
+  color: var(--muted);
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.feat-toggle:hover { border-color: var(--accent); }
 .axes {
   width: 100%;
   border-collapse: collapse;

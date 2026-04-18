@@ -69,6 +69,7 @@ async function fontHash (bytes) {
       postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
     refreshAxes ();
     refreshPalettes ();
+    refreshFeatures ();
     renderActive ();
   }
 
@@ -1277,6 +1278,64 @@ hb_blob_destroy (blob);`
     applyPalette (startIdx);
     paletteLabel.hidden = false;
   }
+  /* Layout features: pull GSUB+GPOS feature tags, build
+   * three-state toggle buttons (default → on → off → default). */
+  const featList = document.getElementById ("feat-list");
+  const featButton = document.getElementById ("feat-button");
+  const featPanel = document.getElementById ("feat-panel");
+  const featPicker = document.getElementById ("feat-picker");
+  let currentFeatures = [];
+  featButton.addEventListener ("click", () => {
+    featPanel.hidden = !featPanel.hidden;
+  });
+  document.addEventListener ("click", (e) => {
+    if (!featPanel.hidden &&
+        !featPanel.contains (e.target) &&
+        !featButton.contains (e.target))
+      featPanel.hidden = true;
+  });
+  function featuresString () {
+    return currentFeatures
+      .filter ((f) => f.state !== "default")
+      .map ((f) => f.tag + "=" + (f.state === "on" ? "1" : "0"))
+      .join (",");
+  }
+  function updateFeatures () {
+    const s = featuresString ();
+    const buf = Module._malloc (s.length + 1);
+    Module.stringToUTF8 (s, buf, s.length + 1);
+    Module._web_set_features (buf);
+    Module._free (buf);
+    renderActive ();
+    syncUrl ();
+  }
+  function refreshFeatures () {
+    withText ((textPtr) => {
+      const ptr = Module._web_font_features (fontPtr, fontBuf.length, textPtr);
+      const features = JSON.parse (Module.UTF8ToString (ptr));
+      Module._web_free_string (ptr);
+      featList.innerHTML = "";
+      currentFeatures = features.map ((f) => {
+        const btn = document.createElement ("button");
+        btn.type = "button";
+        btn.className = "feat-toggle";
+        btn.dataset.state = "default";
+        btn.textContent = f.name || f.tag;
+        btn.title = f.tag + (f.name ? " — " + f.name : "");
+        const entry = { tag: f.tag, name: f.name, state: "default", btn };
+        btn.addEventListener ("click", () => {
+          const next = { default: "on", on: "off", off: "default" };
+          entry.state = next[entry.state];
+          btn.dataset.state = entry.state;
+          updateFeatures ();
+        });
+        featList.append (btn);
+        return entry;
+      });
+      featPicker.hidden = currentFeatures.length === 0;
+    });
+  }
+
   paletteSelect.addEventListener ("change", () => {
     applyPalette (parseInt (paletteSelect.value, 10) || 0);
     renderActive ();

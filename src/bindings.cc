@@ -140,6 +140,32 @@ void web_set_variations (const char *s)
   g_variations[n] = 0;
 }
 
+/* Feature string.  Comma-separated list of feature settings
+ * ("ss01=1,liga=0") applied to every hb_shape call. */
+static char g_features[512];
+static hb_feature_t g_feature_list[64];
+static unsigned g_feature_count = 0;
+
+EMSCRIPTEN_KEEPALIVE
+void web_set_features (const char *s)
+{
+  if (!s) { g_features[0] = 0; g_feature_count = 0; return; }
+  unsigned n = strlen (s);
+  if (n >= sizeof g_features) n = sizeof g_features - 1;
+  memcpy (g_features, s, n);
+  g_features[n] = 0;
+  g_feature_count = 0;
+  const char *p = g_features;
+  while (p && *p && g_feature_count < 64)
+  {
+    const char *end = strchr (p, ',');
+    int len = end ? (int) (end - p) : (int) strlen (p);
+    if (hb_feature_from_string (p, len, &g_feature_list[g_feature_count]))
+      g_feature_count++;
+    p = end ? end + 1 : nullptr;
+  }
+}
+
 /* Selected CPAL palette index.  Applied to vector_paint /
  * raster_paint contexts in the render helpers below. */
 static unsigned g_palette = 0;
@@ -313,6 +339,121 @@ char *web_font_axes (const uint8_t *font_bytes, unsigned font_len)
   return out;
 }
 
+/* JSON-describe the font's GSUB+GPOS layout features for the
+ * script detected from @utf8_text.  Each entry carries the
+ * four-character tag and an optional name (from the name table,
+ * for stylistic sets / character variants).  Deduplicates
+ * across GSUB and GPOS.
+ * Returns "[]" for fonts with no features.
+ * Caller frees with web_free_string(). */
+EMSCRIPTEN_KEEPALIVE
+char *web_font_features (const uint8_t *font_bytes, unsigned font_len,
+                         const char *utf8_text)
+{
+  hb_blob_t *blob = hb_blob_create_or_fail ((const char *) font_bytes,
+                                             font_len,
+                                             HB_MEMORY_MODE_READONLY,
+                                             nullptr, nullptr);
+  if (!blob) return strdup ("[]");
+  hb_face_t *face = hb_face_create (blob, 0);
+  hb_blob_destroy (blob);
+
+  /* Guess the script from the text. */
+  hb_buffer_t *buf = hb_buffer_create ();
+  hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
+  hb_buffer_guess_segment_properties (buf);
+  hb_script_t script = hb_buffer_get_script (buf);
+  hb_buffer_destroy (buf);
+
+  hb_tag_t script_tags[2];
+  unsigned script_count = 2;
+  hb_ot_tags_from_script_and_language (script, HB_LANGUAGE_INVALID,
+                                      &script_count, script_tags,
+                                      nullptr, nullptr);
+
+  /* Collect feature tags from both GSUB and GPOS for any
+   * matching script.  Use a simple linear scan to dedup. */
+  hb_tag_t tags[256];
+  unsigned n_tags = 0;
+
+  hb_tag_t tables[] = { HB_OT_TAG_GSUB, HB_OT_TAG_GPOS };
+  for (auto table_tag : tables)
+  {
+    unsigned script_idx;
+    if (!hb_ot_layout_table_select_script (face, table_tag,
+                                           script_count, script_tags,
+                                           &script_idx, nullptr))
+      continue;
+
+    unsigned lang_idx = HB_OT_LAYOUT_DEFAULT_LANGUAGE_INDEX;
+
+    unsigned feat_count = 256;
+    hb_tag_t feat_tags[256];
+    hb_ot_layout_language_get_feature_tags (face, table_tag,
+                                            script_idx, lang_idx,
+                                            0, &feat_count, feat_tags);
+    for (unsigned i = 0; i < feat_count && n_tags < 256; i++)
+    {
+      bool dup = false;
+      for (unsigned j = 0; j < n_tags; j++)
+        if (tags[j] == feat_tags[i]) { dup = true; break; }
+      if (!dup) tags[n_tags++] = feat_tags[i];
+    }
+  }
+
+  if (!n_tags) { hb_face_destroy (face); return strdup ("[]"); }
+
+  size_t cap = 64 + 128 * n_tags;
+  char *out = (char *) malloc (cap);
+  size_t off = 0;
+  off += snprintf (out + off, cap - off, "[");
+  for (unsigned i = 0; i < n_tags; i++)
+  {
+    char tag[5] = {
+      (char) ((tags[i] >> 24) & 0xff),
+      (char) ((tags[i] >> 16) & 0xff),
+      (char) ((tags[i] >> 8) & 0xff),
+      (char) (tags[i] & 0xff),
+      0
+    };
+
+    /* Try to get a human-readable name for ss01-ss20, cv01-cv99. */
+    char name[128] = {0};
+    unsigned feat_idx;
+    if (hb_ot_layout_language_find_feature (face, HB_OT_TAG_GSUB,
+                                            0, HB_OT_LAYOUT_DEFAULT_LANGUAGE_INDEX,
+                                            tags[i], &feat_idx))
+    {
+      hb_ot_name_id_t name_id;
+      if (hb_ot_layout_feature_get_name_ids (face, HB_OT_TAG_GSUB,
+                                             feat_idx,
+                                             &name_id, nullptr,
+                                             nullptr, nullptr, nullptr))
+      {
+        unsigned sz = sizeof name;
+        hb_ot_name_get_utf8 (face, name_id, HB_LANGUAGE_INVALID, &sz, name);
+      }
+    }
+
+    /* Escape the name for JSON. */
+    char esc[256] = {0};
+    unsigned eo = 0;
+    for (const char *p = name; *p && eo + 2 < sizeof esc; p++)
+    {
+      if (*p == '"' || *p == '\\') esc[eo++] = '\\';
+      esc[eo++] = *p;
+    }
+    esc[eo] = 0;
+
+    off += snprintf (out + off, cap - off,
+                     "%s{\"tag\":\"%s\",\"name\":\"%s\"}",
+                     i ? "," : "", tag, esc);
+  }
+  off += snprintf (out + off, cap - off, "]");
+  hb_face_destroy (face);
+  return out;
+}
+
 /* Common: produce a shaped buffer for (font_bytes, text). */
 static hb_buffer_t *
 shape (const uint8_t *font_bytes, unsigned font_len,
@@ -334,7 +475,7 @@ shape (const uint8_t *font_bytes, unsigned font_len,
   hb_buffer_set_cluster_level (buf, (hb_buffer_cluster_level_t) g_cluster_level);
   hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
   hb_buffer_guess_segment_properties (buf);
-  hb_shape (font, buf, nullptr, 0);
+  hb_shape (font, buf, g_feature_list, g_feature_count);
 
   *out_face = face;
   *out_font = font;
@@ -425,7 +566,7 @@ render (hb_vector_format_t format,
   hb_buffer_clear_contents (buf);
   hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
   hb_buffer_guess_segment_properties (buf);
-  hb_shape (font, buf, nullptr, 0);
+  hb_shape (font, buf, g_feature_list, g_feature_count);
 
   /* Route mono fonts to vector_draw and color fonts to
    * vector_paint.  TODO: collapse once HarfBuzz exposes a paint
@@ -679,7 +820,7 @@ uint8_t *web_render_raster (const uint8_t *font_bytes, unsigned font_len,
   hb_buffer_clear_contents (buf);
   hb_buffer_add_utf8 (buf, utf8_text, -1, 0, -1);
   hb_buffer_guess_segment_properties (buf);
-  hb_shape (font, buf, nullptr, 0);
+  hb_shape (font, buf, g_feature_list, g_feature_count);
 
   /* Seed extents with the logical line box (advance × ascender+descender)
    * in pixel*SCALE Y-up units, then union with each glyph's translated ink

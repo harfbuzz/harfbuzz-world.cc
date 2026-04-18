@@ -10,3 +10,4 @@
 #undef HB_NO_VAR          /* hb_font_set_variations, fvar axes */
 #undef HB_NO_OT_FONT_GLYPH_NAMES  /* hb_font_glyph_to_string for shape table */
 #undef HB_NO_FACE_COLLECT_UNICODES /* hb_face_collect_unicodes for subset stats */
+#undef HB_NO_LAYOUT_FEATURE_PARAMS /* hb_ot_layout_feature_get_name_ids for feature names */
