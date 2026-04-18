@@ -372,6 +372,27 @@ body[data-active="gpu"] .size-label { display: none; }
   color: var(--muted);
 }
 .panel-reset:hover { border-color: var(--accent); color: var(--accent); }
+.text-wrap {
+  position: relative;
+  display: inline-block;
+}
+.text-wrap input { padding-right: 1.8rem; }
+.text-reset {
+  position: absolute;
+  right: 0.3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  line-height: 1;
+}
+.text-reset:hover { color: var(--accent); }
+.text-reset[hidden] { display: none; }
 .axes {
   width: 100%;
   border-collapse: collapse;

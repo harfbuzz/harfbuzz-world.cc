@@ -1144,7 +1144,22 @@ hb_blob_destroy (blob);`
       if (scriptWarn) scriptWarn.hidden = !multi;
     });
   }
-  textInput.addEventListener ("input", () => { renderActive (); checkMultiScript (); syncUrl (); });
+  const textReset = document.getElementById ("text-reset");
+  function defaultText () {
+    const cur = new URLSearchParams (location.search).get ("preset");
+    return (cur && PRESETS[cur]) ? PRESETS[cur].text : PRESETS[DEFAULT_PRESET].text;
+  }
+  function updateTextReset () {
+    textReset.hidden = textInput.value === defaultText ();
+  }
+  textReset.addEventListener ("click", () => {
+    textInput.value = defaultText ();
+    updateTextReset ();
+    renderActive ();
+    checkMultiScript ();
+    syncUrl ();
+  });
+  textInput.addEventListener ("input", () => { renderActive (); checkMultiScript (); updateTextReset (); syncUrl (); });
   sizeInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
 
   /* Variable axes: pull fvar info from the current font,
@@ -1434,6 +1449,7 @@ hb_blob_destroy (blob);`
     presetButtons.forEach ((btn) => {
       btn.classList.toggle ("active", btn.dataset.preset === key);
     });
+    updateTextReset ();
   }
 
   /* Font picker: dropdown menu with three sources (shipped /

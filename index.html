@@ -129,8 +129,11 @@
     </label>
   </div>
   <div class="controls controls-row2">
-    <label>Text:
-      <input id="text" type="text" value="hello-world!" size="40">
+    <label class="text-label">Text:
+      <span class="text-wrap">
+        <input id="text" type="text" value="hello-world!" size="40">
+        <button class="text-reset" type="button" id="text-reset" title="Reset to preset text" hidden>↺</button>
+      </span>
     </label>
     <label class="size-label">Size:
       <input id="size" type="number" value="72" min="1" max="2048">
