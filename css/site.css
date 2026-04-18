@@ -251,6 +251,7 @@ nav.tabs .tab.active:visited { color: var(--accent); }
  * aren't driving anything visible, so hide them. */
 body[data-active="embed"] #shared-controls,
 body[data-active="embed"] .controls-row2,
+body[data-active="embed"] .script-warning,
 body[data-active="embed"] .presets { display: none; }
 
 /* GPU has no font-size concept -- zoom is a user gesture
