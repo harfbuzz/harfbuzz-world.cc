@@ -365,7 +365,7 @@ body[data-active="gpu"] .size-label { display: none; }
   margin-bottom: 0.35rem;
 }
 .panel-title {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--muted);
 }
