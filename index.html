@@ -67,7 +67,7 @@
     <button class="preset" type="button" data-preset="chinese">Chinese</button>
   </div>
 
-  <div class="controls" id="shared-controls">
+  <div class="controls controls-row1" id="shared-controls">
     <div class="font-picker">
       <label class="font-label">Font:</label>
       <button class="font-button" type="button" id="font-button">
@@ -106,19 +106,27 @@
         <p class="font-menu-hint">… or drop a font file anywhere on the page.</p>
       </div>
     </div>
+    <div class="var-picker" id="var-picker" hidden>
+      <button class="var-button" type="button" id="var-button">
+        Variations <span class="font-arrow">▾</span>
+      </button>
+      <div class="var-panel" id="var-panel" hidden>
+        <div class="axes" id="var-axes"></div>
+      </div>
+    </div>
+    <label class="palette-label" id="palette-label" hidden>Palette:
+      <select id="palette"></select>
+    </label>
+  </div>
+  <div class="controls controls-row2">
     <label>Text:
       <input id="text" type="text" value="hello-world!" size="40">
     </label>
     <label class="size-label">Size:
       <input id="size" type="number" value="72" min="1" max="2048">
     </label>
-    <label class="palette-label" id="palette-label" hidden>Palette:
-      <select id="palette"></select>
-    </label>
   </div>
   <div id="drop-overlay">drop font file</div>
-
-  <div class="axes" id="var-axes" hidden></div>
 
   <section class="demo" id="demo-embed">
     <h2>Welcome</h2>

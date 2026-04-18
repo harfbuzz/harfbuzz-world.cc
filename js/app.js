@@ -1121,6 +1121,17 @@ hb_blob_destroy (blob);`
    * drag.  Axes without a slider fall back to the axis
    * default. */
   const axesEl = document.getElementById ("var-axes");
+  const varButton = document.getElementById ("var-button");
+  const varPanel = document.getElementById ("var-panel");
+  varButton.addEventListener ("click", () => {
+    varPanel.hidden = !varPanel.hidden;
+  });
+  document.addEventListener ("click", (e) => {
+    if (!varPanel.hidden &&
+        !varPanel.contains (e.target) &&
+        !varButton.contains (e.target))
+      varPanel.hidden = true;
+  });
   let currentAxes = [];  /* [{tag, min, def, max, name, slider, value}, ...] */
   function variationsString () {
     return currentAxes
@@ -1158,30 +1169,30 @@ hb_blob_destroy (blob);`
     const ptr = Module._web_font_axes (fontPtr, fontBuf.length);
     const axes = JSON.parse (Module.UTF8ToString (ptr));
     Module._web_free_string (ptr);
-    axesEl.innerHTML = "";
+    const tbl = document.createElement ("table");
+    tbl.className = "axes";
     currentAxes = axes.map ((a) => {
-      const row = document.createElement ("label");
-      row.className = "axis";
-      const caption = document.createElement ("span");
-      caption.className = "axis-caption";
-      caption.textContent = a.name || a.tag;
+      const row = document.createElement ("tr");
+      const tdCap = document.createElement ("td");
+      tdCap.className = "axis-caption";
+      tdCap.textContent = a.name || a.tag;
+      const tdSlider = document.createElement ("td");
       const slider = document.createElement ("input");
       slider.type = "range";
       slider.min = a.min;
       slider.max = a.max;
       slider.step = (a.max - a.min) / 100;
-      /* Start wght at Regular (400) regardless of the font's
-       * own fvar default -- CJK families tend to pick
-       * wght=100 as default which renders as Thin. */
       const startValue = a.tag === "wght"
         ? Math.min (a.max, Math.max (a.min, 400))
         : a.def;
       slider.value = startValue;
-      const readout = document.createElement ("span");
-      readout.className = "axis-value";
-      readout.textContent = String (startValue);
-      row.append (caption, slider, readout);
-      axesEl.append (row);
+      tdSlider.append (slider);
+      const tdVal = document.createElement ("td");
+      tdVal.className = "axis-value";
+      tdVal.textContent = String (startValue);
+      row.append (tdCap, tdSlider, tdVal);
+      tbl.append (row);
+      const readout = tdVal;
       const entry = { tag: a.tag, name: a.name, min: a.min, def: a.def,
                       max: a.max, slider, readout, value: startValue,
                       startValue };
@@ -1192,7 +1203,9 @@ hb_blob_destroy (blob);`
       });
       return entry;
     });
-    axesEl.hidden = currentAxes.length === 0;
+    axesEl.innerHTML = "";
+    axesEl.append (tbl);
+    document.getElementById ("var-picker").hidden = currentAxes.length === 0;
     /* Subset's "Instantiate variations" toggle only matters
      * for variable fonts; hide it when there are no axes. */
     subsetInstantiateLabel.hidden = currentAxes.length === 0;
