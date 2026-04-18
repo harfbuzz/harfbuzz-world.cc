@@ -567,8 +567,8 @@ char *web_shape_json (const uint8_t *font_bytes, unsigned font_len,
     esc[eo] = 0;
     off += snprintf (out + off, cap - off,
                      "%s{\"gid\":%u,\"name\":\"%s\",\"cluster\":%u,"
-                     "\"x_offset\":%g,\"y_offset\":%g,"
-                     "\"x_advance\":%g,\"y_advance\":%g}",
+                     "\"x_offset\":%.2f,\"y_offset\":%.2f,"
+                     "\"x_advance\":%.2f,\"y_advance\":%.2f}",
                      i ? "," : "",
                      info[i].codepoint, esc, info[i].cluster,
                      pos[i].x_offset / div, pos[i].y_offset / div,
