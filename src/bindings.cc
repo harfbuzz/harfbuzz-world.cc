@@ -760,6 +760,18 @@ uint8_t *web_subset (const uint8_t *font_bytes, unsigned font_len,
     }
   }
 
+  /* Apply feature settings to the subset input: add explicitly
+   * enabled features to the retained set; remove explicitly
+   * disabled features. */
+  hb_set_t *feat_set = hb_subset_input_set (input, HB_SUBSET_SETS_LAYOUT_FEATURE_TAG);
+  for (unsigned i = 0; i < g_feature_count; i++)
+  {
+    if (g_feature_list[i].value)
+      hb_set_add (feat_set, g_feature_list[i].tag);
+    else
+      hb_set_del (feat_set, g_feature_list[i].tag);
+  }
+
   /* Add every Unicode codepoint in the text to the subset's
    * unicode set.  hb-subset closes over GSUB/GPOS lookups
    * and pulls in any glyphs needed to shape that input. */
