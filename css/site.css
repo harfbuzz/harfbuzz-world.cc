@@ -365,8 +365,10 @@ body[data-active="gpu"] .size-label { display: none; }
   margin-bottom: 0.35rem;
 }
 .learn-link {
-  margin: 0.5rem 0 0;
+  margin: 0.25rem 0 0;
+  color: var(--accent);
 }
+.learn-link a { color: var(--accent); }
 .panel-title {
   font-size: 0.95rem;
   font-weight: 600;
