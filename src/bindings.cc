@@ -674,8 +674,8 @@ render (hb_vector_format_t format,
    * not just glyph ink.  Per-glyph EXPAND then unions ink that
    * overshoots — italic LSBs, accents, deep descenders.
    *
-   * hb-vector uses Y-down for the SVG/PDF output coordinate
-   * system, so the line box's top edge is at -ascender. */
+   * hb-vector stores extents in Y-up (font) space; bottom edge
+   * is at descender (negative), top at ascender (positive). */
   float total_x = 0.f;
   for (unsigned i = 0; i < len; i++) total_x += pos[i].x_advance;
   hb_font_extents_t fe;
@@ -685,7 +685,7 @@ render (hb_vector_format_t format,
   /* Advances and h_extents are in input space (pixel*SCALE);
    * set_extents divides by the context's scale_factor, so we
    * pass them through without pre-scaling. */
-  hb_vector_extents_t logical = { 0.f, -asc, total_x, asc - desc };
+  hb_vector_extents_t logical = { 0.f, asc, total_x, desc - asc };
   if (p) hb_vector_paint_set_extents (p, &logical);
   else   hb_vector_draw_set_extents  (d, &logical);
 
