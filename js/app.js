@@ -332,15 +332,13 @@ for (unsigned i = 0; i < len; i++) {
   float gy = pen_y + pos[i].y_offset;
   hb_raster_image_t *img;
   if (p) {
-    hb_raster_paint_set_extents (p, &ext);
-    hb_raster_paint_set_scale_factor (p, SCALE, SCALE);
-    hb_raster_paint_glyph (p, font, info[i].codepoint, gx, gy);
+    hb_raster_paint_set_transform (p, 1, 0, 0, 1, gx, gy);
+    hb_raster_paint_glyph (p, font, info[i].codepoint);
     img = hb_raster_paint_render (p);  /* BGRA32 premultiplied */
   } else {
     hb_raster_draw_reset (d);
-    hb_raster_draw_set_extents (d, &ext);
-    hb_raster_draw_set_scale_factor (d, SCALE, SCALE);
-    hb_raster_draw_glyph (d, font, info[i].codepoint, gx, gy);
+    hb_raster_draw_set_transform (d, 1, 0, 0, 1, gx, gy);
+    hb_raster_draw_glyph (d, font, info[i].codepoint);
     img = hb_raster_draw_render (d);  /* A8 coverage */
   }
   /* ...SRC_OVER composite img onto your output... */
@@ -394,12 +392,15 @@ float pen_x = 0, pen_y = 0;
 for (unsigned i = 0; i < len; i++) {
   float gx = pen_x + pos[i].x_offset;
   float gy = pen_y + pos[i].y_offset;
-  if (p)
-    hb_vector_paint_glyph (p, font, info[i].codepoint, gx, gy,
+  if (p) {
+    hb_vector_paint_set_transform (p, 1, 0, 0, 1, gx, gy);
+    hb_vector_paint_glyph (p, font, info[i].codepoint,
                            HB_VECTOR_EXTENTS_MODE_EXPAND);
-  else
-    hb_vector_draw_glyph  (d, font, info[i].codepoint, gx, gy,
+  } else {
+    hb_vector_draw_set_transform (d, 1, 0, 0, 1, gx, gy);
+    hb_vector_draw_glyph  (d, font, info[i].codepoint,
                            HB_VECTOR_EXTENTS_MODE_EXPAND);
+  }
   pen_x += pos[i].x_advance;
   pen_y += pos[i].y_advance;
 }
