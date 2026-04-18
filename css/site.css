@@ -271,9 +271,10 @@ body[data-active="gpu"] .size-label { display: none; }
 .var-picker[hidden] { visibility: hidden; }
 .var-button {
   font: inherit;
+  font-size: 0.95rem;
   cursor: pointer;
   border: 1px solid var(--accent);
-  padding: 0.4rem 0.7rem;
+  padding: 0.35rem 0.7rem;
   border-radius: 4px;
   color: var(--accent);
   background: var(--bg-card);
