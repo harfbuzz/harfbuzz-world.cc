@@ -1552,9 +1552,10 @@ hb_blob_destroy (blob);`
   }
   fontFullLoad.addEventListener ("click", downloadFullFont);
 
-  function applyPreset (key) {
+  function applyPreset (key, opts) {
     const p = PRESETS[key];
     if (!p) return false;
+    const silent = !!(opts && opts.silent);
     currentPresetKey = key;
     textInput.value = p.text;
     /* If the user has loaded a custom font (URL / file / GF),
@@ -1562,17 +1563,19 @@ hb_blob_destroy (blob);`
      * across the same chosen font.  Otherwise the preset
      * brings its bundled script-appropriate font along. */
     const url = new URL (location.href);
-    url.searchParams.delete ("text");
-    url.searchParams.delete ("size");
-    url.searchParams.set ("preset", key);
+    if (!silent) {
+      url.searchParams.delete ("text");
+      url.searchParams.delete ("size");
+      url.searchParams.set ("preset", key);
+    }
     if (customFontActive) {
       /* Keep ?font; just re-render with the new text. */
       renderActive ();
     } else {
-      url.searchParams.delete ("font");
+      if (!silent) url.searchParams.delete ("font");
       loadPresetFont (p);
     }
-    history.replaceState (null, "", url);
+    if (!silent) history.replaceState (null, "", url);
     reflectActivePreset ();
     return true;
   }
@@ -1819,9 +1822,9 @@ hb_blob_destroy (blob);`
       await loadPresetFont (PRESETS[presetParam]);
   } else if (fontUrlParam && fontUrlParam.startsWith ("@")) {
     if (!(await loadFontFromCache (fontUrlParam.slice (1))))
-      applyPreset (DEFAULT_PRESET);
+      applyPreset (DEFAULT_PRESET, { silent: true });
   } else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam, null, { silentUrl: true })))
-    applyPreset (DEFAULT_PRESET);
+    applyPreset (DEFAULT_PRESET, { silent: true });
 
   reflectActivePreset ();
   fromHash ();
