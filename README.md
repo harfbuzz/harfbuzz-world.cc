@@ -20,7 +20,7 @@ single-file HarfBuzz amalgamation) in a real project.
   downloadable; SVG also rendered inline as a preview.
 - **gpu** — slug-based GPU rendering, embedded from
   [hb-gpu-demo](https://harfbuzz.github.io/hb-gpu-demo/)
-  via iframe and driven by the same shared controls.
+  and driven by the same shared controls.
 
 The shared controls (text, size, font picker, variable-axis
 sliders) feed every tab.  Five presets (Latin / Arabic /
