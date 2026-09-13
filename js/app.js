@@ -1834,6 +1834,8 @@ hb_blob_destroy (blob);`
     if (request !== fontLoadGeneration) return null;
     const name = file.name.replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
     setFontBytes (bytes, name, { custom: true, fileName: file.name });
+    /* Let the picker select this file again, including after a drop. */
+    fontInput.value = "";
     /* Cache in IndexedDB so the font survives page refresh.
      * Put font=@<hash> in the URL so the reload path can
      * look it up. */
