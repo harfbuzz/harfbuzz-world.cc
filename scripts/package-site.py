@@ -2,6 +2,7 @@
 """Package the static site with content-addressed JS, CSS, and WebAssembly."""
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
 import re
@@ -31,6 +32,10 @@ def package_site(source, output):
 
     html = re.sub(r'(\b(?:src|href|data-wasm)=")([^"]+)(")', rewrite,
                   (source / "index.html").read_text())
+    build_date = datetime.now(timezone.utc).date().isoformat()
+    html = html.replace("<!-- site-build-date -->",
+                        f'Built <time datetime="{build_date}" title="Site build date (UTC)">'
+                        f'{build_date}</time><br>')
 
     output.mkdir(parents=True, exist_ok=True)
     for name, data in contents.items():

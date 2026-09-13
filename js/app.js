@@ -1204,11 +1204,9 @@ hb_blob_destroy (blob);`
         if (v) url.searchParams.set ("variations", v);
         else   url.searchParams.delete ("variations");
       }
-      if (currentFeatures.length) {
-        const f = featuresString ();
-        if (f) url.searchParams.set ("features", f);
-        else   url.searchParams.delete ("features");
-      }
+      const f = featuresString ();
+      if (f) url.searchParams.set ("features", f);
+      else   url.searchParams.delete ("features");
       /* Same convention as variations: only touch ?palette
        * when the current font actually has multi-palette,
        * so a font switch doesn't clobber a prior selection. */
@@ -1239,14 +1237,19 @@ hb_blob_destroy (blob);`
   function updateTextReset () {
     textReset.hidden = textInput.value === defaultText ();
   }
+  function refreshText () {
+    /* Features depend on the text's script. Refresh them before
+     * rendering so the preview uses the updated toggle states. */
+    refreshFeatures ();
+    checkMultiScript ();
+    updateTextReset ();
+    refreshFullNote ();
+  }
   textReset.addEventListener ("click", () => {
     textInput.value = defaultText ();
-    updateTextReset ();
-    renderActive ();
-    checkMultiScript ();
-    syncUrl ();
+    refreshText ();
   });
-  textInput.addEventListener ("input", () => { renderActive (); checkMultiScript (); updateTextReset (); refreshFullNote (); syncUrl (); });
+  textInput.addEventListener ("input", refreshText);
   sizeInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
 
   /* Variable axes: pull fvar info from the current font,
@@ -1294,12 +1297,16 @@ hb_blob_destroy (blob);`
     syncUrl ();
     renderActive ();
   }
+  function setAxisValue (axis, value) {
+    axis.value = Number.isFinite (value)
+      ? Math.min (axis.max, Math.max (axis.min, value))
+      : axis.startValue;
+    axis.slider.value = axis.value;
+    axis.readout.textContent = String (axis.value);
+  }
   function resetVariations () {
-    for (const a of currentAxes) {
-      a.value = a.startValue;
-      a.slider.value = a.startValue;
-      a.readout.textContent = String (a.startValue);
-    }
+    for (const a of currentAxes)
+      setAxisValue (a, a.startValue);
     updateVariations ();
   }
   function variationsForUrl () {
@@ -1326,7 +1333,9 @@ hb_blob_destroy (blob);`
       slider.type = "range";
       slider.min = a.min;
       slider.max = a.max;
-      slider.step = (a.max - a.min) > 10 ? 1 : 0.01;
+      /* Axis bounds, defaults, and URL values can be fractional.
+       * A fixed step can silently round them off the font's grid. */
+      slider.step = "any";
       const startValue = a.tag === "wght"
         ? Math.min (a.max, Math.max (a.min, 400))
         : a.def;
@@ -1342,8 +1351,10 @@ hb_blob_destroy (blob);`
                       max: a.max, slider, readout, value: startValue,
                       startValue };
       slider.addEventListener ("input", () => {
-        entry.value = parseFloat (slider.value);
-        readout.textContent = (+slider.value).toFixed (2).replace (/\.?0+$/, "");
+        const v = slider.valueAsNumber;
+        /* Keep dragging values readable without rounding endpoints
+         * or the explicit coordinates restored from a URL. */
+        setAxisValue (entry, v === a.min || v === a.max ? v : +v.toFixed (2));
         updateVariations ();
       });
       return entry;
@@ -1362,12 +1373,8 @@ hb_blob_destroy (blob);`
       urlVars.split (",").forEach ((pair) => {
         const [tag, val] = pair.split ("=");
         const axis = currentAxes.find ((a) => a.tag === tag);
-        if (axis && val !== undefined) {
-          const v = parseFloat (val);
-          axis.value = v;
-          axis.slider.value = v;
-          axis.readout.textContent = String (v);
-        }
+        if (axis && val !== undefined)
+          setAxisValue (axis, val.trim () ? Number (val) : NaN);
       });
     updateVariations ();
   }
@@ -1457,10 +1464,20 @@ hb_blob_destroy (blob);`
     updateFeatures ();
   }
   function refreshFeatures () {
+    if (!fontBuf) return;
     withText ((textPtr) => {
       const ptr = Module._web_font_features (fontPtr, fontBuf.length, textPtr);
       const features = JSON.parse (Module.UTF8ToString (ptr));
       Module._web_free_string (ptr);
+      featPicker.hidden = features.length === 0;
+      /* Most edits keep the same script and feature list. Keep
+       * the existing buttons and their states in that case. */
+      if (features.length === currentFeatures.length &&
+          features.every ((f, i) => currentFeatures[i].btn &&
+            f.tag === currentFeatures[i].tag && f.name === currentFeatures[i].name)) {
+        updateFeatures ();
+        return;
+      }
       /* Preserve toggle states from the previous feature list. */
       const prevStates = {};
       for (const f of currentFeatures)
@@ -1484,7 +1501,6 @@ hb_blob_destroy (blob);`
         featList.append (btn);
         return entry;
       });
-      featPicker.hidden = currentFeatures.length === 0;
       updateFeatures ();
     });
   }
@@ -1616,8 +1632,8 @@ hb_blob_destroy (blob);`
       url.searchParams.set ("preset", key);
     }
     if (customFontActive) {
-      /* Keep ?font; just re-render with the new text. */
-      renderActive ();
+      /* Keep ?font and refresh the controls for the new text. */
+      refreshText ();
     } else {
       if (!silent) url.searchParams.delete ("font");
       loadPresetFont (p);
