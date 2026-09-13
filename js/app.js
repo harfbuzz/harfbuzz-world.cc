@@ -664,7 +664,7 @@ hb_blob_destroy (blob);`
     if (pinned === "light" || pinned === "dark") return pinned;
     return matchMedia ("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
-  const gpuFrame = document.getElementById ("gpu-frame");
+  let gpuFrame = document.getElementById ("gpu-frame");
   const GPU_ORIGIN = "https://harfbuzz.github.io";
   function postGpu (msg) {
     if (gpuFrame.contentWindow)
@@ -1015,31 +1015,75 @@ hb_blob_destroy (blob);`
     u.searchParams.set ("text", textInput.value);
     return u.toString ();
   }
+  const gpuStatus = document.getElementById ("gpu-status");
+  const gpuStatusMessage = document.getElementById ("gpu-status-message");
+  const gpuRetry = document.getElementById ("gpu-retry");
+  const GPU_LOAD_TIMEOUT = 30000;
+  let gpuLoaded = false;
+  let gpuLoadTimer = 0;
+  let gpuNudgeTimer = 0;
+
+  function loadGpu () {
+    if (gpuLoaded) {
+      /* A fresh window lets us ignore late ready messages from
+       * the previous attempt, even though both have the same origin. */
+      const next = gpuFrame.cloneNode (false);
+      next.removeAttribute ("src");
+      gpuFrame.replaceWith (next);
+      gpuFrame = next;
+    }
+    gpuLoaded = true;
+    gpuReady = false;
+    gpuDark = false;
+    clearTimeout (gpuLoadTimer);
+    clearTimeout (gpuNudgeTimer);
+    gpuStatusMessage.textContent = "Loading GPU preview…";
+    gpuStatus.classList.remove ("error");
+    gpuStatus.hidden = false;
+    gpuRetry.hidden = true;
+
+    const frame = gpuFrame;
+    const failed = () => {
+      if (frame !== gpuFrame || gpuReady) return;
+      clearTimeout (gpuLoadTimer);
+      gpuStatusMessage.textContent = "The GPU preview hasn’t started. Try again.";
+      gpuStatus.classList.add ("error");
+      gpuRetry.hidden = false;
+    };
+    frame.addEventListener ("error", failed, { once: true });
+    frame.addEventListener ("load", () => {
+      try { frame.contentWindow.dispatchEvent (new Event ("resize")); } catch {}
+    }, { once: true });
+    /* Keep the iframe laid out behind the status message so the
+     * demo can measure its canvas before reporting ready. */
+    requestAnimationFrame (() => requestAnimationFrame (() => {
+      if (frame !== gpuFrame) return;
+      gpuLoadTimer = setTimeout (failed, GPU_LOAD_TIMEOUT);
+      frame.src = gpuFrameUrl ();
+    }));
+  }
+  gpuRetry.addEventListener ("click", loadGpu);
+
   /* When the iframe's runtime is ready it posts { kind: 'ready' }.
    * That's the point at which _web_set_text / _web_load_font
    * are safe to drive via postMessage -- push the current
    * text and font once we hear it. */
   window.addEventListener ("message", (e) => {
-    if (e.origin !== GPU_ORIGIN) return;
+    if (e.origin !== GPU_ORIGIN || e.source !== gpuFrame.contentWindow || !gpuLoaded) return;
     if (e.data && e.data.kind === "ready") {
       gpuReady = true;
+      clearTimeout (gpuLoadTimer);
+      clearTimeout (gpuNudgeTimer);
+      gpuStatus.hidden = true;
       postGpu ({ kind: "text", value: textInput.value });
       if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
-      updateVariations ();
-      /* Mirror the host's currently-selected palette into the
-       * iframe.  Otherwise switching to the GPU tab after
-       * picking a non-zero palette in another tab would render
-       * with palette 0 until the user touches the dropdown. */
+      postGpu ({ kind: "variations", value: variationsString () });
+      /* Resend every setting, including defaults, on each connection. */
       const pIdx = parseInt (paletteSelect.value, 10) || 0;
-      if (pIdx)
-        postGpu ({ kind: "palette", value: pIdx });
-      const fs = featuresString ();
-      if (fs)
-        postGpu ({ kind: "features", value: fs });
-      if (effectiveTheme () === "dark") {
-        postGpu ({ kind: "dark", value: true });
-        gpuDark = true;
-      }
+      postGpu ({ kind: "palette", value: pIdx });
+      postGpu ({ kind: "features", value: featuresString () });
+      gpuDark = effectiveTheme () === "dark";
+      postGpu ({ kind: "dark", value: gpuDark });
       /* First rebuild_buffer on a freshly-loaded font
        * sometimes leaves the atlas half-uploaded and the
        * first composite blank.  A second text push forces
@@ -1047,34 +1091,19 @@ hb_blob_destroy (blob);`
        * the same nudge tab-switching-back happens to
        * perform, and the only thing that reliably rescues
        * this. */
-      setTimeout (() => {
-        postGpu ({ kind: "text", value: textInput.value });
+      const frame = gpuFrame;
+      gpuNudgeTimer = setTimeout (() => {
+        if (frame === gpuFrame && gpuReady)
+          postGpu ({ kind: "text", value: textInput.value });
       }, 200);
     }
   });
-  /* Set the iframe src exactly once, lazily on first gpu-tab
-   * activation, with current text baked into the URL.  After
-   * that, every update flows through postMessage -- setting
-   * .src again would reload the iframe and hit all the
-   * failure modes of racing the wasm bootstrap. */
-  let gpuLoaded = false;
+  /* Load lazily on first activation; only an explicit retry reloads
+   * the iframe. Other updates flow through postMessage. */
   function renderGpu () {
-    if (!gpuLoaded) {
-      gpuLoaded = true;
-      /* Two-frame delay so both visibility and layout have
-       * committed before hb-gpu-demo's GLFW canvas measures
-       * itself; on load, dispatch a synthetic resize into
-       * the iframe for hb-gpu-demo's resize handler to
-       * re-measure the canvas (belt + suspenders). */
-      gpuFrame.addEventListener ("load", () => {
-        try { gpuFrame.contentWindow.dispatchEvent (new Event ("resize")); } catch {}
-      }, { once: true });
-      requestAnimationFrame (() => requestAnimationFrame (() => {
-        gpuFrame.src = gpuFrameUrl ();
-      }));
-      return;
-    }
-    if (gpuReady)
+    if (!gpuLoaded)
+      loadGpu ();
+    else if (gpuReady)
       postGpu ({ kind: "text", value: textInput.value });
     renderSnippet ("gpu");
   }

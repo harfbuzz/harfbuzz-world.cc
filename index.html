@@ -543,8 +543,14 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
        and <strong>right-drag</strong> to rotate in 3D.  The standalone
        <a href="https://harfbuzz.github.io/hb-gpu-demo/">demo</a>
        offers more controls and a WebGPU build.</p>
-    <iframe id="gpu-frame" class="render"
-            title="hb-gpu live demo"></iframe>
+    <div class="gpu-preview">
+      <iframe id="gpu-frame" class="render"
+              title="hb-gpu live demo"></iframe>
+      <div class="gpu-status" id="gpu-status" role="status" hidden>
+        <span id="gpu-status-message">Loading GPU preview…</span>
+        <button id="gpu-retry" type="button" hidden>Retry</button>
+      </div>
+    </div>
     <details class="snippet" data-snippet="gpu">
       <summary>
         <span class="snippet-title">Code snippet</span>

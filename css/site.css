@@ -334,7 +334,8 @@ body[data-active="gpu"] .size-label { display: none; }
 .var-picker { position: relative; }
 .var-picker[hidden] { visibility: hidden; }
 .var-button,
-.startup-error button {
+.startup-error button,
+.gpu-status button {
   font: inherit;
   font-size: 0.95rem;
   cursor: pointer;
@@ -349,7 +350,8 @@ body[data-active="gpu"] .size-label { display: none; }
   transition: border-color 0.15s, background 0.15s;
 }
 .var-button:hover,
-.startup-error button:hover {
+.startup-error button:hover,
+.gpu-status button:hover {
   border-color: var(--accent);
   background: var(--highlight);
 }
@@ -745,6 +747,25 @@ iframe.render {
   padding: 0;
   background: #000;
 }
+.gpu-preview { position: relative; }
+.gpu-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--muted);
+  text-align: center;
+}
+.gpu-status[hidden],
+.gpu-status button[hidden] { display: none; }
+.gpu-status.error { color: var(--error-fg); }
 
 /* Prose / code blocks (embed tab) */
 
