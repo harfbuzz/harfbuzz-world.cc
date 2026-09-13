@@ -11,6 +11,7 @@
   --bg-card:   #fffdf8;
   --fg:        #332d24;
   --muted:     #786e5f;
+  --error-fg:  #a03030;
   --accent:    #b8892d;   /* brass gold */
   --accent-hi: #8e641d;   /* darker gold for hover */
   --accent-lo: #967841;   /* muted gold for visited */
@@ -36,6 +37,7 @@
     --bg-card:   #24211c;
     --fg:        #eee7da;
     --muted:     #b1a694;
+    --error-fg:  #f0a0a0;
     --accent:    #d8ad55;
     --accent-hi: #e8c476;
     --accent-lo: #b59b64;
@@ -60,6 +62,7 @@
   --bg-card:   #24211c;
   --fg:        #eee7da;
   --muted:     #b1a694;
+  --error-fg:  #f0a0a0;
   --accent:    #d8ad55;
   --accent-hi: #e8c476;
   --accent-lo: #b59b64;
@@ -654,6 +657,14 @@ body[data-active="gpu"] .size-label { display: none; }
   border-radius: 4px;
 }
 .font-menu-row button:hover { background: var(--highlight); }
+.font-menu-row button:disabled { cursor: progress; opacity: 0.65; }
+.font-menu-error {
+  margin: 0;
+  max-width: 28rem;
+  color: var(--error-fg);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
 .font-menu-hint {
   margin: 0.25rem 0 0;
   color: var(--muted);

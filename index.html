@@ -105,15 +105,17 @@
         </div>
         <div class="font-menu-row">
           <label for="font-url">URL</label>
-          <input id="font-url" type="url" placeholder="https://…/Font.ttf">
+          <input id="font-url" type="url" placeholder="https://…/Font.ttf" aria-describedby="font-url-error">
           <button id="font-url-load" type="button">Load</button>
         </div>
+        <p class="font-menu-error" id="font-url-error" role="alert" hidden></p>
         <div class="font-menu-row">
           <label for="font-gf">Google Fonts</label>
-          <input id="font-gf" type="text" list="font-gf-list" placeholder="e.g. Inter">
+          <input id="font-gf" type="text" list="font-gf-list" placeholder="e.g. Inter" aria-describedby="font-gf-error">
           <datalist id="font-gf-list"></datalist>
           <button id="font-gf-load" type="button">Load</button>
         </div>
+        <p class="font-menu-error" id="font-gf-error" role="alert" hidden></p>
         <p class="font-menu-hint">Or drop a font file anywhere on the page while this menu is open.</p>
       </div>
     </div>

@@ -116,9 +116,11 @@ async function fontHash (bytes) {
   const fontInput     = document.getElementById ("font-input");
   const fontUrl       = document.getElementById ("font-url");
   const fontUrlLoad   = document.getElementById ("font-url-load");
+  const fontUrlError  = document.getElementById ("font-url-error");
   const fontGf        = document.getElementById ("font-gf");
   const fontGfList    = document.getElementById ("font-gf-list");
   const fontGfLoad    = document.getElementById ("font-gf-load");
+  const fontGfError   = document.getElementById ("font-gf-error");
   const fontNameEl    = document.getElementById ("font-name");
   const fontFullLoad  = document.getElementById ("font-full-load");
   const dropOverlay   = document.getElementById ("drop-overlay");
@@ -1650,11 +1652,40 @@ hb_blob_destroy (blob);`
       closeFontMenu ();
     }
   });
-  fontUrlLoad.addEventListener ("click", () => {
-    if (fontUrl.value) {
-      loadFontUrl (fontUrl.value);
+  function setFontLoadError (el, message) {
+    el.textContent = message;
+    el.hidden = !message;
+  }
+  /* Keep failures next to the field until it is edited or
+   * retried. Only close the menu once the font has loaded. */
+  async function loadFontFromInput (input, button, errorEl, load) {
+    if (button.disabled) return;
+    const value = input.value.trim ();
+    const label = button.textContent;
+    setFontLoadError (errorEl, "");
+    button.disabled = true;
+    button.textContent = "Loading…";
+    try {
+      await load (value);
       closeFontMenu ();
+    } catch (e) {
+      /* An error for an earlier value should not appear next
+       * to text the user changed while the request was pending. */
+      if (input.value.trim () === value)
+        setFontLoadError (errorEl, e.message || "Could not load this font. Please try again.");
+    } finally {
+      button.disabled = false;
+      button.textContent = label;
     }
+  }
+  fontUrl.addEventListener ("input", () => setFontLoadError (fontUrlError, ""));
+  fontGf.addEventListener ("input", () => setFontLoadError (fontGfError, ""));
+  fontUrlLoad.addEventListener ("click", () => {
+    loadFontFromInput (fontUrl, fontUrlLoad, fontUrlError, async (url) => {
+      if (!url) throw new Error ("Enter a font URL.");
+      if (!(await loadFontUrl (url)))
+        throw new Error ("Could not load this font URL. Check the address and try again.");
+    });
   });
   fontUrl.addEventListener ("keydown", (e) => {
     if (e.key === "Enter") fontUrlLoad.click ();
@@ -1693,23 +1724,23 @@ hb_blob_destroy (blob);`
     } catch (e) { /* leave empty; user can still type a known family */ }
   });
   async function loadGfFamily (name) {
-    name = name.trim ();
-    if (!name) return;
+    if (!name) throw new Error ("Enter a Google Fonts family name.");
+    let families;
     try {
-      const families = await fetchGfFamilies ();
-      const entry = families[name];
-      if (!entry || !entry.fp) {
-        fontGf.setCustomValidity ("Unknown font family");
-        fontGf.reportValidity ();
-        setTimeout (() => fontGf.setCustomValidity (""), 2000);
-        return;
-      }
-      const url = GF_RAW + entry.fp.replace (/^\.\//, "");
-      const ok = await loadFontUrl (url, name);
-      if (ok) closeFontMenu ();
-    } catch { /* network/json error: silent */ }
+      families = await fetchGfFamilies ();
+    } catch {
+      throw new Error ("Could not load the Google Fonts list. Please try again.");
+    }
+    const entry = families[name];
+    if (!entry || !entry.fp)
+      throw new Error ("That Google Fonts family was not found. Check the name and try again.");
+    const url = GF_RAW + entry.fp.replace (/^\.\//, "");
+    if (!(await loadFontUrl (url, name)))
+      throw new Error ("Could not download this font from Google Fonts. Please try again.");
   }
-  fontGfLoad.addEventListener ("click", () => loadGfFamily (fontGf.value));
+  fontGfLoad.addEventListener ("click", () => {
+    loadFontFromInput (fontGf, fontGfLoad, fontGfError, loadGfFamily);
+  });
   fontGf.addEventListener ("keydown", (e) => {
     if (e.key === "Enter") fontGfLoad.click ();
   });
