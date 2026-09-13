@@ -1979,6 +1979,8 @@ hb_blob_destroy (blob);`
     if (gfDatalistPopulated) return;
     try {
       const families = await fetchGfFamilies ();
+      /* Another focus handler may have populated the list while we waited. */
+      if (gfDatalistPopulated) return;
       const frag = document.createDocumentFragment ();
       Object.keys (families).sort ().forEach ((name) => {
         const opt = document.createElement ("option");
