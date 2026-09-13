@@ -80,8 +80,11 @@ async function fontHash (bytes) {
 
   /* Show the version and source revision compiled into this bundle. */
   const versionEl = document.getElementById ("hb-version");
-  if (versionEl)
-    versionEl.textContent = Module.UTF8ToString (Module._web_hb_version ());
+  if (versionEl) {
+    const version = Module.UTF8ToString (Module._web_hb_version ());
+    versionEl.textContent = version;
+    versionEl.href = "https://github.com/harfbuzz/harfbuzz/releases/tag/" + encodeURIComponent (version);
+  }
   const revisionEl = document.getElementById ("hb-revision");
   if (revisionEl && Module._web_hb_revision) {
     const revision = Module.UTF8ToString (Module._web_hb_revision ());
@@ -688,6 +691,9 @@ hb_blob_destroy (blob);`
   function applyTheme (t) {
     document.documentElement.dataset.theme = t;
     try { localStorage.setItem ("theme", t); } catch {}
+    const url = new URL (location.href);
+    url.searchParams.set ("theme", t);
+    history.replaceState (null, "", url);
     themeToggle.textContent = t === "dark" ? "☾" : "☀";
     syncRenderColors (t);
     renderActive ();
@@ -1044,7 +1050,14 @@ hb_blob_destroy (blob);`
   const rasterDl     = document.getElementById ("raster-dl-png");
   const rasterPngSize = document.getElementById ("raster-png-size");
   let rasterPngUrl   = null;
+  let rasterGeneration = 0;
   function renderRaster () {
+    const generation = ++rasterGeneration;
+    /* A download is valid only for the current render. */
+    if (rasterPngUrl) URL.revokeObjectURL (rasterPngUrl);
+    rasterPngUrl = null;
+    rasterDl.removeAttribute ("href");
+    rasterPngSize.textContent = "";
     withText ((textPtr) => {
       const wPtr = Module._malloc (4);
       const hPtr = Module._malloc (4);
@@ -1058,6 +1071,9 @@ hb_blob_destroy (blob);`
                                                   wPtr, hPtr);
       if (!dataPtr) {
         Module._free (wPtr); Module._free (hPtr);
+        rasterCanvas.width = rasterCanvas.height = 0;
+        rasterCanvas.style.width = rasterCanvas.style.height = "0px";
+        rasterStats.textContent = "";
         return;
       }
       const w = new Uint32Array (Module.HEAPU8.buffer, wPtr, 1)[0];
@@ -1090,12 +1106,10 @@ hb_blob_destroy (blob);`
         w + " \u00d7 " + h + " px"
         + " (" + Math.round (w / dpr) + " \u00d7 " + Math.round (h / dpr) + " CSS px"
         + " \u00b7 " + (Math.round (dpr * 100) / 100) + "\u00d7 DPR)";
-      /* Re-encode the canvas as PNG for the download link.
-       * toBlob is async; the previous URL is revoked once the
-       * new one lands so we don't leak. */
+      /* toBlob is async; an older render must not restore a stale
+       * download after the text is changed or cleared. */
       rasterCanvas.toBlob ((blob) => {
-        if (!blob) return;
-        if (rasterPngUrl) URL.revokeObjectURL (rasterPngUrl);
+        if (!blob || generation !== rasterGeneration) return;
         rasterPngUrl = URL.createObjectURL (blob);
         rasterDl.href = rasterPngUrl;
         rasterPngSize.textContent = fmtBytes (blob.size);

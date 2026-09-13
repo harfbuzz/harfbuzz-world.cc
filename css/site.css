@@ -902,6 +902,11 @@ pre.code {
   font-size: 0.95rem;
   text-align: center;
 }
+#raster-dl-png:not([href]) {
+  color: var(--muted);
+  cursor: default;
+  text-decoration: none;
+}
 
 /* Code snippet disclosure under each demo. */
 .snippet {
