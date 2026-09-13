@@ -712,6 +712,9 @@ body[data-active="gpu"] .size-label { display: none; }
 }
 #subset-preview {
   display: block;
+  /* Use the subset font's line metrics instead of the page's
+   * fixed line-height multiplier. */
+  line-height: normal;
   white-space: nowrap;
   overflow-x: auto;
 }
