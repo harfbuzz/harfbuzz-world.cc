@@ -919,6 +919,9 @@ hb_blob_destroy (blob);`
       const bytes  = Module.HEAPU8.slice (dataPtr, dataPtr + sublen);
       Module._web_free_string (dataPtr);
       Module._free (lenPtr);
+      /* The output format can differ from the input filename. */
+      const isCff = String.fromCharCode (...bytes.subarray (0, 4)) === "OTTO";
+      const mimeType = isCff ? "font/otf" : "font/ttf";
 
       subsetOrig.textContent = fmtBytes (fontBuf.length);
       subsetNew.textContent = fmtBytes (sublen);
@@ -943,15 +946,9 @@ hb_blob_destroy (blob);`
       renderSnippet ("subset");
       subsetTablesWrap.hidden = false;
 
-      /* Detect pre-subsetted fonts (e.g. NotoSansCJKsc-subset.otf)
-       * and hint that low savings are expected.  Skip when the
-       * user has opted into the full version of a preset — they
-       * get real savings against the full font. */
-      const u = new URL (location.href);
-      const fontParam = u.searchParams.get ("font") || "";
-      const presetKey = u.searchParams.get ("preset") || "";
-      const fontPath = fontParam || (PRESETS[presetKey] && PRESETS[presetKey].font) || "";
-      const preSubsetted = fontPath.includes ("-subset.") && !currentIsPresetFull;
+      /* Use the loaded filename: the URL can still describe a previous
+       * font, or omit the default preset. Full-font upgrades need no hint. */
+      const preSubsetted = fontFileName.includes ("-subset.") && !currentIsPresetFull;
       if (preSubsetted) {
         subsetHint.innerHTML = "<b>Note:</b> this font is already a subset,"
           + " so further size savings may be small.";
@@ -961,8 +958,9 @@ hb_blob_destroy (blob);`
       }
 
       if (subsetUrl) URL.revokeObjectURL (subsetUrl);
-      subsetUrl = URL.createObjectURL (new Blob ([bytes], { type: "font/ttf" }));
+      subsetUrl = URL.createObjectURL (new Blob ([bytes], { type: mimeType }));
       subsetDl.href = subsetUrl;
+      subsetDl.download = isCff ? "subset.otf" : "subset.ttf";
 
       /* Preview: render the current text using the subset
        * font itself, via a dynamic @font-face whose src is a
@@ -978,7 +976,8 @@ hb_blob_destroy (blob);`
       const palIdx = parseInt (paletteSelect.value, 10) || 0;
       subsetStyle.textContent =
         '@font-face { font-family: "' + family + '"; ' +
-        'src: url(data:font/ttf;base64,' + b64 + ') format("truetype"); } ' +
+        'src: url(data:' + mimeType + ';base64,' + b64 + ') ' +
+        'format("' + (isCff ? "opentype" : "truetype") + '"); } ' +
         '@font-palette-values --hbPalette { font-family: "' + family + '"; ' +
         'base-palette: ' + palIdx + '; }';
       subsetPreview.style.fontFamily = '"' + family + '", "AdobeBlank"';
