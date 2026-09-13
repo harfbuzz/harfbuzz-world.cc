@@ -103,11 +103,21 @@ async function fontHash (bytes) {
    * old buffer once the replacement has passed validation. */
   let fontBuf = null;
   let fontPtr = 0;
-  function setFontBytes (bytes, displayName) {
+  /* Custom fonts make preset buttons text-only, so users can
+   * try different scripts without replacing their font. */
+  let customFontActive = false;
+  let currentIsPresetFull = false;
+  /* Reserve a generation when a font is chosen, before any
+   * fetch, metadata lookup, or cache read can finish out of order. */
+  let fontLoadGeneration = 0;
+  function setFontBytes (bytes, displayName, { custom = false, full = false } = {}) {
     const nextPtr = prepareFontBytes (bytes);
     if (fontPtr) Module._free (fontPtr);
     fontBuf = bytes;
     fontPtr = nextPtr;
+    customFontActive = custom;
+    currentIsPresetFull = full;
+    fontRestoreWarning.hidden = true;
     /* Prefer the font's own family name (hb-ot-name) over
      * whatever caller-friendly label was passed in. */
     const namePtr = Module._web_font_family (fontPtr, fontBuf.length);
@@ -136,6 +146,7 @@ async function fontHash (bytes) {
   const fontShipped   = document.getElementById ("font-shipped");
   const fontInput     = document.getElementById ("font-input");
   const fontFileError = document.getElementById ("font-file-error");
+  const fontRestoreWarning = document.getElementById ("font-restore-warning");
   const fontUrl       = document.getElementById ("font-url");
   const fontUrlLoad   = document.getElementById ("font-url-load");
   const fontUrlError  = document.getElementById ("font-url-error");
@@ -1130,12 +1141,12 @@ hb_blob_destroy (blob);`
         }, 350);
       }
     }
-    demos[name].render ();
+    renderActive ();
     refreshFullNote ();
   }
 
   function renderActive () {
-    if (activeName) demos[activeName].render ();
+    if (activeName && fontBuf) demos[activeName].render ();
   }
 
   function fromHash () {
@@ -1498,7 +1509,6 @@ hb_blob_destroy (blob);`
    * subset is likely to actually bite: user has typed custom
    * text, or the subset demo is active. */
   let currentPresetKey = null;
-  let currentIsPresetFull = false;
   let activeFullDownload = null;
   let failedFullPreset = null;
   function formatBytes (n) {
@@ -1518,25 +1528,29 @@ hb_blob_destroy (blob);`
                             : "↓ Full " + p.fullName
                               + " (" + formatBytes (p.fullSize) + ")";
   }
-  async function tryLoadFullFromCache (p) {
+  async function tryLoadFullFromCache (p, request) {
     try {
       const db = await fontDbOpen ();
       const entry = await fontDbGetFull (db, p.fullUrl);
+      if (request !== fontLoadGeneration) return null;
       if (!entry) return false;
-      currentIsPresetFull = true;
-      setFontBytes (new Uint8Array (entry.bytes), entry.name);
+      setFontBytes (new Uint8Array (entry.bytes), entry.name, { full: true });
       return true;
     } catch { return false; }
   }
-  async function loadPresetFont (p) {
-    if (p.fullUrl && await tryLoadFullFromCache (p)) return;
-    currentIsPresetFull = false;
-    await loadFontUrl (p.font, p.name, { silentUrl: true, preset: true });
+  async function loadPresetFont (p, request = ++fontLoadGeneration) {
+    if (p.fullUrl) {
+      const cached = await tryLoadFullFromCache (p, request);
+      if (cached !== false) return cached;
+    }
+    if (request !== fontLoadGeneration) return null;
+    return loadFontUrl (p.font, p.name, { silentUrl: true, preset: true, request });
   }
   async function downloadFullFont () {
     const p = currentPresetKey && PRESETS[currentPresetKey];
     if (!p || !p.fullUrl || activeFullDownload) return;
     const preset = currentPresetKey;
+    const request = ++fontLoadGeneration;
     const ctrl = new AbortController ();
     activeFullDownload = ctrl;
     failedFullPreset = null;
@@ -1571,12 +1585,10 @@ hb_blob_destroy (blob);`
         const db = await fontDbOpen ();
         await fontDbPutFull (db, p.fullUrl, { bytes, name: p.fullName });
       } catch { /* quota / private-mode: swallow */ }
-      if (currentPresetKey === preset) {
-        currentIsPresetFull = true;
-        setFontBytes (bytes, p.fullName);
-      }
+      if (request === fontLoadGeneration && currentPresetKey === preset)
+        setFontBytes (bytes, p.fullName, { full: true });
     } catch (e) {
-      if (e.name !== "AbortError")
+      if (e.name !== "AbortError" && request === fontLoadGeneration)
         failedFullPreset = preset;
     } finally {
       activeFullDownload = null;
@@ -1598,7 +1610,10 @@ hb_blob_destroy (blob);`
     const url = new URL (location.href);
     if (!silent) {
       url.searchParams.delete ("text");
-      url.searchParams.delete ("size");
+      if (sizeInput.value && sizeInput.value !== "72")
+        url.searchParams.set ("size", sizeInput.value);
+      else
+        url.searchParams.delete ("size");
       url.searchParams.set ("preset", key);
     }
     if (customFontActive) {
@@ -1631,32 +1646,38 @@ hb_blob_destroy (blob);`
 
   /* Font picker: dropdown menu with three sources (shipped /
    * file / URL), plus drag-and-drop anywhere on the page. */
-  async function loadFontFile (file) {
+  async function loadFontFile (file, request) {
     const bytes = new Uint8Array (await file.arrayBuffer ());
+    if (request !== fontLoadGeneration) return null;
     const name = file.name.replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
-    setFontBytes (bytes, name);
-    customFontActive = true;
+    setFontBytes (bytes, name, { custom: true });
     /* Cache in IndexedDB so the font survives page refresh.
      * Put font=@<hash> in the URL so the reload path can
      * look it up. */
-    const u = new URL (location.href);
+    let cachedHash = null;
     try {
       const hash = await fontHash (bytes);
       const db = await fontDbOpen ();
+      if (request !== fontLoadGeneration) return null;
       await fontDbPut (db, hash, { bytes, name });
-      u.searchParams.set ("font", "@" + hash);
-    } catch {
-      u.searchParams.delete ("font");
-    }
+      cachedHash = hash;
+    } catch { /* The font can still be used without a persistent cache. */ }
+    if (request !== fontLoadGeneration) return null;
+    const u = new URL (location.href);
+    if (cachedHash) u.searchParams.set ("font", "@" + cachedHash);
+    else            u.searchParams.delete ("font");
     history.replaceState (null, "", u);
     reflectActivePreset ();
+    return true;
   }
   async function loadPickedFont (file, closeOnSuccess = true) {
+    const request = ++fontLoadGeneration;
     setFontLoadError (fontFileError, "");
     try {
-      await loadFontFile (file);
-      if (closeOnSuccess) closeFontMenu ();
+      await loadFontFile (file, request);
+      if (request === fontLoadGeneration && closeOnSuccess) closeFontMenu ();
     } catch (e) {
+      if (request !== fontLoadGeneration) return;
       openFontMenu ();
       setFontLoadError (fontFileError, e instanceof FontLoadError
         ? e.message : "Could not read this font file. Please try again.");
@@ -1700,18 +1721,19 @@ hb_blob_destroy (blob);`
    * retried. Only close the menu once the font has loaded. */
   async function loadFontFromInput (input, button, errorEl, load) {
     if (button.disabled) return;
+    const request = ++fontLoadGeneration;
     const value = input.value.trim ();
     const label = button.textContent;
     setFontLoadError (errorEl, "");
     button.disabled = true;
     button.textContent = "Loading…";
     try {
-      await load (value);
-      closeFontMenu ();
+      await load (value, request);
+      if (request === fontLoadGeneration) closeFontMenu ();
     } catch (e) {
       /* An error for an earlier value should not appear next
        * to text the user changed while the request was pending. */
-      if (input.value.trim () === value)
+      if (request === fontLoadGeneration && input.value.trim () === value)
         setFontLoadError (errorEl, e.message || "Could not load this font. Please try again.");
     } finally {
       button.disabled = false;
@@ -1721,9 +1743,9 @@ hb_blob_destroy (blob);`
   fontUrl.addEventListener ("input", () => setFontLoadError (fontUrlError, ""));
   fontGf.addEventListener ("input", () => setFontLoadError (fontGfError, ""));
   fontUrlLoad.addEventListener ("click", () => {
-    loadFontFromInput (fontUrl, fontUrlLoad, fontUrlError, async (url) => {
+    loadFontFromInput (fontUrl, fontUrlLoad, fontUrlError, async (url, request) => {
       if (!url) throw new Error ("Enter a font URL.");
-      if (!(await loadFontUrl (url, null, { reportErrors: true })))
+      if (await loadFontUrl (url, null, { reportErrors: true, request }) === false)
         throw new Error ("Could not load this font URL. Check the address and try again.");
     });
   });
@@ -1763,7 +1785,7 @@ hb_blob_destroy (blob);`
       gfDatalistPopulated = true;
     } catch (e) { /* leave empty; user can still type a known family */ }
   });
-  async function loadGfFamily (name) {
+  async function loadGfFamily (name, request) {
     if (!name) throw new Error ("Enter a Google Fonts family name.");
     let families;
     try {
@@ -1771,11 +1793,12 @@ hb_blob_destroy (blob);`
     } catch {
       throw new Error ("Could not load the Google Fonts list. Please try again.");
     }
+    if (request !== fontLoadGeneration) return;
     const entry = families[name];
     if (!entry || !entry.fp)
       throw new Error ("That Google Fonts family was not found. Check the name and try again.");
     const url = GF_RAW + entry.fp.replace (/^\.\//, "");
-    if (!(await loadFontUrl (url, name, { reportErrors: true })))
+    if (await loadFontUrl (url, name, { reportErrors: true, request }) === false)
       throw new Error ("Could not download this font from Google Fonts. Please try again.");
   }
   fontGfLoad.addEventListener ("click", () => {
@@ -1807,22 +1830,19 @@ hb_blob_destroy (blob);`
 
   /* Load a font from a URL.  Used both for the bundled default
    * and for the ?font=URL query parameter.  Returns true on
-   * success so the caller can fall back. */
-  /* Tracks whether the active font came from a "custom" source
-   * (URL / file drop / Google Fonts).  When true, preset
-   * buttons become text-only so the user can sweep scripts
-   * across the same custom font.  Reset to false on the
-   * site-default load and on shipped <select> + preset picks. */
-  let customFontActive = false;
-  async function loadFontUrl (url, displayName, opts) {
+   * success, false on failure, or null if a newer choice won. */
+  async function loadFontUrl (url, displayName, opts = {}) {
+    const request = opts.request ?? ++fontLoadGeneration;
+    if (request !== fontLoadGeneration) return null;
     try {
       const r = await fetch (url);
+      if (request !== fontLoadGeneration) return null;
       if (!r.ok) return false;
       const bytes = new Uint8Array (await r.arrayBuffer ());
+      if (request !== fontLoadGeneration) return null;
       const name = displayName || url.replace (/^.*\//, "")
                                      .replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
-      setFontBytes (bytes, name);
-      customFontActive = !(opts && opts.preset);
+      setFontBytes (bytes, name, { custom: !opts.preset });
       /* The file input remembers its last selection by value, so
        * picking the same file twice in a row never fires
        * 'change'.  Clearing it here lets the user re-upload the
@@ -1848,6 +1868,7 @@ hb_blob_destroy (blob);`
       }
       return true;
     } catch (e) {
+      if (request !== fontLoadGeneration) return null;
       if (opts && opts.reportErrors && e instanceof FontLoadError) throw e;
       return false;
     }
@@ -1855,20 +1876,19 @@ hb_blob_destroy (blob);`
 
   /* Try to restore a cached font from IndexedDB.
    * Returns true if font=@hash was found and loaded. */
-  async function loadFontFromCache (hash) {
+  async function loadFontFromCache (hash, request) {
     try {
       const db = await fontDbOpen ();
       const entry = await fontDbGet (db, hash);
+      if (request !== fontLoadGeneration) return null;
       if (!entry) return false;
-      setFontBytes (new Uint8Array (entry.bytes), entry.name);
-      customFontActive = true;
+      setFontBytes (new Uint8Array (entry.bytes), entry.name, { custom: true });
       return true;
     } catch { return false; }
   }
 
-  /* Initial state.  Priority: ?preset=<name> > ?font=@hash >
-   * ?font=URL > emoji preset.  ?preset wins because it owns
-   * both text and font, so a preset link reproduces the view. */
+  /* A preset supplies default text and a fallback font. An
+   * explicit font overrides it when available in this browser. */
   const params = new URLSearchParams (location.search);
   const textParam = params.get ("text");
   const sizeParam = params.get ("size");
@@ -1885,20 +1905,33 @@ hb_blob_destroy (blob);`
       if (tag && val !== undefined)
         currentFeatures.push ({ tag, name: "", state: val === "1" ? "on" : "off", btn: null });
     });
-  if (presetParam && PRESETS[presetParam]) {
-    currentPresetKey = presetParam;
-    if (textParam === null) textInput.value = PRESETS[presetParam].text;
-    if (fontUrlParam && fontUrlParam.startsWith ("@"))
-      await loadFontFromCache (fontUrlParam.slice (1));
-    else if (fontUrlParam)
-      await loadFontUrl (fontUrlParam, null, { silentUrl: true });
-    else
-      await loadPresetFont (PRESETS[presetParam]);
-  } else if (fontUrlParam && fontUrlParam.startsWith ("@")) {
-    if (!(await loadFontFromCache (fontUrlParam.slice (1))))
-      applyPreset (DEFAULT_PRESET, { silent: true });
-  } else if (!fontUrlParam || !(await loadFontUrl (fontUrlParam, null, { silentUrl: true })))
-    applyPreset (DEFAULT_PRESET, { silent: true });
+  const request = ++fontLoadGeneration;
+  const hasPreset = Object.hasOwn (PRESETS, presetParam);
+  const initialPreset = hasPreset ? presetParam : DEFAULT_PRESET;
+  if (hasPreset || !fontUrlParam) {
+    currentPresetKey = initialPreset;
+    if (textParam === null) textInput.value = PRESETS[initialPreset].text;
+  }
+  if (fontUrlParam) {
+    const cached = fontUrlParam.startsWith ("@");
+    const loaded = cached
+      ? await loadFontFromCache (fontUrlParam.slice (1), request)
+      : await loadFontUrl (fontUrlParam, null, { silentUrl: true, request });
+    if (loaded === false && request === fontLoadGeneration) {
+      currentPresetKey = initialPreset;
+      if (textParam === null) textInput.value = PRESETS[initialPreset].text;
+      await loadPresetFont (PRESETS[initialPreset], request);
+      if (request === fontLoadGeneration) {
+        fontRestoreWarning.textContent = (cached
+          ? "This uploaded font is not available in this browser. Load the font file to restore it."
+          : "Could not load the linked font. Check the font URL or choose another font.")
+          + (fontBuf ? " Showing " + fontNameEl.textContent + " instead." : "");
+        fontRestoreWarning.hidden = false;
+      }
+    }
+  } else {
+    await loadPresetFont (PRESETS[initialPreset], request);
+  }
 
   reflectActivePreset ();
   fromHash ();
