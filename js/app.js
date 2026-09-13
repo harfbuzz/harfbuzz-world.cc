@@ -742,10 +742,17 @@ hb_blob_destroy (blob);`
     });
   });
   /* Wire up buttons on all .snippet details (code + tables). */
+  const buttonFlashes = new WeakMap ();
   function flash (btn, msg) {
-    const old = btn.textContent;
+    const previous = buttonFlashes.get (btn);
+    const label = previous ? previous.label : btn.textContent;
+    if (previous) clearTimeout (previous.timer);
     btn.textContent = msg;
-    setTimeout (() => { btn.textContent = old; }, 1200);
+    const timer = setTimeout (() => {
+      btn.textContent = label;
+      buttonFlashes.delete (btn);
+    }, 1200);
+    buttonFlashes.set (btn, { label, timer });
   }
   document.querySelectorAll ("details.snippet").forEach ((d) => {
     const linkBtn = d.querySelector (".snippet-link");
@@ -766,6 +773,7 @@ hb_blob_destroy (blob);`
       linkBtn.addEventListener ("click", (e) => {
         e.preventDefault ();
         e.stopPropagation ();
+        syncUrl (true);
         navigator.clipboard.writeText (linkUrl ()).then (
           () => flash (linkBtn, "✓"),
           () => flash (linkBtn, "✗"));
