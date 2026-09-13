@@ -1007,12 +1007,14 @@ hb_blob_destroy (blob);`
   /* GPU tab: live iframe of harfbuzz.github.io/hb-gpu-demo.
    * The demo's embed mode accepts { kind: 'text', value } and
    * { kind: 'font', bytes } via postMessage and sends back a
-   * { kind: 'ready' } once its wasm runtime is up.  Initial
-   * text rides the URL; font bytes have to wait for ready.  */
+   * { kind: 'ready' } once its wasm runtime is up.  Font and
+   * text wait for ready so startup never uses the default font. */
   function gpuFrameUrl () {
     const u = new URL ("https://harfbuzz.github.io/hb-gpu-demo/");
     u.searchParams.set ("embed", "1");
-    u.searchParams.set ("text", textInput.value);
+    /* Empty text falls back to the demo's sample. A space keeps
+     * its first frame blank until our font and text arrive. */
+    u.searchParams.set ("text", " ");
     return u.toString ();
   }
   const gpuStatus = document.getElementById ("gpu-status");
@@ -1074,8 +1076,6 @@ hb_blob_destroy (blob);`
       gpuReady = true;
       clearTimeout (gpuLoadTimer);
       clearTimeout (gpuNudgeTimer);
-      gpuStatus.hidden = true;
-      postGpu ({ kind: "text", value: textInput.value });
       if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
       postGpu ({ kind: "variations", value: variationsString () });
       /* Resend every setting, including defaults, on each connection. */
@@ -1084,6 +1084,7 @@ hb_blob_destroy (blob);`
       postGpu ({ kind: "features", value: featuresString () });
       gpuDark = effectiveTheme () === "dark";
       postGpu ({ kind: "dark", value: gpuDark });
+      postGpu ({ kind: "text", value: textInput.value });
       /* First rebuild_buffer on a freshly-loaded font
        * sometimes leaves the atlas half-uploaded and the
        * first composite blank.  A second text push forces
@@ -1093,8 +1094,14 @@ hb_blob_destroy (blob);`
        * this. */
       const frame = gpuFrame;
       gpuNudgeTimer = setTimeout (() => {
-        if (frame === gpuFrame && gpuReady)
-          postGpu ({ kind: "text", value: textInput.value });
+        if (frame !== gpuFrame || !gpuReady) return;
+        postGpu ({ kind: "text", value: textInput.value });
+        /* Runtime readiness precedes font upload and drawing. Keep
+         * the preview covered through the redraw and its paint. */
+        requestAnimationFrame (() => requestAnimationFrame (() => {
+          if (frame === gpuFrame && gpuReady)
+            gpuStatus.hidden = true;
+        }));
       }, 200);
     }
   });
