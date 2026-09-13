@@ -865,7 +865,7 @@ hb_blob_destroy (blob);`
       Module._free (subPtr);
       subsetCounts.textContent =
         "Kept " + subStats.num_glyphs + " of " + origStats.num_glyphs + " glyphs"
-        + " · " + subStats.num_unicodes + " of " + origStats.num_unicodes + " Unicode codepoints";
+        + " · " + subStats.num_unicodes + " of " + origStats.num_unicodes + " Unicode code points";
       renderSubsetTables (origStats, subStats);
       renderSnippet ("subset");
       subsetTablesWrap.hidden = false;
@@ -880,8 +880,8 @@ hb_blob_destroy (blob);`
       const fontPath = fontParam || (PRESETS[presetKey] && PRESETS[presetKey].font) || "";
       const preSubsetted = fontPath.includes ("-subset.") && !currentIsPresetFull;
       if (preSubsetted) {
-        subsetHint.innerHTML = "<b>Note:</b> this font is already subsetted"
-          + " to just a few characters, hence showing little savings.";
+        subsetHint.innerHTML = "<b>Note:</b> this font is already a subset,"
+          + " so further size savings may be small.";
         subsetHint.hidden = false;
       } else {
         subsetHint.hidden = true;
@@ -1477,7 +1477,7 @@ hb_blob_destroy (blob);`
   let currentIsPresetFull = false;
   let activeFullDownload = null;
   function formatBytes (n) {
-    return (n / 1048576).toFixed (1).replace (/\.0$/, "") + "MB";
+    return (n / 1048576).toFixed (1).replace (/\.0$/, "") + " MB";
   }
   function refreshFullNote () {
     const p = currentPresetKey && PRESETS[currentPresetKey];
@@ -1699,7 +1699,7 @@ hb_blob_destroy (blob);`
       const families = await fetchGfFamilies ();
       const entry = families[name];
       if (!entry || !entry.fp) {
-        fontGf.setCustomValidity ("Unknown family");
+        fontGf.setCustomValidity ("Unknown font family");
         fontGf.reportValidity ();
         setTimeout (() => fontGf.setCustomValidity (""), 2000);
         return;

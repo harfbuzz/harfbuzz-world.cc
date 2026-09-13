@@ -58,7 +58,7 @@
     <a href="#vector" class="tab" data-demo="vector">vector</a>
     <a href="#gpu"    class="tab" data-demo="gpu">gpu</a>
     <button id="theme-toggle" type="button"
-            title="Toggle light / dark theme"
+            title="Switch between light and dark themes"
             aria-label="Toggle theme"></button>
   </nav>
 </header>
@@ -87,7 +87,7 @@
       <button class="font-full-load" type="button" id="font-full-load" hidden></button>
       <div class="font-menu" id="font-menu" hidden>
         <div class="font-menu-row">
-          <label for="font-shipped">Preset</label>
+          <label for="font-shipped">Bundled font</label>
           <select id="font-shipped">
             <option value="fonts/NotoSans.ttf"   data-name="NotoSans">Noto Sans</option>
             <option value="fonts/NotoSansHebrew.ttf"     data-name="NotoSansHebrew">Noto Sans Hebrew</option>
@@ -114,7 +114,7 @@
           <datalist id="font-gf-list"></datalist>
           <button id="font-gf-load" type="button">Load</button>
         </div>
-        <p class="font-menu-hint">… or drop a font file anywhere on the page.</p>
+        <p class="font-menu-hint">Or drop a font file anywhere on the page while this menu is open.</p>
       </div>
     </div>
     <div class="var-picker" id="var-picker" hidden>
@@ -150,28 +150,28 @@
       <input id="size" type="number" value="72" min="1" max="2048">
     </label>
   </div>
-  <p class="script-warning" id="script-warning" hidden>Mixed scripts detected. HarfBuzz shapes one script per run; results may be wrong.</p>
-  <div id="drop-overlay">drop font file</div>
+  <p class="script-warning" id="script-warning" hidden>This text mixes scripts. HarfBuzz shapes one script per run, so this preview may be incorrect.</p>
+  <div id="drop-overlay">Drop a font file</div>
 
   <section class="demo" id="demo-embed">
     <h2>Welcome</h2>
-    <p><code>harfbuzz-world.cc</code> is a single-file build of
-       HarfBuzz that drops into your own C or C++ project
-       without any build-system glue, plus a live playground
-       for it right here in your browser:</p>
+    <p><code>harfbuzz-world.cc</code> builds HarfBuzz as a single
+       C++ translation unit for use in C or C++ projects.
+       Explore its shaping, subsetting, and rendering tools
+       in your browser:</p>
     <ul class="demo-links">
-      <li><a href="#shape"><img src="hb-shape.png" width="28" height="28" alt="">shape</a> — the shaped glyph
-        stream as a table, alongside an SVG preview.</li>
-      <li><a href="#subset"><img src="hb-subset.png" width="28" height="28" alt="">subset</a> — produce a font
-        subset for the current text and download it.</li>
-      <li><a href="#raster"><img src="hb-raster.png" width="28" height="28" alt="">raster</a> — pixel-perfect BGRA
-        rendering at any size, blitted to a canvas.</li>
-      <li><a href="#vector"><img src="hb-vector.png" width="28" height="28" alt="">vector</a> — the same shaped
-        text rendered to SVG and downloadable PDF.</li>
-      <li><a href="#gpu"><img src="hb-gpu.png" width="28" height="28" alt="">gpu</a> — slug-based GPU rendering
-        with shaders for all platforms.</li>
+      <li><a href="#shape"><img src="hb-shape.png" width="28" height="28" alt="">shape</a> — inspect the glyph
+        stream in a table alongside an SVG preview.</li>
+      <li><a href="#subset"><img src="hb-subset.png" width="28" height="28" alt="">subset</a> — create and download
+        a font subset for the current text.</li>
+      <li><a href="#raster"><img src="hb-raster.png" width="28" height="28" alt="">raster</a> — render text to pixels
+        at the chosen size and download a PNG.</li>
+      <li><a href="#vector"><img src="hb-vector.png" width="28" height="28" alt="">vector</a> — export shaped text
+        as SVG or PDF.</li>
+      <li><a href="#gpu"><img src="hb-gpu.png" width="28" height="28" alt="">gpu</a> — render text on the GPU
+        using the Slug algorithm, with shaders for all platforms.</li>
     </ul>
-    <p>Each tab has additional resources at the bottom.</p>
+    <p>Each tab includes code examples and further reading.</p>
 
     <details class="snippet" data-section="embedding">
       <summary>
@@ -181,13 +181,11 @@
         </span>
       </summary>
       <div class="snippet-body">
-    <p>Add HarfBuzz to your project as a submodule (or vendor
-       a checkout next to your code).  Then point your build
-       at one file inside it —
+    <p>Add HarfBuzz to your project as a submodule or vendor
+       a checkout alongside your code.  Compile
        <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/harfbuzz-world.cc"><code>src/harfbuzz-world.cc</code></a>, the amalgamation
-       that <code>#include</code>s every <code>.cc</code> in
-       the library so the whole thing compiles as a single
-       translation unit:</p>
+       that includes the library's source files in a single
+       C++ translation unit:</p>
 <pre class="code"><code class="language-bash">c++ -std=c++11 -O2 \
     -I third_party/harfbuzz/src \
     -c third_party/harfbuzz/src/harfbuzz-world.cc \
@@ -212,52 +210,47 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 /* …draw the glyphs… */</code></pre>
 
     <h3>Customizing the build</h3>
-    <p>HarfBuzz reads a handful of compile-time
-       <code>#define</code>s when the amalgamation is
-       compiled.  Pass them on the command line
+    <p>Configure the amalgamation with compile-time
+       <code>#define</code>s.  Pass them on the command line
        (<code>-DHB_TINY</code>) or via a small wrapper
        header that <code>#define</code>s them and then
        <code>#include</code>s
        <code>harfbuzz-world.cc</code>.</p>
     <ul>
-      <li><code>HB_TINY</code> — turn on every size-saving
-        knob: drop deprecated APIs, variable fonts, AAT,
-        legacy fallbacks, hinting, glyph names, math, name
-        table, metrics, and a long etc., and switch the
-        compiler to size optimization.  All script shapers
-        stay in.  Combine with the <code>HB_HAS_*</code>
-        flags below to add back the subsystems you need.</li>
-      <li><code>HB_HAS_SUBSET</code> — pull in the
-        font-subsetting subsystem (<code>hb-subset</code>).</li>
-      <li><code>HB_HAS_RASTER</code> — pull in
-        <code>hb-raster</code> for software pixel
-        rendering.</li>
-      <li><code>HB_HAS_VECTOR</code> — pull in
-        <code>hb-vector</code> for SVG / PDF output.</li>
-      <li><code>HB_HAS_GPU</code> — pull in
-        <code>hb-gpu</code> for slug-based GPU shaders.</li>
+      <li><code>HB_TINY</code> — enable a compact build by
+        disabling optional features, including deprecated APIs,
+        variable fonts, AAT, legacy fallbacks, hinting, glyph
+        names, math, name-table access, and metrics.  It also
+        selects compiler optimizations for size.  All script
+        shapers remain available.  Use the <code>HB_HAS_*</code>
+        flags below to include the subsystems you need.</li>
+      <li><code>HB_HAS_SUBSET</code> — include
+        <code>hb-subset</code> for font subsetting.</li>
+      <li><code>HB_HAS_RASTER</code> — include
+        <code>hb-raster</code> for software rendering.</li>
+      <li><code>HB_HAS_VECTOR</code> — include
+        <code>hb-vector</code> for SVG and PDF output.</li>
+      <li><code>HB_HAS_GPU</code> — include
+        <code>hb-gpu</code> for GPU rendering with the Slug algorithm.</li>
       <li><code>HB_HAS_FREETYPE</code>,
           <code>HB_HAS_GLIB</code>,
           <code>HB_HAS_ICU</code>,
           <code>HB_HAS_GRAPHITE</code>,
-          <code>HB_HAS_CAIRO</code>, etc. — opt into the
-        matching system integration.</li>
+          <code>HB_HAS_CAIRO</code>, and others — enable the
+        corresponding library integrations.</li>
     </ul>
-    <p>Under <code>HB_TINY</code>, a few subsystems are
-       stripped out that you may want back.  Undefine the
-       corresponding <code>HB_NO_*</code> flag in your
-       override header to opt them back in.  Notable one:
-       <code>HB_NO_AAT</code> — gates shaping for Apple
-       Advanced Typography tables (<code>morx</code>,
-       <code>kerx</code>, <code>trak</code>, …).  If your
-       input includes Mac system fonts, undefine it.</p>
+    <p>To restore a feature disabled by <code>HB_TINY</code>,
+       undefine its <code>HB_NO_*</code> flag in your override
+       header.  For example, undefine <code>HB_NO_AAT</code>
+       to enable shaping with Apple Advanced Typography
+       tables such as <code>morx</code>, <code>kerx</code>,
+       and <code>trak</code>, used by some Mac system fonts.</p>
 
     <h3>Building for the web (Emscripten)</h3>
-    <p>The same amalgamation compiles to wasm via
-       <code>em++</code>; this site's wasm bundle is built
-       exactly this way, with shape, subset, raster,
-       vector, and AAT all enabled.  The GPU tab embeds the
-       separate hb-gpu demo.</p>
+    <p>The amalgamation also compiles to WebAssembly with
+       <code>em++</code>.  This site enables shaping,
+       subsetting, raster rendering, vector output, and AAT
+       support.  The GPU tab embeds a separate hb-gpu demo.</p>
 <pre class="code"><code class="language-bash">em++ -std=c++11 -Oz -flto \
      -I third_party/harfbuzz/src \
      -DHB_TINY -DHB_HAS_SUBSET -DHB_HAS_RASTER \
@@ -288,11 +281,9 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         <li><a href="https://harfbuzz.github.io/">harfbuzz.github.io</a>
           — user manual and API reference.</li>
         <li><a href="https://github.com/harfbuzz/harfbuzz/blob/main/BUILD.md">BUILD.md</a>
-          — Meson / packaging guidance for systems that have
-          a build system already.</li>
+          — build and packaging instructions, including Meson.</li>
         <li><a href="https://github.com/harfbuzz/harfbuzz/blob/main/CONFIG.md">CONFIG.md</a>
-          — overview of compile-time configuration.  The full
-          knob list lives in
+          — an overview of compile-time configuration.  See
           <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/hb-config.hh">src/hb-config.hh</a>
           (<code>HB_NO_*</code> feature gates and the
           <code>HB_TINY</code> / <code>HB_LEAN</code> /
@@ -304,36 +295,36 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
       </ul>
 
       <h3>Other languages</h3>
-      <p>If C/C++ isn't where you live, there are first-class
-         HarfBuzz bindings for several other ecosystems:</p>
+      <p>HarfBuzz is also available through these bindings
+         and ports:</p>
       <ul>
         <li><a href="https://github.com/harfbuzz/uharfbuzz">uharfbuzz</a>
-          — Pythonic bindings, used by FontTools and friends.</li>
+          — Python bindings, used by FontTools.</li>
         <li><a href="https://github.com/harfbuzz/harfbuzzjs">harfbuzzjs</a>
-          — JS / wasm wrapper for web pages and Node.</li>
+          — JavaScript and WebAssembly bindings for browsers
+          and Node.js.</li>
         <li><a href="https://github.com/harfbuzz/harfrust">harfrust</a>
-          — pure-Rust port, no C dependency.</li>
+          — a Rust port with no C dependency.</li>
       </ul>
       </div>
     </details>
   </section>
 
   <section class="demo" id="demo-shape" hidden>
-    <p>What HarfBuzz is primarily known for: turn text into
-       a positioned glyph stream.  HarfBuzz picks glyph ids
-       from the font's character map, then applies the font's layout
-       rules to substitute and position them.  The SVG
-       preview shows the laid-out result; the table below is
-       the raw stream.</p>
+    <p>Turn text into positioned glyphs with HarfBuzz.  It maps
+       characters to glyphs, then applies the font's substitution
+       and positioning rules.  The SVG shows the result;
+       the table lists the glyphs, input characters, advances,
+       and offsets.</p>
     <div id="shape-render" class="render"></div>
     <div class="shape-controls">
       <label class="glyph-id-toggle"
-             title="Show each glyph by its PostScript name (from the font's post table) instead of its numeric glyph index. Names are more readable; indices are what most HarfBuzz APIs return. Fonts without a post table fall back to gidN.">
+             title="Show glyph names instead of numeric glyph IDs. Glyphs without an available name are shown as gidN.">
         <input type="checkbox" id="shape-show-names" checked>
         glyph names
       </label>
       <label class="cluster-level-toggle"
-             title="Graphemes merge combining marks with their base character. Characters keep each codepoint as a separate cluster.">
+             title="Graphemes merge combining marks with their base characters. Characters allow those marks to retain separate clusters. Shaping can still merge clusters in either mode.">
         clusters:
         <select id="shape-cluster-level">
           <option value="0">graphemes (default)</option>
@@ -341,8 +332,8 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </select>
       </label>
     </div>
-    <p class="shape-note">Glyphs are shown in visual order (left to right)
-       regardless of text direction.</p>
+    <p class="shape-note">Rows list glyphs in visual order, from left
+       to right, regardless of text direction.</p>
     <div id="shape-glyphs"></div>
     <details class="snippet" data-snippet="shape">
       <summary>
@@ -362,30 +353,26 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </span>
       </summary>
       <div class="snippet-body">
-      <p>Text shaping is what HarfBuzz is primarily known for:
-         turn a Unicode string + font into a positioned glyph
-         stream.  HarfBuzz handles complex scripts (Arabic,
-         Indic, Khmer, …), OpenType features, variable fonts
-         including cutting-edge technology like avar2,
-         as well as Apple Advanced
-         Typography (AAT).</p>
+      <p>Text shaping turns a Unicode string and a font into
+         positioned glyphs.  HarfBuzz handles complex scripts
+         such as Arabic, Indic scripts, and Khmer, along with
+         OpenType features, variable fonts including avar2,
+         and Apple Advanced Typography (AAT).</p>
       <p class="learn-link">📖 <a href="https://harfbuzz.github.io/">User manual and API reference</a></p>
       </div>
     </details>
   </section>
 
   <section class="demo" id="demo-subset" hidden>
-    <p>Slim the font down to the glyphs needed for the text
-       above; hb-subset closes over the layout rules so any
-       glyph that could participate in shaping survives.  The
-       preview renders with the produced subset font in your
-       browser, so what you see is what it can shape — try
-       selecting the text to confirm it's live.</p>
+    <p>Subset the current font for the text above with hb-subset,
+       retaining the glyphs and layout rules needed to shape it.
+       The preview uses the resulting subset font, and the text
+       remains selectable.</p>
     <div id="subset-render" class="render">
       <span id="subset-preview"></span>
     </div>
     <label class="subset-instantiate" id="subset-instantiate-label" hidden
-           title="Pin every variation axis to its current slider value. Result is a static font (not variable) at the current instance; smaller and portable to places that don't support variable fonts.">
+           title="Pin all variation axes to their current values to produce a static font. Leave unchecked to retain variable-font support.">
       <input type="checkbox" id="subset-instantiate" checked>
       Instantiate variations (pin to current values)
     </label>
@@ -414,7 +401,7 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
     </div>
     <details class="snippet" id="subset-tables-wrap" hidden>
       <summary>
-        <span class="snippet-title">Per-table breakdown</span>
+        <span class="snippet-title">Font table sizes</span>
         <span class="snippet-actions">
           <button type="button" class="snippet-link" title="Copy link to this view">🔗</button>
         </span>
@@ -439,25 +426,24 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </span>
       </summary>
       <div class="snippet-body">
-      <p>The subsetter produces a minimal font covering just the
-         glyphs needed for your text.  It closes over OpenType
-         layout rules so shaping still works on the subset.
-         Common workflows: webfont serving (cut to page text),
-         custom subsets for embedding, instancing (pin axes to
-         produce a static font), limiting or reshaping the
-         variation space, and changing default axis values.</p>
+      <p>Font subsetting removes unused glyphs and font data
+         while preserving the layout rules needed for shaping.
+         Common uses include smaller web fonts and subsets for
+         document embedding.  The subsetter can also produce
+         static instances of variable fonts, limit or reshape
+         the variation space, and change default axis values.</p>
       <p class="learn-link">📖 <a href="https://harfbuzz.github.io/harfbuzz-hb-subset.html">API reference</a></p>
       </div>
     </details>
   </section>
 
   <section class="demo" id="demo-raster" hidden>
-    <p>Pixel-perfect software rendering at the chosen size via
-       hb-raster — BGRA32 buffer blitted straight into a
-       <code>&lt;canvas&gt;</code>.  No hinting (HarfBuzz doesn't
-       do that); pair with FreeType via
+    <p>Render text at the chosen size with hb-raster and download
+       it as PNG.  The <code>&lt;canvas&gt;</code> displays the
+       rendered pixels.  This demo uses unhinted outlines;
+       see
        <a href="https://harfbuzz.github.io/integration-freetype.html">hb-ft</a>
-       if you need hinted output at small sizes.</p>
+       for FreeType integration.</p>
     <div class="render"><canvas id="raster-canvas"></canvas></div>
     <p class="raster-stats" id="raster-stats"></p>
     <div class="controls demo-controls">
@@ -483,23 +469,22 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </span>
       </summary>
       <div class="snippet-body">
-      <p>Software rasterizer with full COLRv1 support — gradients,
-         compositing, transforms, and embedded PNG images all
-         render correctly.  Mono outlines produce A8 coverage
-         masks; color glyphs produce BGRA32 premultiplied pixels.
-         Unhinted — designed for high-DPI and embedding use
-         cases rather than screen-optimized small sizes.</p>
+      <p>The software rasterizer supports COLRv1 gradients,
+         compositing, and transforms, as well as embedded PNG
+         glyph images.  Monochrome outlines produce A8 coverage
+         masks; color glyphs produce premultiplied BGRA32 pixels.
+         It renders without hinting and is designed for high-DPI
+         displays and embedded use.</p>
       <p class="learn-link">📖 <a href="https://harfbuzz.github.io/harfbuzz-hb-raster.html">API reference</a></p>
       </div>
     </details>
   </section>
 
   <section class="demo" id="demo-vector" hidden>
-    <p>Resolution-independent output via hb-vector: the same
-       shaped text emitted as SVG and PDF, both downloadable;
-       the SVG is also rendered inline below as a preview.
-       Both embed the outlines directly so the receiver
-       needs no font.</p>
+    <p>Export shaped text as SVG or PDF with hb-vector.  The SVG
+       appears below.  Both formats include the glyph artwork,
+       so the files can be viewed without installing the
+       original font.</p>
     <div id="vector-render" class="render"></div>
     <p class="raster-stats" id="vector-stats"></p>
     <div class="controls demo-controls">
@@ -528,29 +513,26 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </span>
       </summary>
       <div class="snippet-body">
-      <p>Converts shaped text to resolution-independent vector
-         output with full COLRv1 support.  SVG output is useful
-         for quick previews, web embedding, and debugging.  PDF
-         output is designed for production: embed COLRv1 color
-         glyphs as scalable vector artwork in PDF documents
-         (e.g. via Type 3 fonts), giving tools like LibreOffice
-         infinitely-scalable emoji rendering.</p>
+      <p>hb-vector produces SVG and PDF output from glyph outlines
+         and COLRv1 color paint data.  SVG is useful for previews,
+         web graphics, and debugging.  PDF output can embed color
+         glyphs as Type 3 fonts, preserving scalable outlines
+         in document applications such as LibreOffice.</p>
       <p class="learn-link">📖 <a href="https://harfbuzz.github.io/harfbuzz-hb-vector.html">API reference</a></p>
       </div>
     </details>
   </section>
 
   <section class="demo" id="demo-gpu" hidden>
-    <p>Slug-based GPU rendering via hb-gpu, with shaders for
+    <p>hb-gpu renders text using the Slug algorithm, with shaders for
        DirectX, Metal, OpenGL, OpenGL ES, WebGL2, and WebGPU.
-       This embedded demo runs on WebGL2.
-       Glyph outlines are encoded into compact blobs the GPU
-       decodes and rasterizes in the fragment shader — no atlas,
-       no CPU rasterization. <strong>Click</strong> animates,
-       <strong>drag</strong> pans, <strong>scroll</strong> zooms,
-       <strong>right-drag</strong> rotates in 3D.  Standalone
+       The GPU decodes glyph outlines and color data in the
+       fragment shader, with no raster atlas.  This demo uses
+       WebGL2.  <strong>Click</strong> to animate,
+       <strong>drag</strong> to pan, <strong>scroll</strong> to zoom,
+       and <strong>right-drag</strong> to rotate in 3D.  The standalone
        <a href="https://harfbuzz.github.io/hb-gpu-demo/">demo</a>
-       has more controls and a WebGPU build.</p>
+       offers more controls and a WebGPU build.</p>
     <iframe id="gpu-frame" class="render"
             title="hb-gpu live demo"></iframe>
     <details class="snippet" data-snippet="gpu">
@@ -571,14 +553,12 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </span>
       </summary>
       <div class="snippet-body">
-      <p>GPU text rendering with full COLRv1 support, designed
-         for games, UI frameworks, and any real-time context
-         where CPU rasterization is too slow.  Glyph outlines
-         and color paint trees are encoded into compact blobs
-         that a fragment shader decodes and rasterizes — the
-         client manages a blob atlas, but there is no bitmap
-         atlas and glyphs scale to any size.  Shader sources
-         are provided in GLSL, WGSL, MSL, and HLSL.</p>
+      <p>hb-gpu targets games, UI frameworks, and other real-time
+         applications.  It renders glyph outlines and COLRv1
+         color paint data in fragment shaders.  The client
+         manages an atlas of encoded glyph data, while the GPU
+         rasterizes glyphs at the requested scale.  Shader
+         sources are available in GLSL, WGSL, MSL, and HLSL.</p>
       <p class="learn-link">📖 <a href="https://harfbuzz.github.io/harfbuzz-hb-gpu.html">API reference</a></p>
       </div>
     </details>
