@@ -1130,15 +1130,14 @@ hb_blob_destroy (blob);`
         const next = logo.cloneNode (false);
         next.src = newSrc;
         next.classList.add ("logo-out");
-        next.id = "";
+        /* Make the incoming logo current immediately, so rapid
+         * tab switches always replace the latest image. */
+        logo.removeAttribute ("id");
         logo.parentNode.appendChild (next);
         next.offsetHeight; /* force reflow */
         next.classList.remove ("logo-out");
         logo.classList.add ("logo-out");
-        setTimeout (() => {
-          logo.remove ();
-          next.id = "site-logo";
-        }, 350);
+        setTimeout (() => logo.remove (), 350);
       }
     }
     renderActive ();
