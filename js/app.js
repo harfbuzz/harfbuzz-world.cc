@@ -655,14 +655,15 @@ hb_blob_destroy (blob);`
 
   /* Theme toggle: flips between light and dark.  For a
    * first-time visitor (no data-theme set), the OS pref
-   * controls the initial render via CSS @media; the button
+   * controls the page via CSS @media; the button
    * icon reflects that effective theme so the first click
    * predictably goes to the opposite. */
   const themeToggle = document.getElementById ("theme-toggle");
+  const systemTheme = matchMedia ("(prefers-color-scheme: dark)");
   function effectiveTheme () {
     const pinned = document.documentElement.dataset.theme;
     if (pinned === "light" || pinned === "dark") return pinned;
-    return matchMedia ("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    return systemTheme.matches ? "dark" : "light";
   }
   let gpuFrame = document.getElementById ("gpu-frame");
   const GPU_ORIGIN = "https://harfbuzz.github.io";
@@ -700,21 +701,30 @@ hb_blob_destroy (blob);`
     if (themePal >= 0)
       applyPalette (themePal);
   }
+  function refreshTheme (t) {
+    themeToggle.textContent = t === "dark" ? "☾" : "☀";
+    syncRenderColors (t);
+    renderActive ();
+    syncUrl (true);
+  }
   function applyTheme (t) {
     document.documentElement.dataset.theme = t;
     try { localStorage.setItem ("theme", t); } catch {}
     const url = new URL (location.href);
     url.searchParams.set ("theme", t);
     history.replaceState (null, "", url);
-    themeToggle.textContent = t === "dark" ? "☾" : "☀";
-    syncRenderColors (t);
-    renderActive ();
-    syncUrl (true);
+    refreshTheme (t);
   }
   syncRenderColors (effectiveTheme ());
   themeToggle.textContent = effectiveTheme () === "dark" ? "☾" : "☀";
   themeToggle.addEventListener ("click", () => {
     applyTheme (effectiveTheme () === "dark" ? "light" : "dark");
+  });
+  systemTheme.addEventListener ("change", () => {
+    const pinned = document.documentElement.dataset.theme;
+    if (pinned === "light" || pinned === "dark") return;
+    /* Follow the OS without turning it into a saved theme preference. */
+    refreshTheme (effectiveTheme ());
   });
 
   /* Code snippet <details> (those with data-snippet) share
