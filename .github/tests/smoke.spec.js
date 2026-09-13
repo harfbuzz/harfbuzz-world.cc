@@ -37,6 +37,30 @@ async function fontState (page) {
   }));
 }
 
+test ("a visit without a tab starts on Embed before wasm loads", async ({ page }) => {
+  let release;
+  const pending = new Promise (resolve => { release = resolve; });
+  await page.route ("**/*.wasm", async route => {
+    await pending;
+    await route.continue ();
+  });
+  try {
+    await page.goto ("/", { waitUntil: "domcontentloaded" });
+    await expect (page.locator ("#hb-version")).toBeEmpty ();
+    await expect (page.locator ("#demo-embed")).toBeVisible ();
+    await expect (page.locator ('.tab[data-demo="embed"]')).toHaveClass (/active/);
+    for (const selector of ["#shared-controls", ".controls-row2", ".presets", ".render"])
+      await expect (page.locator (selector + ":visible")).toHaveCount (0);
+    const before = await page.locator ("#demo-embed").boundingBox ();
+    release ();
+    await expect (page.locator ("#hb-version")).not.toBeEmpty ();
+    expect (await page.locator ("#demo-embed").boundingBox ()).toEqual (before);
+    await expect (page.locator ("#shared-controls")).toBeHidden ();
+  } finally {
+    release ();
+  }
+});
+
 test ("all presets have working bundled font entries", async ({ page, request }) => {
   await open (page);
   const fonts = await page.locator ("#font-shipped option").evaluateAll (
