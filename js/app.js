@@ -1023,6 +1023,7 @@ hb_blob_destroy (blob);`
   const GPU_LOAD_TIMEOUT = 30000;
   let gpuLoaded = false;
   let gpuLoadTimer = 0;
+  let gpuMessageTimer = 0;
   let gpuNudgeTimer = 0;
 
   function loadGpu () {
@@ -1038,17 +1039,26 @@ hb_blob_destroy (blob);`
     gpuReady = false;
     gpuDark = false;
     clearTimeout (gpuLoadTimer);
+    clearTimeout (gpuMessageTimer);
     clearTimeout (gpuNudgeTimer);
     gpuStatusMessage.textContent = "Loading GPU preview…";
+    gpuStatusMessage.hidden = true;
     gpuStatus.classList.remove ("error");
     gpuStatus.hidden = false;
     gpuRetry.hidden = true;
 
     const frame = gpuFrame;
+    /* Cover startup immediately, but keep fast loads free of text flashes. */
+    gpuMessageTimer = setTimeout (() => {
+      if (frame === gpuFrame && !gpuStatus.hidden)
+        gpuStatusMessage.hidden = false;
+    }, 500);
     const failed = () => {
       if (frame !== gpuFrame || gpuReady) return;
       clearTimeout (gpuLoadTimer);
+      clearTimeout (gpuMessageTimer);
       gpuStatusMessage.textContent = "The GPU preview hasn’t started. Try again.";
+      gpuStatusMessage.hidden = false;
       gpuStatus.classList.add ("error");
       gpuRetry.hidden = false;
     };
@@ -1099,8 +1109,10 @@ hb_blob_destroy (blob);`
         /* Runtime readiness precedes font upload and drawing. Keep
          * the preview covered through the redraw and its paint. */
         requestAnimationFrame (() => requestAnimationFrame (() => {
-          if (frame === gpuFrame && gpuReady)
+          if (frame === gpuFrame && gpuReady) {
+            clearTimeout (gpuMessageTimer);
             gpuStatus.hidden = true;
+          }
         }));
       }, 200);
     }
