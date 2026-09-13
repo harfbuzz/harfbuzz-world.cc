@@ -132,6 +132,9 @@ async function fontHash (bytes) {
     fontPtr = nextPtr;
     customFontActive = custom;
     currentIsPresetFull = full;
+    /* Uploads and full-font caches need not match a bundled entry.
+     * URL loads select a matching entry once the font is installed. */
+    fontShipped.selectedIndex = -1;
     fontRestoreWarning.hidden = true;
     /* Prefer the font's own family name (hb-ot-name) over
      * whatever caller-friendly label was passed in. */
@@ -191,7 +194,13 @@ async function fontHash (bytes) {
   }
 
   function currentSize () {
-    return parseFloat (sizeInput.value) || 72;
+    const value = sizeInput.valueAsNumber;
+    return Number.isFinite (value)
+      ? Math.min (Number (sizeInput.max), Math.max (Number (sizeInput.min), value))
+      : 72;
+  }
+  function normalizeSize () {
+    sizeInput.value = String (currentSize ());
   }
 
   /* Demos.  Each exposes a render() that reads the shared
@@ -1209,8 +1218,9 @@ hb_blob_destroy (blob);`
         url.searchParams.set ("text", textInput.value);
       else
         url.searchParams.delete ("text");
-      if (sizeInput.value && sizeInput.value !== "72") url.searchParams.set ("size", sizeInput.value);
-      else                                             url.searchParams.delete ("size");
+      const size = currentSize ();
+      if (size !== 72) url.searchParams.set ("size", String (size));
+      else             url.searchParams.delete ("size");
       if (shapeClusterLvl.value === "1") url.searchParams.set ("cluster-level", "1");
       else                               url.searchParams.delete ("cluster-level");
       if (!subsetInstantiate.checked) url.searchParams.set ("instantiate", "0");
@@ -1273,7 +1283,19 @@ hb_blob_destroy (blob);`
     refreshText ();
   });
   textInput.addEventListener ("input", refreshText);
-  sizeInput.addEventListener ("input", () => { renderActive (); syncUrl (); });
+  sizeInput.addEventListener ("input", () => {
+    /* Leave empty/incomplete input and valid numeric spelling alone
+     * while typing; only rewrite values outside the supported range. */
+    if (Number.isFinite (sizeInput.valueAsNumber) && sizeInput.valueAsNumber !== currentSize ())
+      normalizeSize ();
+    renderActive ();
+    syncUrl ();
+  });
+  sizeInput.addEventListener ("change", () => {
+    normalizeSize ();
+    renderActive ();
+    syncUrl (true);
+  });
 
   /* Variable axes: pull fvar info from the current font,
    * render one range slider per axis, and push the combined
@@ -1650,8 +1672,8 @@ hb_blob_destroy (blob);`
     const url = new URL (location.href);
     if (!silent) {
       url.searchParams.delete ("text");
-      if (sizeInput.value && sizeInput.value !== "72")
-        url.searchParams.set ("size", sizeInput.value);
+      if (currentSize () !== 72)
+        url.searchParams.set ("size", String (currentSize ()));
       else
         url.searchParams.delete ("size");
       url.searchParams.set ("preset", key);
@@ -1897,12 +1919,14 @@ hb_blob_destroy (blob);`
        * same file after a preset / URL load took control of the
        * active font. */
       fontInput.value = "";
-      /* Sync the shipped-fonts <select> if @url matches one
-       * of its options, so the dropdown is honest about the
-       * current font.  Falls through silently for ad-hoc
-       * URL / file picks, which the dropdown can't represent. */
+      /* Compare resolved URLs so absolute links to a bundled font
+       * select the same entry as relative preset URLs. */
+      const sourceUrl = new URL (r.url || url, document.baseURI).href;
       for (const opt of fontShipped.options)
-        if (opt.value === url) { fontShipped.value = url; break; }
+        if (new URL (opt.value, document.baseURI).href === sourceUrl) {
+          fontShipped.value = opt.value;
+          break;
+        }
       /* Reflect the font URL in the location bar.  Skip when
        * called from applyPreset / initial ?font= load, which
        * own URL state themselves.  Keep any ?preset= intact:
@@ -1945,6 +1969,7 @@ hb_blob_destroy (blob);`
   const fontUrlParam = params.get ("font");
   if (textParam !== null) textInput.value = textParam;
   if (sizeParam !== null) sizeInput.value = sizeParam;
+  normalizeSize ();
   /* Restore these before the first render or subset is generated. */
   shapeClusterLvl.value = params.get ("cluster-level") === "1" ? "1" : "0";
   Module._web_set_cluster_level (Number (shapeClusterLvl.value));
