@@ -37,6 +37,19 @@ void web_free_string (char *s)
   free (s);
 }
 
+/* Check font data before the shell replaces the active font. */
+EMSCRIPTEN_KEEPALIVE
+unsigned web_font_face_count (const uint8_t *font_bytes, unsigned font_len)
+{
+  hb_blob_t *blob = hb_blob_create_or_fail ((const char *) font_bytes,
+                                             font_len,
+                                             HB_MEMORY_MODE_READONLY,
+                                             nullptr, nullptr);
+  unsigned count = hb_face_count (blob);
+  hb_blob_destroy (blob);
+  return count;
+}
+
 /* Return the font's typographic family (name id 16), falling
  * back to legacy family (id 1), as a malloc'd UTF-8 string.
  * Caller frees with web_free_string(). */

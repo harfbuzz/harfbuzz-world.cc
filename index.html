@@ -95,14 +95,16 @@
             <option value="fonts/NotoNastaliqUrdu.ttf"   data-name="NotoNastaliqUrdu">Noto Nastaliq Urdu</option>
             <option value="fonts/NotoSansDevanagari.ttf" data-name="NotoSansDevanagari">Noto Sans Devanagari</option>
             <option value="fonts/NotoSansThaiLooped.ttf" data-name="NotoSansThaiLooped">Noto Sans Thai Looped</option>
+            <option value="fonts/NotoSansKhmer.ttf"      data-name="NotoSansKhmer">Noto Sans Khmer</option>
             <option value="fonts/NotoSansCJKsc-subset.otf" data-name="NotoSansCJKsc">Noto Sans CJK SC [subset]</option>
-            <option value="fonts/NotoColorEmoji.ttf"           data-name="NotoColorEmoji">Noto Color Emoji [subset]</option>
+            <option value="fonts/NotoColorEmoji-subset.ttf" data-name="NotoColorEmoji">Noto Color Emoji [subset]</option>
           </select>
         </div>
         <div class="font-menu-row">
           <label for="font-input">File</label>
-          <input id="font-input" type="file" accept=".ttf,.otf,.ttc,.woff,.woff2">
+          <input id="font-input" type="file" accept=".ttf,.otf,.ttc,.woff,.woff2" aria-describedby="font-file-error">
         </div>
+        <p class="font-menu-error" id="font-file-error" role="alert" hidden></p>
         <div class="font-menu-row">
           <label for="font-url">URL</label>
           <input id="font-url" type="url" placeholder="https://…/Font.ttf" aria-describedby="font-url-error">

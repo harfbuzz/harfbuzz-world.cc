@@ -77,16 +77,31 @@ async function fontHash (bytes) {
   if (versionEl)
     versionEl.textContent = Module.UTF8ToString (Module._web_hb_version ());
 
-  /* Single owner of the wasm-side font blob.  Swapped in place
-   * when the user picks a different font; the old buffer is
-   * freed before the new one is allocated. */
+  class FontLoadError extends Error {}
+  /* Allocate and validate incoming bytes before touching the
+   * active font. The caller owns the returned wasm buffer. */
+  function prepareFontBytes (bytes) {
+    const ptr = Module._malloc (bytes.length || 1);
+    if (!ptr) throw new Error ("Not enough memory to load this font.");
+    try {
+      Module.HEAPU8.set (bytes, ptr);
+      if (!Module._web_font_face_count (ptr, bytes.length))
+        throw new FontLoadError ("This file is not a font format supported by this demo.");
+      return ptr;
+    } catch (e) {
+      Module._free (ptr);
+      throw e;
+    }
+  }
+  /* Single owner of the wasm-side font blob. Only release the
+   * old buffer once the replacement has passed validation. */
   let fontBuf = null;
   let fontPtr = 0;
   function setFontBytes (bytes, displayName) {
+    const nextPtr = prepareFontBytes (bytes);
     if (fontPtr) Module._free (fontPtr);
     fontBuf = bytes;
-    fontPtr = Module._malloc (fontBuf.length);
-    Module.HEAPU8.set (fontBuf, fontPtr);
+    fontPtr = nextPtr;
     /* Prefer the font's own family name (hb-ot-name) over
      * whatever caller-friendly label was passed in. */
     const namePtr = Module._web_font_family (fontPtr, fontBuf.length);
@@ -114,6 +129,7 @@ async function fontHash (bytes) {
   const fontMenu      = document.getElementById ("font-menu");
   const fontShipped   = document.getElementById ("font-shipped");
   const fontInput     = document.getElementById ("font-input");
+  const fontFileError = document.getElementById ("font-file-error");
   const fontUrl       = document.getElementById ("font-url");
   const fontUrlLoad   = document.getElementById ("font-url-load");
   const fontUrlError  = document.getElementById ("font-url-error");
@@ -1478,6 +1494,7 @@ hb_blob_destroy (blob);`
   let currentPresetKey = null;
   let currentIsPresetFull = false;
   let activeFullDownload = null;
+  let failedFullPreset = null;
   function formatBytes (n) {
     return (n / 1048576).toFixed (1).replace (/\.0$/, "") + " MB";
   }
@@ -1490,8 +1507,10 @@ hb_blob_destroy (blob);`
     if (!show) { fontFullLoad.hidden = true; return; }
     fontFullLoad.hidden = false;
     fontFullLoad.disabled = false;
-    fontFullLoad.textContent = "↓ Full " + p.fullName
-                             + " (" + formatBytes (p.fullSize) + ")";
+    fontFullLoad.textContent = failedFullPreset === currentPresetKey
+                            ? "Download failed — retry"
+                            : "↓ Full " + p.fullName
+                              + " (" + formatBytes (p.fullSize) + ")";
   }
   async function tryLoadFullFromCache (p) {
     try {
@@ -1514,7 +1533,9 @@ hb_blob_destroy (blob);`
     const preset = currentPresetKey;
     const ctrl = new AbortController ();
     activeFullDownload = ctrl;
+    failedFullPreset = null;
     fontFullLoad.disabled = true;
+    fontFullLoad.textContent = "Downloading…";
     try {
       const r = await fetch (p.fullUrl, { signal: ctrl.signal });
       if (!r.ok) throw new Error ("HTTP " + r.status);
@@ -1533,6 +1554,10 @@ hb_blob_destroy (blob);`
       const bytes = new Uint8Array (loaded);
       let off = 0;
       for (const c of chunks) { bytes.set (c, off); off += c.length; }
+      /* A successful HTTP response can still contain an error
+       * page. Check it before caching or marking it as full. */
+      const ptr = prepareFontBytes (bytes);
+      Module._free (ptr);
       /* Cache regardless so the bytes aren't wasted if the user
        * switched presets mid-download; only swap the active
        * font if we're still on the preset that requested it. */
@@ -1546,7 +1571,7 @@ hb_blob_destroy (blob);`
       }
     } catch (e) {
       if (e.name !== "AbortError")
-        fontFullLoad.textContent = "Download failed — retry";
+        failedFullPreset = preset;
     } finally {
       activeFullDownload = null;
       refreshFullNote ();
@@ -1620,6 +1645,18 @@ hb_blob_destroy (blob);`
     history.replaceState (null, "", u);
     reflectActivePreset ();
   }
+  async function loadPickedFont (file, closeOnSuccess = true) {
+    setFontLoadError (fontFileError, "");
+    try {
+      await loadFontFile (file);
+      if (closeOnSuccess) closeFontMenu ();
+    } catch (e) {
+      openFontMenu ();
+      setFontLoadError (fontFileError, e instanceof FontLoadError
+        ? e.message : "Could not read this font file. Please try again.");
+      fontInput.value = "";
+    }
+  }
 
   function openFontMenu () { fontMenu.hidden = false; }
   function closeFontMenu () { fontMenu.hidden = true; }
@@ -1647,10 +1684,7 @@ hb_blob_destroy (blob);`
     closeFontMenu ();
   });
   fontInput.addEventListener ("change", () => {
-    if (fontInput.files.length) {
-      loadFontFile (fontInput.files[0]);
-      closeFontMenu ();
-    }
+    if (fontInput.files.length) loadPickedFont (fontInput.files[0]);
   });
   function setFontLoadError (el, message) {
     el.textContent = message;
@@ -1683,7 +1717,7 @@ hb_blob_destroy (blob);`
   fontUrlLoad.addEventListener ("click", () => {
     loadFontFromInput (fontUrl, fontUrlLoad, fontUrlError, async (url) => {
       if (!url) throw new Error ("Enter a font URL.");
-      if (!(await loadFontUrl (url)))
+      if (!(await loadFontUrl (url, null, { reportErrors: true })))
         throw new Error ("Could not load this font URL. Check the address and try again.");
     });
   });
@@ -1735,7 +1769,7 @@ hb_blob_destroy (blob);`
     if (!entry || !entry.fp)
       throw new Error ("That Google Fonts family was not found. Check the name and try again.");
     const url = GF_RAW + entry.fp.replace (/^\.\//, "");
-    if (!(await loadFontUrl (url, name)))
+    if (!(await loadFontUrl (url, name, { reportErrors: true })))
       throw new Error ("Could not download this font from Google Fonts. Please try again.");
   }
   fontGfLoad.addEventListener ("click", () => {
@@ -1762,7 +1796,7 @@ hb_blob_destroy (blob);`
     if (fontMenu.hidden) return;
     e.preventDefault ();
     dropOverlay.classList.remove ("active");
-    if (e.dataTransfer.files.length) loadFontFile (e.dataTransfer.files[0]);
+    if (e.dataTransfer.files.length) loadPickedFont (e.dataTransfer.files[0], false);
   });
 
   /* Load a font from a URL.  Used both for the bundled default
@@ -1807,7 +1841,10 @@ hb_blob_destroy (blob);`
     reflectActivePreset ();
       }
       return true;
-    } catch { return false; }
+    } catch (e) {
+      if (opts && opts.reportErrors && e instanceof FontLoadError) throw e;
+      return false;
+    }
   }
 
   /* Try to restore a cached font from IndexedDB.

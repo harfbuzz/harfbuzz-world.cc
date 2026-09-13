@@ -55,10 +55,28 @@ python3 -m http.server -d .
 
 …and visit <http://localhost:8000/>.
 
+## Check
+
+After building the WebAssembly bundle, run the browser smoke
+tests with Node.js 22 or newer:
+
+```sh
+npm ci --prefix .github/tests
+npm --prefix .github/tests exec -- playwright install chromium
+npm --prefix .github/tests test
+```
+
+The tests start their own HTTP server on port 8003. They check
+bundled fonts, tab rendering, download contents, invalid font
+data, and load retries. Google Fonts and the GPU iframe use
+local response fixtures; the GPU check covers the host's
+message exchange, not the external renderer.
+
 ## Deploy
 
 GitHub Actions (`.github/workflows/pages.yml`) builds the
-WebAssembly bundle on every push to `main` and publishes via
+WebAssembly bundle and runs the smoke tests on every push to
+`main`, then publishes via
 `actions/deploy-pages` to <https://harfbuzz-world.cc>.
 
 ## Repository layout
