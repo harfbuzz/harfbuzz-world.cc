@@ -117,6 +117,7 @@ async function fontHash (bytes) {
    * old buffer once the replacement has passed validation. */
   let fontBuf = null;
   let fontPtr = 0;
+  let fontFileName = "font.ttf";
   /* Custom fonts make preset buttons text-only, so users can
    * try different scripts without replacing their font. */
   let customFontActive = false;
@@ -124,7 +125,7 @@ async function fontHash (bytes) {
   /* Reserve a generation when a font is chosen, before any
    * fetch, metadata lookup, or cache read can finish out of order. */
   let fontLoadGeneration = 0;
-  function setFontBytes (bytes, displayName, { custom = false, full = false } = {}) {
+  function setFontBytes (bytes, displayName, { custom = false, full = false, fileName = "" } = {}) {
     const nextPtr = prepareFontBytes (bytes);
     if (fontPtr) Module._free (fontPtr);
     fontBuf = bytes;
@@ -138,6 +139,11 @@ async function fontHash (bytes) {
     const otName = Module.UTF8ToString (namePtr);
     Module._web_free_string (namePtr);
     fontNameEl.textContent = otName || displayName || "";
+    /* Older cache entries stored only the filename stem. Use the
+     * font format for their extension; new entries keep the full name. */
+    const signature = String.fromCharCode (...bytes.subarray (0, 4));
+    const extension = { OTTO: ".otf", ttcf: ".ttc", wOFF: ".woff", wOF2: ".woff2" }[signature] || ".ttf";
+    fontFileName = fileName || (displayName || otName || "font") + extension;
     /* Push the font to the GPU iframe FIRST, so the subsequent
      * refresh*() calls (which postGpu variations + palette)
      * land on the new font.  Otherwise web_load_font would
@@ -594,37 +600,21 @@ hb_blob_destroy (blob);`
     if (!def) return;
     const el = document.getElementById (key + "-snippet");
     if (!el) return;
-    const fontPath = (function () {
-      const u = new URL (location.href);
-      const f = u.searchParams.get ("font");
-      if (f) return f.split ("/").pop ();
-      /* Preset / shipped picks have the preset key in the URL;
-       * resolve via PRESETS for a clean filename. */
-      const presetKey = u.searchParams.get ("preset");
-      if (presetKey && PRESETS[presetKey])
-        return PRESETS[presetKey].font.split ("/").pop ();
-      /* Last resort: build something printable from the OT
-       * family name. */
-      return (fontNameEl.textContent || "font").replace (/\s+/g, "") + ".ttf";
-    }) ();
-    /* Wrap substituted text fields in U+2068 FIRST STRONG
-     * ISOLATE / U+2069 POP DIRECTIONAL ISOLATE so embedded
-     * RTL strings (Hebrew, Arabic) don't bidi-reorder against
-     * the surrounding LTR C code (e.g. "..." -1, 0, -1) in
-     * the rendered HTML.  Invisible to text/clipboard. */
-    const isolate = (s) => "\u2068" + s + "\u2069";
-    const code = def.template
-      .replaceAll ("{font}", isolate (escapeForC (fontPath)))
-      .replaceAll ("{text}", isolate (escapeForC (textInput.value)))
-      .replaceAll ("{size}", String (currentSize ()));
+    const fields = { font: escapeForC (fontFileName), text: escapeForC (textInput.value) };
+    const code = def.template.replaceAll ("{size}", String (currentSize ()));
     /* hljs may not be loaded yet on first render; in that
      * case just show the raw code, then re-highlight when
      * highlight.js arrives. */
-    el.textContent = code;
+    let html = escapeHtml (code);
     if (window.hljs) {
       const result = hljs.highlight (code, { language: "c" });
-      el.innerHTML = linkifyHbCalls (result.value, def.headline);
+      html = linkifyHbCalls (result.value, def.headline);
     }
+    /* Isolate RTL fields with markup, keeping both clipboard and
+     * selected text free of characters added just for display. Fill
+     * fields after highlighting so their contents stay literal. */
+    el.innerHTML = html.replace (/\{(font|text)\}/g,
+      (_, field) => "<bdi>" + escapeHtml (fields[field]) + "</bdi>");
   }
   /* Re-render snippets once highlight.js finishes loading,
    * and highlight any static <code class="language-*"> blocks
@@ -1582,7 +1572,8 @@ hb_blob_destroy (blob);`
       const entry = await fontDbGetFull (db, p.fullUrl);
       if (request !== fontLoadGeneration) return null;
       if (!entry) return false;
-      setFontBytes (new Uint8Array (entry.bytes), entry.name, { full: true });
+      setFontBytes (new Uint8Array (entry.bytes), entry.name,
+        { full: true, fileName: entry.fileName || fontFileNameFromUrl (p.fullUrl) });
       return true;
     } catch { return false; }
   }
@@ -1626,15 +1617,16 @@ hb_blob_destroy (blob);`
        * page. Check it before caching or marking it as full. */
       const ptr = prepareFontBytes (bytes);
       Module._free (ptr);
+      const fileName = fontFileNameFromUrl (r.url || p.fullUrl);
       /* Cache regardless so the bytes aren't wasted if the user
        * switched presets mid-download; only swap the active
        * font if we're still on the preset that requested it. */
       try {
         const db = await fontDbOpen ();
-        await fontDbPutFull (db, p.fullUrl, { bytes, name: p.fullName });
+        await fontDbPutFull (db, p.fullUrl, { bytes, name: p.fullName, fileName });
       } catch { /* quota / private-mode: swallow */ }
       if (request === fontLoadGeneration && currentPresetKey === preset)
-        setFontBytes (bytes, p.fullName, { full: true });
+        setFontBytes (bytes, p.fullName, { full: true, fileName });
     } catch (e) {
       if (e.name !== "AbortError" && request === fontLoadGeneration)
         failedFullPreset = preset;
@@ -1698,7 +1690,7 @@ hb_blob_destroy (blob);`
     const bytes = new Uint8Array (await file.arrayBuffer ());
     if (request !== fontLoadGeneration) return null;
     const name = file.name.replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
-    setFontBytes (bytes, name, { custom: true });
+    setFontBytes (bytes, name, { custom: true, fileName: file.name });
     /* Cache in IndexedDB so the font survives page refresh.
      * Put font=@<hash> in the URL so the reload path can
      * look it up. */
@@ -1707,7 +1699,7 @@ hb_blob_destroy (blob);`
       const hash = await fontHash (bytes);
       const db = await fontDbOpen ();
       if (request !== fontLoadGeneration) return null;
-      await fontDbPut (db, hash, { bytes, name });
+      await fontDbPut (db, hash, { bytes, name, fileName: file.name });
       cachedHash = hash;
     } catch { /* The font can still be used without a persistent cache. */ }
     if (request !== fontLoadGeneration) return null;
@@ -1876,6 +1868,14 @@ hb_blob_destroy (blob);`
     if (e.dataTransfer.files.length) loadPickedFont (e.dataTransfer.files[0], false);
   });
 
+  function fontFileNameFromUrl (url) {
+    const parsed = new URL (url, document.baseURI);
+    if (!["http:", "https:", "file:"].includes (parsed.protocol)) return "";
+    const name = parsed.pathname.split ("/").pop ();
+    try { return decodeURIComponent (name); }
+    catch { return name; }
+  }
+
   /* Load a font from a URL.  Used both for the bundled default
    * and for the ?font=URL query parameter.  Returns true on
    * success, false on failure, or null if a newer choice won. */
@@ -1888,9 +1888,9 @@ hb_blob_destroy (blob);`
       if (!r.ok) return false;
       const bytes = new Uint8Array (await r.arrayBuffer ());
       if (request !== fontLoadGeneration) return null;
-      const name = displayName || url.replace (/^.*\//, "")
-                                     .replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
-      setFontBytes (bytes, name, { custom: !opts.preset });
+      const fileName = fontFileNameFromUrl (r.url || url);
+      const name = displayName || fileName.replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
+      setFontBytes (bytes, name, { custom: !opts.preset, fileName });
       /* The file input remembers its last selection by value, so
        * picking the same file twice in a row never fires
        * 'change'.  Clearing it here lets the user re-upload the
@@ -1930,7 +1930,8 @@ hb_blob_destroy (blob);`
       const entry = await fontDbGet (db, hash);
       if (request !== fontLoadGeneration) return null;
       if (!entry) return false;
-      setFontBytes (new Uint8Array (entry.bytes), entry.name, { custom: true });
+      setFontBytes (new Uint8Array (entry.bytes), entry.name,
+        { custom: true, fileName: entry.fileName });
       return true;
     } catch { return false; }
   }
