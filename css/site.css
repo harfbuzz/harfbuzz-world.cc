@@ -7,55 +7,80 @@
 }
 
 :root {
-  --bg-page:   #faf6ea;
-  --bg-card:   #fff;
-  --fg:        #333;
-  --muted:     #666;
-  --accent:    #c89426;   /* gold */
-  --accent-hi: #9a7218;   /* darker gold for hover */
-  --accent-lo: #8a7c4d;   /* muted gold for visited */
-  --rule:      #e8e2cc;
-  --soft:      #f5edd6;   /* code / pre background */
-  --highlight: #fcf4dc;
-  --shadow:    0 0 12px rgba(0,0,0,0.06);
+  --bg-page:   #f7f3e9;
+  --bg-card:   #fffdf8;
+  --fg:        #332d24;
+  --muted:     #786e5f;
+  --accent:    #b8892d;   /* brass gold */
+  --accent-hi: #8e641d;   /* darker gold for hover */
+  --accent-lo: #967841;   /* muted gold for visited */
+  --rule:      #e3d8bf;
+  --cluster-rule: #d6c292;
+  --soft:      #f4ecd9;   /* code / pre background */
+  --highlight: #f6e6bc;
+  --shadow:    0 3px 18px rgba(65,46,12,0.06);
+  --syntax-keyword: #8a4f76;
+  --syntax-red: #b24f45;
+  --syntax-literal: #327a91;
+  --syntax-string: #527443;
+  --syntax-number: #8e641d;
+  --syntax-title: #3e6f9b;
+  --syntax-builtin: #996f20;
   --render-bg: #fff;
   --render-fg: #000;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg-page:   #1a1814;
-    --bg-card:   #23201a;
-    --fg:        #f0ead8;
-    --muted:     #aaa090;
-    --accent:    #e0b048;
-    --accent-hi: #f0c060;
-    --accent-lo: #b09850;
-    --rule:      #3a3528;
-    --soft:      #2c2820;
-    --highlight: #2e2a1f;
-    --shadow:    0 0 12px rgba(0,0,0,0.4);
+    --bg-page:   #181613;
+    --bg-card:   #24211c;
+    --fg:        #eee7da;
+    --muted:     #b1a694;
+    --accent:    #d8ad55;
+    --accent-hi: #e8c476;
+    --accent-lo: #b59b64;
+    --rule:      #423a2d;
+    --cluster-rule: #615032;
+    --soft:      #2c271f;
+    --highlight: #373020;
+    --shadow:    0 3px 18px rgba(0,0,0,0.22);
+    --syntax-keyword: #cc9dbb;
+    --syntax-red: #e5a092;
+    --syntax-literal: #83bccc;
+    --syntax-string: #a9c58e;
+    --syntax-number: #d8ad55;
+    --syntax-title: #96bad5;
+    --syntax-builtin: #e8c476;
     --render-bg: #222;
     --render-fg: #fff;
   }
 }
 :root[data-theme="dark"] {
-  --bg-page:   #1a1814;
-  --bg-card:   #23201a;
-  --fg:        #f0ead8;
-  --muted:     #aaa090;
-  --accent:    #e0b048;
-  --accent-hi: #f0c060;
-  --accent-lo: #b09850;
-  --rule:      #3a3528;
-  --soft:      #2c2820;
-  --highlight: #2e2a1f;
-  --shadow:    0 0 12px rgba(0,0,0,0.4);
+  --bg-page:   #181613;
+  --bg-card:   #24211c;
+  --fg:        #eee7da;
+  --muted:     #b1a694;
+  --accent:    #d8ad55;
+  --accent-hi: #e8c476;
+  --accent-lo: #b59b64;
+  --rule:      #423a2d;
+  --cluster-rule: #615032;
+  --soft:      #2c271f;
+  --highlight: #373020;
+  --shadow:    0 3px 18px rgba(0,0,0,0.22);
+  --syntax-keyword: #cc9dbb;
+  --syntax-red: #e5a092;
+  --syntax-literal: #83bccc;
+  --syntax-string: #a9c58e;
+  --syntax-number: #d8ad55;
+  --syntax-title: #96bad5;
+  --syntax-builtin: #e8c476;
   --render-bg: #222;
   --render-fg: #fff;
 }
 
 * { box-sizing: border-box; }
+input[type="checkbox"] { accent-color: var(--accent); }
 html {
   background-color: var(--bg-page);
   margin: 0;
@@ -167,7 +192,7 @@ header h1 code {
   font-size: 1em;
   background: none;
   color: var(--accent);
-  opacity: 0.55;
+  opacity: 0.7;
   padding: 0;
   margin-left: 0.12em;
 }
@@ -298,7 +323,7 @@ body[data-active="gpu"] .size-label { display: none; }
   font: inherit;
   font-size: 0.95rem;
   cursor: pointer;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--rule);
   padding: 0.35rem 0.7rem;
   border-radius: 4px;
   color: var(--accent);
@@ -309,10 +334,11 @@ body[data-active="gpu"] .size-label { display: none; }
   transition: border-color 0.15s, background 0.15s;
 }
 .var-button:hover {
-  border-color: var(--accent-hi);
+  border-color: var(--accent);
   background: var(--highlight);
 }
 .var-button.has-changes {
+  border-color: var(--accent);
   background: var(--highlight);
   font-weight: 600;
 }
@@ -525,7 +551,7 @@ body[data-active="gpu"] .size-label { display: none; }
   font: inherit;
   font-size: 0.95rem;
   cursor: pointer;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--rule);
   padding: 0.35rem 0.7rem;
   border-radius: 4px;
   color: var(--accent);
@@ -537,7 +563,7 @@ body[data-active="gpu"] .size-label { display: none; }
   align-items: center;
 }
 .font-button:hover {
-  border-color: var(--accent-hi);
+  border-color: var(--accent);
   background: var(--highlight);
 }
 .font-prefix { color: var(--muted); margin-right: 0.25rem; }
@@ -747,7 +773,7 @@ pre.code {
   border-bottom: 3px solid var(--accent);
 }
 .glyph-table tbody tr.cluster-break td {
-  border-top: 2px solid var(--accent);
+  border-top: 2px solid var(--cluster-rule);
 }
 .shape-note {
   text-align: center;
@@ -921,6 +947,44 @@ pre.code {
  * blend with our card / soft backgrounds. */
 pre code.hljs { background: transparent !important; padding: 0 !important; }
 pre.code code.hljs { background: transparent !important; padding: 0 !important; }
+
+/* Color tokens follow the site theme for both static examples
+ * and generated snippets. Scope to pre to override the CDN's
+ * light theme without changing rendered SVG or canvas colors. */
+.demo pre code { color: var(--fg); }
+pre .hljs-comment,
+pre .hljs-quote { color: var(--muted); }
+pre .hljs-doctag,
+pre .hljs-formula,
+pre .hljs-keyword { color: var(--syntax-keyword); }
+pre .hljs-deletion,
+pre .hljs-name,
+pre .hljs-section,
+pre .hljs-selector-tag,
+pre .hljs-subst { color: var(--syntax-red); }
+pre .hljs-literal { color: var(--syntax-literal); }
+pre .hljs-addition,
+pre .hljs-attribute,
+pre .hljs-meta .hljs-string,
+pre .hljs-regexp,
+pre .hljs-string { color: var(--syntax-string); }
+pre .hljs-attr,
+pre .hljs-number,
+pre .hljs-selector-attr,
+pre .hljs-selector-class,
+pre .hljs-selector-pseudo,
+pre .hljs-template-variable,
+pre .hljs-type,
+pre .hljs-variable { color: var(--syntax-number); }
+pre .hljs-bullet,
+pre .hljs-link,
+pre .hljs-meta,
+pre .hljs-selector-id,
+pre .hljs-symbol,
+pre .hljs-title { color: var(--syntax-title); }
+pre .hljs-built_in,
+pre .hljs-class .hljs-title,
+pre .hljs-title.class_ { color: var(--syntax-builtin); }
 
 /* Inline byte-size tag next to the Vector tab download links. */
 .size-tag {
