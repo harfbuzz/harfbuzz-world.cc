@@ -126,6 +126,7 @@ async function fontHash (bytes) {
   let fontBuf = null;
   let fontPtr = 0;
   let fontFileName = "font.ttf";
+  let currentBundledFont = "";
   /* Custom fonts make preset buttons text-only, so users can
    * try different scripts without replacing their font. */
   let customFontActive = false;
@@ -133,16 +134,19 @@ async function fontHash (bytes) {
   /* Reserve a generation when a font is chosen, before any
    * fetch, metadata lookup, or cache read can finish out of order. */
   let fontLoadGeneration = 0;
-  function setFontBytes (bytes, displayName, { custom = false, full = false, fileName = "" } = {}) {
+  function setFontBytes (bytes, displayName, { custom = false, full = false, fileName = "", sourceUrl = "" } = {}) {
     const nextPtr = prepareFontBytes (bytes);
     if (fontPtr) Module._free (fontPtr);
     fontBuf = bytes;
     fontPtr = nextPtr;
     customFontActive = custom;
     currentIsPresetFull = full;
-    /* Uploads and full-font caches need not match a bundled entry.
-     * URL loads select a matching entry once the font is installed. */
-    fontShipped.selectedIndex = -1;
+    /* Track the installed font independently of pending picker choices.
+     * Uploads and full-font caches need not match a bundled entry. */
+    const bundled = Array.from (fontShipped.options)
+      .find (opt => new URL (opt.value, document.baseURI).href === sourceUrl);
+    currentBundledFont = bundled ? bundled.value : "";
+    fontShipped.value = currentBundledFont;
     fontRestoreWarning.hidden = true;
     /* Prefer the font's own family name (hb-ot-name) over
      * whatever caller-friendly label was passed in. */
@@ -1589,11 +1593,19 @@ hb_blob_destroy (blob);`
     return (n / 1048576).toFixed (1).replace (/\.0$/, "") + " MB";
   }
   function refreshFullNote () {
+    if (activeFullDownload) {
+      fontFullLoad.hidden = activeFullDownload.request !== fontLoadGeneration
+                        || activeFullDownload.preset !== currentPresetKey
+                        || customFontActive || currentIsPresetFull;
+      fontFullLoad.disabled = true;
+      fontFullLoad.textContent = activeFullDownload.label;
+      return;
+    }
     const p = currentPresetKey && PRESETS[currentPresetKey];
     const edited = p && textInput.value !== p.text;
     const onSubset = activeName === "subset";
-    const show = p && p.fullUrl && !customFontActive && !currentIsPresetFull
-              && !activeFullDownload && (edited || onSubset);
+    const show = p && p.fullUrl && currentBundledFont === p.font
+              && !customFontActive && !currentIsPresetFull && (edited || onSubset);
     if (!show) { fontFullLoad.hidden = true; return; }
     fontFullLoad.hidden = false;
     fontFullLoad.disabled = false;
@@ -1613,13 +1625,35 @@ hb_blob_destroy (blob);`
       return true;
     } catch { return false; }
   }
+  function showBundledFontError (url) {
+    const option = Array.from (fontShipped.options).find (opt => opt.value === url);
+    const name = option ? option.textContent : url;
+    if (!fontBuf) {
+      fontNameEl.textContent = "No font loaded";
+      fontShipped.selectedIndex = -1;
+    }
+    fontRestoreWarning.textContent = "Could not load " + name + "."
+      + (fontBuf ? " Still using " + fontNameEl.textContent + "." : "")
+      + " Choose the font or preset again to retry.";
+    fontRestoreWarning.hidden = false;
+  }
   async function loadPresetFont (p, request = ++fontLoadGeneration) {
+    if (request !== fontLoadGeneration) return null;
+    fontRestoreWarning.hidden = true;
+    refreshFullNote ();
     if (p.fullUrl) {
       const cached = await tryLoadFullFromCache (p, request);
       if (cached !== false) return cached;
     }
     if (request !== fontLoadGeneration) return null;
-    return loadFontUrl (p.font, p.name, { silentUrl: true, preset: true, request });
+    const loaded = await loadFontUrl (p.font, p.name, { silentUrl: true, preset: true, request });
+    if (loaded === false && request === fontLoadGeneration) {
+      /* The preset already changed the text. Render it with the font
+       * still in use rather than leaving the previous text onscreen. */
+      refreshText ();
+      showBundledFontError (p.font);
+    }
+    return loaded;
   }
   async function downloadFullFont () {
     const p = currentPresetKey && PRESETS[currentPresetKey];
@@ -1627,10 +1661,9 @@ hb_blob_destroy (blob);`
     const preset = currentPresetKey;
     const request = ++fontLoadGeneration;
     const ctrl = new AbortController ();
-    activeFullDownload = ctrl;
+    activeFullDownload = { preset, request, label: "Downloading…" };
     failedFullPreset = null;
-    fontFullLoad.disabled = true;
-    fontFullLoad.textContent = "Downloading…";
+    refreshFullNote ();
     try {
       const r = await fetch (p.fullUrl, { signal: ctrl.signal });
       if (!r.ok) throw new Error ("HTTP " + r.status);
@@ -1643,8 +1676,9 @@ hb_blob_destroy (blob);`
         if (done) break;
         chunks.push (value);
         loaded += value.length;
-        fontFullLoad.textContent = "Downloading… " + formatBytes (loaded)
+        activeFullDownload.label = "Downloading… " + formatBytes (loaded)
                                  + " / " + formatBytes (total);
+        refreshFullNote ();
       }
       const bytes = new Uint8Array (loaded);
       let off = 0;
@@ -1778,13 +1812,19 @@ hb_blob_destroy (blob);`
     if (e.key === "Escape") closeFontMenu ();
   });
 
-  fontShipped.addEventListener ("change", () => {
+  fontShipped.addEventListener ("change", async () => {
     const opt = fontShipped.selectedOptions[0];
+    if (!opt) return;
+    const request = ++fontLoadGeneration;
+    fontShipped.value = currentBundledFont;
+    fontRestoreWarning.hidden = true;
     /* Treat shipped picks like presets for the custom-font
      * tracker -- they're a curated default, not a "user
      * brought their own" font. */
-    loadFontUrl (opt.value, opt.dataset.name, { preset: true });
     closeFontMenu ();
+    refreshFullNote ();
+    const loaded = await loadFontUrl (opt.value, opt.dataset.name, { preset: true, request });
+    if (loaded === false && request === fontLoadGeneration) showBundledFontError (opt.value);
   });
   fontInput.addEventListener ("change", () => {
     if (fontInput.files.length) loadPickedFont (fontInput.files[0]);
@@ -1926,21 +1966,15 @@ hb_blob_destroy (blob);`
       if (request !== fontLoadGeneration) return null;
       const fileName = fontFileNameFromUrl (r.url || url);
       const name = displayName || fileName.replace (/\.(ttf|otf|ttc|woff2?)$/i, "");
-      setFontBytes (bytes, name, { custom: !opts.preset, fileName });
+      /* Resolve absolute and relative links to the same bundled entry. */
+      const sourceUrl = new URL (r.url || url, document.baseURI).href;
+      setFontBytes (bytes, name, { custom: !opts.preset, fileName, sourceUrl });
       /* The file input remembers its last selection by value, so
        * picking the same file twice in a row never fires
        * 'change'.  Clearing it here lets the user re-upload the
        * same file after a preset / URL load took control of the
        * active font. */
       fontInput.value = "";
-      /* Compare resolved URLs so absolute links to a bundled font
-       * select the same entry as relative preset URLs. */
-      const sourceUrl = new URL (r.url || url, document.baseURI).href;
-      for (const opt of fontShipped.options)
-        if (new URL (opt.value, document.baseURI).href === sourceUrl) {
-          fontShipped.value = opt.value;
-          break;
-        }
       /* Reflect the font URL in the location bar.  Skip when
        * called from applyPreset / initial ?font= load, which
        * own URL state themselves.  Keep any ?preset= intact:
