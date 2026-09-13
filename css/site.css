@@ -148,6 +148,7 @@ header {
 header h1 {
   font-family: "Anton", "Impact", sans-serif;
   font-weight: 400;
+  font-synthesis: none;
   font-size: 2.6rem;
   margin: 0;
   color: var(--accent);
@@ -277,12 +278,18 @@ body[data-active="gpu"] .size-label { display: none; }
   border-radius: 6px;
 }
 .script-warning[hidden] { display: none; }
-:root[data-theme="dark"] .script-warning,
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .script-warning {
+:root[data-theme="dark"] .script-warning {
   color: #f0a0a0;
   background: #3a2020;
   border-color: #5a3030;
-} }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .script-warning {
+    color: #f0a0a0;
+    background: #3a2020;
+    border-color: #5a3030;
+  }
+}
 .demo-controls { margin: 1rem 0 0; justify-content: center; }
 
 .var-picker { position: relative; }
@@ -963,10 +970,42 @@ pre.code code.hljs { background: transparent !important; padding: 0 !important; 
     padding: 1.25rem;
   }
   header h1 { font-size: 2rem; }
+  .text-label { max-width: 100%; }
+  .text-wrap { min-width: 0; }
+  .text-wrap input { width: 100%; }
+
+  /* Anchor all dropdowns to the controls row so wrapped
+   * picker buttons cannot push their panels offscreen. */
+  #shared-controls { position: relative; }
+  .font-picker,
+  .var-picker,
+  .feat-picker { position: static; }
+  .font-picker {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    max-width: 100%;
+  }
+  .font-button {
+    min-width: 0;
+    width: 14rem;
+    max-width: 100%;
+  }
+  #font-name { overflow-wrap: anywhere; }
+  .font-full-load {
+    grid-column: 2;
+    white-space: normal;
+  }
+  .font-menu,
   .var-panel {
-    left: auto;
-    right: 0;
-    width: min(28rem, calc(100vw - 2.5rem));
+    left: 0;
+    right: auto;
+    min-width: 0;
+    width: min(28rem, 100%);
+  }
+  .font-menu-row input,
+  .font-menu-row select {
+    min-width: 0;
+    max-width: 100%;
   }
   .attribution {
     position: static !important;
@@ -979,4 +1018,19 @@ pre.code code.hljs { background: transparent !important; padding: 0 !important; 
     margin: 1.5rem 0 0;
     border-top: 1px solid var(--rule);
   }
+}
+
+@media (max-width: 600px) {
+  header { --header-logo-size: clamp(3rem, 12vw, 4rem); }
+  header h1,
+  .tagline { padding-right: calc(var(--header-logo-size) + 0.75rem); }
+  header h1 { font-size: clamp(1.4rem, 7vw, 2rem); }
+  .tagline { font-size: 1rem; }
+  .logo-corner,
+  .logo-corner img {
+    width: var(--header-logo-size);
+    height: var(--header-logo-size);
+  }
+  .font-menu-row { flex-wrap: wrap; }
+  .font-menu-row label { width: 100%; }
 }
