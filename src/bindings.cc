@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 
 /* Sub-pixel precision for shaped glyph positions.  Same
  * 26.6-fixed-point convention as the in-tree hb-vector /
@@ -28,6 +29,41 @@
  * pixels. */
 #define SUBPIXEL_BITS 6
 #define SCALE (1 << SUBPIXEL_BITS)
+
+/* JSON strings can grow to six times their UTF-8 byte length.
+ * Append to a growable buffer and preserve embedded control bytes. */
+static void
+append_json_string (std::string &out, const char *text, size_t len)
+{
+  const char hex[] = "0123456789abcdef";
+  out += '"';
+  for (size_t i = 0; i < len; i++)
+  {
+    unsigned char c = (unsigned char) text[i];
+    if (c == '"' || c == '\\')
+    {
+      out += '\\';
+      out += c;
+    }
+    else if (c < 0x20)
+    {
+      out += "\\u00";
+      out += hex[c >> 4];
+      out += hex[c & 0xf];
+    }
+    else
+      out += c;
+  }
+  out += '"';
+}
+
+static void
+append_json_tag (std::string &out, hb_tag_t tag)
+{
+  char text[4];
+  hb_tag_to_string (tag, text);
+  append_json_string (out, text, sizeof text);
+}
 
 extern "C" {
 
@@ -105,36 +141,24 @@ char *web_font_stats (const uint8_t *font_bytes, unsigned font_len)
   hb_tag_t *tags = (hb_tag_t *) calloc (table_count ? table_count : 1, sizeof (hb_tag_t));
   if (table_count) hb_face_get_table_tags (face, 0, &table_count, tags);
 
-  size_t cap = 64 + (size_t) table_count * 48 + 1;
-  char *out = (char *) malloc (cap);
-  size_t off = 0;
-  off += snprintf (out + off, cap - off,
-                   "{\"num_glyphs\":%u,\"num_unicodes\":%u,\"tables\":[",
-                   num_glyphs, num_unicodes);
+  std::string out = "{\"num_glyphs\":" + std::to_string (num_glyphs) +
+                    ",\"num_unicodes\":" + std::to_string (num_unicodes) +
+                    ",\"tables\":[";
   for (unsigned i = 0; i < table_count; i++)
   {
     hb_blob_t *t = hb_face_reference_table (face, tags[i]);
     unsigned len = hb_blob_get_length (t);
     hb_blob_destroy (t);
-    char tag[5] = {
-      (char) ((tags[i] >> 24) & 0xff),
-      (char) ((tags[i] >> 16) & 0xff),
-      (char) ((tags[i] >>  8) & 0xff),
-      (char) ( tags[i]        & 0xff),
-      0
-    };
-    /* Tag chars are guaranteed printable ASCII per spec; no
-     * escape needed for the JSON-significant ones since they
-     * can't appear here. */
-    off += snprintf (out + off, cap - off,
-                     "%s{\"tag\":\"%s\",\"size\":%u}",
-                     i ? "," : "", tag, len);
+    if (i) out += ',';
+    out += "{\"tag\":";
+    append_json_tag (out, tags[i]);
+    out += ",\"size\":" + std::to_string (len) + "}";
   }
-  off += snprintf (out + off, cap - off, "]}");
+  out += "]}";
 
   free (tags);
   hb_face_destroy (face);
-  return out;
+  return strdup (out.c_str ());
 }
 
 /* Variation state.  Set once by web_set_variations() and
@@ -268,36 +292,26 @@ char *web_font_palettes (const uint8_t *font_bytes, unsigned font_len)
   unsigned n = hb_ot_color_palette_get_count (face);
   if (!n) { hb_face_destroy (face); return strdup ("[]"); }
 
-  size_t cap = 8 + (size_t) n * 96 + 1;
-  char *out = (char *) malloc (cap);
-  size_t off = 0;
-  off += snprintf (out + off, cap - off, "[");
+  std::string out = "[";
   for (unsigned i = 0; i < n; i++)
   {
     char name[64] = {0};
-    unsigned sz = sizeof name;
+    unsigned sz = 0;
     hb_ot_name_id_t nid = hb_ot_color_palette_get_name_id (face, i);
     if (nid != HB_OT_NAME_ID_INVALID)
-      hb_ot_name_get_utf8 (face, nid, HB_LANGUAGE_INVALID, &sz, name);
-    /* Escape the few JSON-significant chars we might see in
-     * a CPAL name (quote, backslash).  Names rarely contain
-     * control chars; if they do we just pass them through. */
-    char esc[128];
-    size_t eo = 0;
-    for (const char *p = name; *p && eo + 2 < sizeof esc; p++)
     {
-      if (*p == '"' || *p == '\\') esc[eo++] = '\\';
-      esc[eo++] = *p;
+      sz = sizeof name;
+      hb_ot_name_get_utf8 (face, nid, HB_LANGUAGE_INVALID, &sz, name);
     }
-    esc[eo] = 0;
     unsigned flags = hb_ot_color_palette_get_flags (face, i);
-    off += snprintf (out + off, cap - off,
-                     "%s{\"name\":\"%s\",\"flags\":%u}",
-                     i ? "," : "", esc, flags);
+    if (i) out += ',';
+    out += "{\"name\":";
+    append_json_string (out, name, sz);
+    out += ",\"flags\":" + std::to_string (flags) + "}";
   }
-  off += snprintf (out + off, cap - off, "]");
+  out += ']';
   hb_face_destroy (face);
-  return out;
+  return strdup (out.c_str ());
 }
 
 /* JSON-describe the font's fvar axes (tag, min, def, max,
@@ -321,10 +335,7 @@ char *web_font_axes (const uint8_t *font_bytes, unsigned font_len)
   unsigned got = sizeof axes / sizeof axes[0];
   hb_ot_var_get_axis_infos (face, 0, &got, axes);
 
-  size_t cap = 64 + 160 * got + 1;
-  char *out = (char *) malloc (cap);
-  size_t off = 0;
-  off += snprintf (out + off, cap - off, "[");
+  std::string out = "[";
   bool first = true;
   for (unsigned i = 0; i < got; i++)
   {
@@ -333,23 +344,21 @@ char *web_font_axes (const uint8_t *font_bytes, unsigned font_len)
     char name[64] = {0};
     unsigned sz = sizeof name;
     hb_ot_name_get_utf8 (face, axes[i].name_id, HB_LANGUAGE_INVALID, &sz, name);
-    char tag[5] = {
-      (char) ((axes[i].tag >> 24) & 0xff),
-      (char) ((axes[i].tag >> 16) & 0xff),
-      (char) ((axes[i].tag >> 8) & 0xff),
-      (char) (axes[i].tag & 0xff),
-      0
-    };
-    off += snprintf (out + off, cap - off,
-                     "%s{\"tag\":\"%s\",\"min\":%g,\"def\":%g,\"max\":%g,\"name\":\"%s\"}",
-                     first ? "" : ",", tag,
-                     axes[i].min_value, axes[i].default_value, axes[i].max_value,
-                     name);
+    if (!first) out += ',';
+    out += "{\"tag\":";
+    append_json_tag (out, axes[i].tag);
+    char values[96];
+    snprintf (values, sizeof values,
+              ",\"min\":%g,\"def\":%g,\"max\":%g,\"name\":",
+              axes[i].min_value, axes[i].default_value, axes[i].max_value);
+    out += values;
+    append_json_string (out, name, sz);
+    out += '}';
     first = false;
   }
-  off += snprintf (out + off, cap - off, "]");
+  out += ']';
   hb_face_destroy (face);
-  return out;
+  return strdup (out.c_str ());
 }
 
 /* JSON-describe the font's GSUB+GPOS layout features for the
@@ -416,22 +425,12 @@ char *web_font_features (const uint8_t *font_bytes, unsigned font_len,
 
   if (!n_tags) { hb_face_destroy (face); return strdup ("[]"); }
 
-  size_t cap = 64 + 128 * n_tags;
-  char *out = (char *) malloc (cap);
-  size_t off = 0;
-  off += snprintf (out + off, cap - off, "[");
+  std::string out = "[";
   for (unsigned i = 0; i < n_tags; i++)
   {
-    char tag[5] = {
-      (char) ((tags[i] >> 24) & 0xff),
-      (char) ((tags[i] >> 16) & 0xff),
-      (char) ((tags[i] >> 8) & 0xff),
-      (char) (tags[i] & 0xff),
-      0
-    };
-
     /* Try to get a human-readable name for ss01-ss20, cv01-cv99. */
     char name[128] = {0};
+    unsigned sz = 0;
     unsigned feat_idx;
     if (hb_ot_layout_language_find_feature (face, HB_OT_TAG_GSUB,
                                             0, HB_OT_LAYOUT_DEFAULT_LANGUAGE_INDEX,
@@ -443,28 +442,21 @@ char *web_font_features (const uint8_t *font_bytes, unsigned font_len,
                                              &name_id, nullptr,
                                              nullptr, nullptr, nullptr))
       {
-        unsigned sz = sizeof name;
+        sz = sizeof name;
         hb_ot_name_get_utf8 (face, name_id, HB_LANGUAGE_INVALID, &sz, name);
       }
     }
 
-    /* Escape the name for JSON. */
-    char esc[256] = {0};
-    unsigned eo = 0;
-    for (const char *p = name; *p && eo + 2 < sizeof esc; p++)
-    {
-      if (*p == '"' || *p == '\\') esc[eo++] = '\\';
-      esc[eo++] = *p;
-    }
-    esc[eo] = 0;
-
-    off += snprintf (out + off, cap - off,
-                     "%s{\"tag\":\"%s\",\"name\":\"%s\"}",
-                     i ? "," : "", tag, esc);
+    if (i) out += ',';
+    out += "{\"tag\":";
+    append_json_tag (out, tags[i]);
+    out += ",\"name\":";
+    append_json_string (out, name, sz);
+    out += '}';
   }
-  off += snprintf (out + off, cap - off, "]");
+  out += ']';
   hb_face_destroy (face);
-  return out;
+  return strdup (out.c_str ());
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -568,41 +560,29 @@ char *web_shape_json (const uint8_t *font_bytes, unsigned font_len,
   hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, nullptr);
   const float div = 64.f;
 
-  /* Estimate JSON capacity:  ~160 bytes per glyph entry leaves
-   * room for a 64-char name on top of the numeric fields. */
-  size_t cap = 16 + 160 * (size_t) len + 1;
-  char *out = (char *) malloc (cap);
-  size_t off = 0;
-  off += snprintf (out + off, cap - off, "[");
+  std::string out = "[";
   for (unsigned i = 0; i < len; i++)
   {
     char name[64] = {0};
     hb_font_glyph_to_string (font, info[i].codepoint, name, sizeof name);
-    /* Escape the few JSON-significant chars that can show up in
-     * glyph names (quote, backslash). */
-    char esc[128];
-    size_t eo = 0;
-    for (const char *p = name; *p && eo + 2 < sizeof esc; p++)
-    {
-      if (*p == '"' || *p == '\\') esc[eo++] = '\\';
-      esc[eo++] = *p;
-    }
-    esc[eo] = 0;
-    off += snprintf (out + off, cap - off,
-                     "%s{\"gid\":%u,\"name\":\"%s\",\"cluster\":%u,"
-                     "\"x_offset\":%.2f,\"y_offset\":%.2f,"
-                     "\"x_advance\":%.2f,\"y_advance\":%.2f}",
-                     i ? "," : "",
-                     info[i].codepoint, esc, info[i].cluster,
-                     pos[i].x_offset / div, pos[i].y_offset / div,
-                     pos[i].x_advance / div, pos[i].y_advance / div);
+    if (i) out += ',';
+    out += "{\"gid\":" + std::to_string (info[i].codepoint) + ",\"name\":";
+    append_json_string (out, name, strlen (name));
+    char values[192];
+    snprintf (values, sizeof values,
+              ",\"cluster\":%u,\"x_offset\":%.2f,\"y_offset\":%.2f,"
+              "\"x_advance\":%.2f,\"y_advance\":%.2f}",
+              info[i].cluster,
+              pos[i].x_offset / div, pos[i].y_offset / div,
+              pos[i].x_advance / div, pos[i].y_advance / div);
+    out += values;
   }
-  off += snprintf (out + off, cap - off, "]");
+  out += ']';
 
   hb_buffer_destroy (buf);
   hb_font_destroy (font);
   hb_face_destroy (face);
-  return out;
+  return strdup (out.c_str ());
 }
 
 /* Render shaped text via hb-vector in the requested format.
