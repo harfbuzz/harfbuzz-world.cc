@@ -70,13 +70,21 @@ async function fontHash (bytes) {
 }
 
 (async function main () {
-  /* The packaged page names the wasm paired with this build.
-   * Resolve relative to the page so subdirectory previews work. */
-  const wasmUrl = new URL (document.getElementById ("hb-world-script").dataset.wasm,
-                           document.baseURI).href;
-  const Module = await createHbWorld ({
-    locateFile: (file, prefix) => file.endsWith (".wasm") ? wasmUrl : prefix + file,
-  });
+  let Module;
+  try {
+    /* The packaged page names the wasm paired with this build.
+     * Resolve relative to the page so subdirectory previews work. */
+    const wasmUrl = new URL (document.getElementById ("hb-world-script").dataset.wasm,
+                             document.baseURI).href;
+    Module = await createHbWorld ({
+      locateFile: (file, prefix) => file.endsWith (".wasm") ? wasmUrl : prefix + file,
+    });
+  } catch (error) {
+    console.error ("HarfBuzz initialization failed:", error);
+    document.getElementById ("startup-reload").addEventListener ("click", () => location.reload ());
+    document.getElementById ("startup-error").hidden = false;
+    return;
+  }
 
   /* Show the version and source revision compiled into this bundle. */
   const versionEl = document.getElementById ("hb-version");
@@ -1135,7 +1143,7 @@ hb_blob_destroy (blob);`
 
   let activeName = null;
   function activate (name) {
-    if (!demos[name]) name = "embed";
+    if (!Object.hasOwn (demos, name)) name = "embed";
     if (name === activeName) return;
     activeName = name;
     document.body.dataset.active = name;
@@ -1178,19 +1186,24 @@ hb_blob_destroy (blob);`
   function fromHash () {
     const h = (location.hash || "").replace (/^#/, "");
     const parts = h.split ("/");
-    const tab = parts[0] || "embed";
-    const sub = parts[1] || "";
+    const requestedTab = parts[0] || "embed";
+    const validTab = Object.hasOwn (demos, requestedTab);
+    const tab = validTab ? requestedTab : "embed";
+    const sub = validTab ? parts[1] || "" : "";
     activate (tab);
+    const section = demos[tab].section;
     /* Open a sub-section if the hash requests it. */
     let scrollTarget = null;
     if (sub === "code") {
       applySnippetOpen (true);
-      scrollTarget = document.querySelector ("#demo-" + tab + " details[data-snippet]");
-    } else if (sub === "tables") {
+      scrollTarget = section.querySelector ("details[data-snippet]");
+    } else if (tab === "subset" && sub === "tables") {
       const tw = document.getElementById ("subset-tables-wrap");
       if (tw) { tw.hidden = false; tw.open = true; scrollTarget = tw; }
     } else if (sub) {
-      const el = document.querySelector ("#demo-" + tab + " details[data-section=\"" + sub + "\"]");
+      /* Match URL text as data, never as part of a CSS selector. */
+      const el = Array.from (section.querySelectorAll ("details[data-section]"))
+        .find (el => el.dataset.section === sub);
       if (el) { el.open = true; scrollTarget = el; }
     }
     if (scrollTarget)

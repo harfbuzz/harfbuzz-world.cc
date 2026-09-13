@@ -295,7 +295,8 @@ body[data-active="gpu"] .size-label { display: none; }
   margin-bottom: 0.5rem;
 }
 .controls-row2 { margin-bottom: 0.5rem; }
-.script-warning {
+.script-warning,
+.startup-error {
   text-align: center;
   color: #a03030;
   font-size: 0.95rem;
@@ -305,24 +306,35 @@ body[data-active="gpu"] .size-label { display: none; }
   border: 1px solid #e8a0a0;
   border-radius: 6px;
 }
-.script-warning[hidden] { display: none; }
-:root[data-theme="dark"] .script-warning {
+.script-warning[hidden],
+.startup-error[hidden] { display: none; }
+:root[data-theme="dark"] .script-warning,
+:root[data-theme="dark"] .startup-error {
   color: #f0a0a0;
   background: #3a2020;
   border-color: #5a3030;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .script-warning {
+  :root:not([data-theme="light"]) .script-warning,
+  :root:not([data-theme="light"]) .startup-error {
     color: #f0a0a0;
     background: #3a2020;
     border-color: #5a3030;
   }
 }
+.startup-error {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+}
 .demo-controls { margin: 1rem 0 0; justify-content: center; }
 
 .var-picker { position: relative; }
 .var-picker[hidden] { visibility: hidden; }
-.var-button {
+.var-button,
+.startup-error button {
   font: inherit;
   font-size: 0.95rem;
   cursor: pointer;
@@ -336,7 +348,8 @@ body[data-active="gpu"] .size-label { display: none; }
   gap: 0.35rem;
   transition: border-color 0.15s, background 0.15s;
 }
-.var-button:hover {
+.var-button:hover,
+.startup-error button:hover {
   border-color: var(--accent);
   background: var(--highlight);
 }

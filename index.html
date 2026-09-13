@@ -64,6 +64,10 @@
 </header>
 
 <main>
+  <div class="startup-error" id="startup-error" role="alert" hidden>
+    <span>HarfBuzz could not start. Reload the page to try again.</span>
+    <button id="startup-reload" type="button">Reload</button>
+  </div>
   <div class="presets">
     <span class="presets-label">Try:</span>
     <button class="preset" type="button" data-preset="emoji">Emoji</button>
