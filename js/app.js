@@ -1139,9 +1139,10 @@ hb_blob_destroy (blob);`
     if (name === activeName) return;
     activeName = name;
     document.body.dataset.active = name;
+    const tabTitle = name === "gpu" ? "GPU" : name[0].toUpperCase () + name.slice (1);
     document.title = name === "embed"
-      ? "harfbuzz-world.cc — your one-stop HarfBuzz shop"
-      : name + " — harfbuzz-world.cc";
+      ? "HarfBuzz World"
+      : tabTitle + " — HarfBuzz World";
     for (const [n, d] of Object.entries (demos))
       d.section.hidden = (n !== name);
     for (const t of tabs)
