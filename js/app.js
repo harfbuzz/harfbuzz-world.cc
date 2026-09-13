@@ -1915,11 +1915,20 @@ hb_blob_destroy (blob);`
     const request = ++fontLoadGeneration;
     const value = input.value.trim ();
     const label = button.textContent;
+    const controller = new AbortController ();
+    const cancel = () => {
+      /* Editing this field must not cancel a newer choice elsewhere. */
+      if (request === fontLoadGeneration) ++fontLoadGeneration;
+      controller.abort ();
+      button.disabled = false;
+      button.textContent = label;
+    };
+    input.addEventListener ("input", cancel, { once: true });
     setFontLoadError (errorEl, "");
     button.disabled = true;
     button.textContent = "Loading…";
     try {
-      await load (value, request);
+      await load (value, request, controller.signal);
       if (request === fontLoadGeneration) closeFontMenu ();
     } catch (e) {
       /* An error for an earlier value should not appear next
@@ -1927,16 +1936,20 @@ hb_blob_destroy (blob);`
       if (request === fontLoadGeneration && input.value.trim () === value)
         setFontLoadError (errorEl, e.message || "Could not load this font. Please try again.");
     } finally {
-      button.disabled = false;
-      button.textContent = label;
+      input.removeEventListener ("input", cancel);
+      /* A canceled request may finish after the user starts another. */
+      if (!controller.signal.aborted) {
+        button.disabled = false;
+        button.textContent = label;
+      }
     }
   }
   fontUrl.addEventListener ("input", () => setFontLoadError (fontUrlError, ""));
   fontGf.addEventListener ("input", () => setFontLoadError (fontGfError, ""));
   fontUrlLoad.addEventListener ("click", () => {
-    loadFontFromInput (fontUrl, fontUrlLoad, fontUrlError, async (url, request) => {
+    loadFontFromInput (fontUrl, fontUrlLoad, fontUrlError, async (url, request, signal) => {
       if (!url) throw new Error ("Enter a font URL.");
-      if (await loadFontUrl (url, null, { reportErrors: true, request }) === false)
+      if (await loadFontUrl (url, null, { reportErrors: true, request, signal }) === false)
         throw new Error ("Could not load this font URL. Check the address and try again.");
     });
   });
@@ -1976,7 +1989,7 @@ hb_blob_destroy (blob);`
       gfDatalistPopulated = true;
     } catch (e) { /* leave empty; user can still type a known family */ }
   });
-  async function loadGfFamily (name, request) {
+  async function loadGfFamily (name, request, signal) {
     if (!name) throw new Error ("Enter a Google Fonts family name.");
     let families;
     try {
@@ -1989,7 +2002,7 @@ hb_blob_destroy (blob);`
     if (!entry || !entry.fp)
       throw new Error ("That Google Fonts family was not found. Check the name and try again.");
     const url = GF_RAW + entry.fp.replace (/^\.\//, "");
-    if (await loadFontUrl (url, name, { reportErrors: true, request }) === false)
+    if (await loadFontUrl (url, name, { reportErrors: true, request, signal }) === false)
       throw new Error ("Could not download this font from Google Fonts. Please try again.");
   }
   fontGfLoad.addEventListener ("click", () => {
@@ -2034,7 +2047,7 @@ hb_blob_destroy (blob);`
     const request = opts.request ?? ++fontLoadGeneration;
     if (request !== fontLoadGeneration) return null;
     try {
-      const r = await fetch (url);
+      const r = await fetch (url, { signal: opts.signal });
       if (request !== fontLoadGeneration) return null;
       if (!r.ok) return false;
       const bytes = new Uint8Array (await r.arrayBuffer ());
