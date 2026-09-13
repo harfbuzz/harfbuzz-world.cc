@@ -2,5 +2,6 @@
 /hb-world.wasm
 /hb-world.html
 /.cache/
+/dist/
 /.github/tests/node_modules/
 /.github/tests/test-results/

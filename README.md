@@ -46,14 +46,29 @@ Prerequisites:
 bash scripts/build.sh
 ```
 
-Produces `hb-world.js` + `hb-world.wasm` at the repo root.
-Then:
+Produces `hb-world.js` + `hb-world.wasm` at the repo root,
+then packages the publishable site in `dist/`. JavaScript,
+CSS, and WebAssembly filenames include content hashes;
+the generated HTML selects the matching WebAssembly file.
+Unchanged resources keep the same URLs across builds.
+
+Preview the packaged site with:
 
 ```sh
-python3 -m http.server -d .
+python3 -m http.server -d dist
 ```
 
 …and visit <http://localhost:8000/>.
+
+After editing HTML, JavaScript, or CSS, refresh the package
+without recompiling WebAssembly:
+
+```sh
+python3 scripts/package-site.py
+```
+
+Serving the repository root still works for source previews,
+using unversioned URLs. `dist/` is generated and not committed.
 
 ## Check
 
@@ -66,9 +81,10 @@ npm --prefix .github/tests exec -- playwright install chromium
 npm --prefix .github/tests test
 ```
 
-The tests start their own HTTP server on port 8003. They check
+The tests refresh `dist/` and serve it on port 8003. They check
 bundled fonts, tab rendering, download contents, invalid font
-data, and load retries. Google Fonts and the GPU iframe use
+data, load retries, and updates with older resources cached.
+Google Fonts and the GPU iframe use
 local response fixtures; the GPU check covers the host's
 message exchange, not the external renderer.
 
@@ -76,7 +92,7 @@ message exchange, not the external renderer.
 
 GitHub Actions (`.github/workflows/pages.yml`) builds the
 WebAssembly bundle and runs the smoke tests on every push to
-`main`, then publishes via
+`main`, then uploads `dist/` and publishes via
 `actions/deploy-pages` to <https://harfbuzz-world.cc>.
 
 ## Repository layout
@@ -89,6 +105,8 @@ src/
 
 scripts/
   build.sh             em++ invocation
+  package-site.py      static site packaging and resource hashes
+dist/                  generated site published to GitHub Pages
 fonts/                 bundled OFL font subsets
 js/app.js              SPA shell + per-demo render code
 css/site.css           styles

@@ -70,7 +70,13 @@ async function fontHash (bytes) {
 }
 
 (async function main () {
-  const Module = await createHbWorld ();
+  /* The packaged page names the wasm paired with this build.
+   * Resolve relative to the page so subdirectory previews work. */
+  const wasmUrl = new URL (document.getElementById ("hb-world-script").dataset.wasm,
+                           document.baseURI).href;
+  const Module = await createHbWorld ({
+    locateFile: (file, prefix) => file.endsWith (".wasm") ? wasmUrl : prefix + file,
+  });
 
   /* Show HarfBuzz version in the attribution footer. */
   const versionEl = document.getElementById ("hb-version");

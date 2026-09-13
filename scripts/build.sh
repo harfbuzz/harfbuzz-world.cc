@@ -7,8 +7,8 @@
 #   - Emscripten toolchain on PATH:  source emsdk/emsdk_env.sh
 #   - python3 (used to regenerate js/hb-docs.js from the tree).
 #
-# Outputs hb-world.js + hb-world.wasm at the repo root, where
-# the static HTML can load them via <script src="hb-world.js">.
+# Outputs hb-world.js + hb-world.wasm at the repo root, then
+# packages dist/ with versioned resource URLs for publishing.
 
 set -e
 
@@ -60,4 +60,5 @@ em++ \
   -o "$HERE/hb-world.js"
 
 echo "Built: hb-world.{js,wasm}"
-echo "Serve: python3 -m http.server -d $HERE"
+python3 "$HERE/scripts/package-site.py"
+echo "Serve: python3 -m http.server -d $HERE/dist"
