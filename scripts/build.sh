@@ -34,6 +34,19 @@ if [ -z "$HB_SRC" ] || [ ! -f "$HB_SRC/src/harfbuzz-world.cc" ]; then
 fi
 echo "Using HarfBuzz source at: $HB_SRC"
 
+# Record the source revision in the wasm itself, so repackaging cannot
+# attach a newer checkout's hash to an older compiled bundle. Source
+# archives may live inside another repository; only use HarfBuzz's Git root.
+HB_REVISION=""
+HB_SOURCE_ROOT="$(cd "$HB_SRC" && pwd -P)"
+HB_GIT_ROOT="$(git -C "$HB_SRC" rev-parse --show-toplevel 2>/dev/null || true)"
+if [ "$HB_GIT_ROOT" = "$HB_SOURCE_ROOT" ]; then
+  HB_REVISION="$(git -C "$HB_SRC" rev-parse --verify HEAD)"
+  if ! git -C "$HB_SRC" diff --quiet HEAD --; then
+    HB_REVISION="$HB_REVISION-dirty"
+  fi
+fi
+
 # Refresh js/hb-docs.js from this HarfBuzz tree so the snippet
 # linkifier stays in sync with the docs the wasm was built
 # against.
@@ -50,12 +63,13 @@ em++ \
   -I"$HB_SRC/src" \
   -I"$HERE/src" \
   -DHAVE_CONFIG_H \
+  "-DWEB_HB_REVISION=\"$HB_REVISION\"" \
   "$HB_SRC/src/harfbuzz-world.cc" \
   "$HERE/src/bindings.cc" \
   -sALLOW_MEMORY_GROWTH=1 \
   -sMODULARIZE=1 \
   -sEXPORT_NAME=createHbWorld \
-  -sEXPORTED_FUNCTIONS='["_web_render_svg","_web_render_pdf","_web_render_raster","_web_shape_json","_web_subset","_web_font_face_count","_web_font_family","_web_font_axes","_web_font_features","_web_is_multi_script","_web_hb_version","_web_set_variations","_web_set_features","_web_set_foreground","_web_set_background","_web_free_string","_malloc","_free"]' \
+  -sEXPORTED_FUNCTIONS='["_web_render_svg","_web_render_pdf","_web_render_raster","_web_shape_json","_web_subset","_web_font_face_count","_web_font_family","_web_font_axes","_web_font_features","_web_is_multi_script","_web_hb_version","_web_hb_revision","_web_set_variations","_web_set_features","_web_set_foreground","_web_set_background","_web_free_string","_malloc","_free"]' \
   -sEXPORTED_RUNTIME_METHODS='["UTF8ToString","stringToUTF8","HEAPU8","lengthBytesUTF8"]' \
   -o "$HERE/hb-world.js"
 

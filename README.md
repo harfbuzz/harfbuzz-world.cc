@@ -51,6 +51,8 @@ then packages the publishable site in `dist/`. JavaScript,
 CSS, and WebAssembly filenames include content hashes;
 the generated HTML selects the matching WebAssembly file.
 Unchanged resources keep the same URLs across builds.
+The footer links to the HarfBuzz commit compiled into the bundle
+(`-dirty` marks local changes) and shows the UTC packaging date.
 
 Preview the packaged site with:
 

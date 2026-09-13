@@ -473,6 +473,16 @@ const char *web_hb_version ()
   return hb_version_string ();
 }
 
+EMSCRIPTEN_KEEPALIVE
+const char *web_hb_revision ()
+{
+#ifdef WEB_HB_REVISION
+  return WEB_HB_REVISION;
+#else
+  return "";
+#endif
+}
+
 /* Returns true if @utf8_text contains codepoints from more than
  * one Unicode script (ignoring Common and Inherited). */
 EMSCRIPTEN_KEEPALIVE

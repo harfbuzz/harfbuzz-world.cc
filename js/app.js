@@ -78,10 +78,21 @@ async function fontHash (bytes) {
     locateFile: (file, prefix) => file.endsWith (".wasm") ? wasmUrl : prefix + file,
   });
 
-  /* Show HarfBuzz version in the attribution footer. */
+  /* Show the version and source revision compiled into this bundle. */
   const versionEl = document.getElementById ("hb-version");
   if (versionEl)
     versionEl.textContent = Module.UTF8ToString (Module._web_hb_version ());
+  const revisionEl = document.getElementById ("hb-revision");
+  if (revisionEl && Module._web_hb_revision) {
+    const revision = Module.UTF8ToString (Module._web_hb_revision ());
+    if (revision) {
+      const [hash, dirty] = revision.split ("-");
+      revisionEl.href = "https://github.com/harfbuzz/harfbuzz/commit/" + hash;
+      revisionEl.textContent = "(" + hash.slice (0, 8) + (dirty ? "-dirty" : "") + ")";
+      revisionEl.title = hash + (dirty ? " with local changes" : "");
+      revisionEl.hidden = false;
+    }
+  }
 
   class FontLoadError extends Error {}
   /* Allocate and validate incoming bytes before touching the
