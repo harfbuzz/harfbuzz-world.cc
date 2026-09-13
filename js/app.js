@@ -197,6 +197,7 @@ async function fontHash (bytes) {
   const shapeClusterLvl = document.getElementById ("shape-cluster-level");
   shapeClusterLvl.addEventListener ("change", () => {
     Module._web_set_cluster_level (parseInt (shapeClusterLvl.value, 10) || 0);
+    syncUrl (true);
     renderActive ();
   });
   let lastShapeGlyphs  = [];
@@ -825,6 +826,7 @@ hb_blob_destroy (blob);`
   const subsetInstantiateLabel = document.getElementById ("subset-instantiate-label");
   subsetInstantiate.addEventListener ("change", () => {
     Module._web_set_subset_instantiate (subsetInstantiate.checked ? 1 : 0);
+    syncUrl (true);
     renderActive ();
   });
   const subsetHint    = document.getElementById ("subset-hint");
@@ -1200,12 +1202,12 @@ hb_blob_destroy (blob);`
    * Full reload, all query params and hash dropped, all
    * widget state back to defaults.  No JS interception. */
   /* Reflect current text/size in the URL so the view is
-   * shareable.  Debounced so we don't replaceState per
-   * keystroke. */
+   * shareable. Typing is debounced; discrete controls can
+   * update immediately so their links are ready to copy. */
   let urlSyncTimer = 0;
-  function syncUrl () {
+  function syncUrl (immediate = false) {
     clearTimeout (urlSyncTimer);
-    urlSyncTimer = setTimeout (() => {
+    const update = () => {
       const url = new URL (location.href);
       const cur = url.searchParams.get ("preset");
       /* The "default" text depends on context: a preset's
@@ -1219,6 +1221,10 @@ hb_blob_destroy (blob);`
         url.searchParams.delete ("text");
       if (sizeInput.value && sizeInput.value !== "72") url.searchParams.set ("size", sizeInput.value);
       else                                             url.searchParams.delete ("size");
+      if (shapeClusterLvl.value === "1") url.searchParams.set ("cluster-level", "1");
+      else                               url.searchParams.delete ("cluster-level");
+      if (!subsetInstantiate.checked) url.searchParams.set ("instantiate", "0");
+      else                            url.searchParams.delete ("instantiate");
       /* Only touch ?variations when the current font has
        * sliders to read.  If we're on a font with no axes
        * (e.g. the emoji preset), leave any prior
@@ -1245,7 +1251,9 @@ hb_blob_destroy (blob);`
        * widget tweaks layer on top. */
       history.replaceState (null, "", url);
       reflectActivePreset ();
-    }, 200);
+    };
+    if (immediate) update ();
+    else           urlSyncTimer = setTimeout (update, 200);
   }
   const scriptWarn = document.getElementById ("script-warning");
   function checkMultiScript () {
@@ -1936,6 +1944,11 @@ hb_blob_destroy (blob);`
   const fontUrlParam = params.get ("font");
   if (textParam !== null) textInput.value = textParam;
   if (sizeParam !== null) sizeInput.value = sizeParam;
+  /* Restore these before the first render or subset is generated. */
+  shapeClusterLvl.value = params.get ("cluster-level") === "1" ? "1" : "0";
+  Module._web_set_cluster_level (Number (shapeClusterLvl.value));
+  subsetInstantiate.checked = params.get ("instantiate") !== "0";
+  Module._web_set_subset_instantiate (subsetInstantiate.checked ? 1 : 0);
   /* Seed feature states from URL so refreshFeatures preserves
    * them on the first font load. */
   const featParam = params.get ("features");
