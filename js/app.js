@@ -709,6 +709,7 @@ hb_blob_destroy (blob);`
     themeToggle.textContent = t === "dark" ? "☾" : "☀";
     syncRenderColors (t);
     renderActive ();
+    syncUrl (true);
   }
   syncRenderColors (effectiveTheme ());
   themeToggle.textContent = effectiveTheme () === "dark" ? "☾" : "☀";
@@ -1285,8 +1286,9 @@ hb_blob_destroy (blob);`
        * so a font switch doesn't clobber a prior selection. */
       if (!paletteLabel.hidden) {
         const pIdx = parseInt (paletteSelect.value, 10) || 0;
-        if (pIdx) url.searchParams.set ("palette", String (pIdx));
-        else      url.searchParams.delete ("palette");
+        /* Zero is an explicit choice; omitting it can select a different
+         * palette on reload when the font has a theme-specific default. */
+        url.searchParams.set ("palette", String (pIdx));
       }
       /* Preset stays put even when text/variations diverge --
        * the pill represents the script + font choice and
@@ -1492,9 +1494,8 @@ hb_blob_destroy (blob);`
       opt.textContent = paletteLabelFor (p, i);
       paletteSelect.append (opt);
     });
-    /* Honour ?palette=N from the URL so a shared link can pin
-     * the picker.  Falls back to 0 (and any out-of-range index
-     * also lands on 0) so we never load with an invalid pick. */
+    /* Honour ?palette=N, including zero. Missing or out-of-range choices
+     * use the theme's preferred palette, or zero if none is marked. */
     const urlPal = parseInt (new URLSearchParams (location.search).get ("palette"), 10);
     const themePal = bestPaletteForTheme (effectiveTheme ());
     const startIdx = (urlPal >= 0 && urlPal < currentPalettes.length) ? urlPal
@@ -1595,7 +1596,7 @@ hb_blob_destroy (blob);`
   paletteSelect.addEventListener ("change", () => {
     applyPalette (parseInt (paletteSelect.value, 10) || 0);
     renderActive ();
-    syncUrl ();
+    syncUrl (true);
   });
 
   /* Presets: one-click combos of text + font, covering the
