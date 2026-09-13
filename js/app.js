@@ -849,6 +849,7 @@ hb_blob_destroy (blob);`
     renderActive ();
   });
   const subsetHint    = document.getElementById ("subset-hint");
+  const subsetError   = document.getElementById ("subset-error");
   const subsetCounts  = document.getElementById ("subset-counts");
   const subsetTablesWrap = document.getElementById ("subset-tables-wrap");
   const subsetTables  = document.getElementById ("subset-tables");
@@ -904,15 +905,28 @@ hb_blob_destroy (blob);`
   }
   function renderSubset () {
     subsetOrig.textContent = fmtBytes (fontBuf.length);
+    renderSnippet ("subset");
     withText ((textPtr) => {
       const lenPtr = Module._malloc (4);
       const dataPtr = Module._web_subset (fontPtr, fontBuf.length,
                                            textPtr, lenPtr);
       if (!dataPtr) {
         Module._free (lenPtr);
-        subsetNew.textContent    = "(failed)";
+        if (subsetUrl) URL.revokeObjectURL (subsetUrl);
+        subsetUrl = null;
+        subsetNew.textContent    = "—";
         subsetSaving.textContent = "—";
+        subsetBarFill.style.width = "0%";
         subsetDl.removeAttribute ("href");
+        subsetDlSize.textContent = "";
+        subsetPreview.textContent = "";
+        subsetPreview.removeAttribute ("style");
+        subsetStyle.textContent = "";
+        subsetCounts.textContent = "";
+        subsetTables.textContent = "";
+        subsetTablesWrap.hidden = true;
+        subsetHint.hidden = true;
+        subsetError.hidden = false;
         return;
       }
       const sublen = new Uint32Array (Module.HEAPU8.buffer, lenPtr, 1)[0];
@@ -943,7 +957,6 @@ hb_blob_destroy (blob);`
         "Kept " + subStats.num_glyphs + " of " + origStats.num_glyphs + " glyphs"
         + " · " + subStats.num_unicodes + " of " + origStats.num_unicodes + " Unicode code points";
       renderSubsetTables (origStats, subStats);
-      renderSnippet ("subset");
       subsetTablesWrap.hidden = false;
 
       /* Use the loaded filename: the URL can still describe a previous
@@ -986,6 +999,7 @@ hb_blob_destroy (blob);`
       subsetPreview.style.fontFeatureSettings = cssFeatureSettings ();
       subsetPreview.style.fontPalette = "--hbPalette";
       subsetPreview.textContent = textInput.value;
+      subsetError.hidden = true;
     });
   }
 
@@ -1210,7 +1224,10 @@ hb_blob_destroy (blob);`
       scrollTarget = section.querySelector ("details[data-snippet]");
     } else if (tab === "subset" && sub === "tables") {
       const tw = document.getElementById ("subset-tables-wrap");
-      if (tw) { tw.hidden = false; tw.open = true; scrollTarget = tw; }
+      if (tw) {
+        tw.open = true;
+        if (!tw.hidden) scrollTarget = tw;
+      }
     } else if (sub) {
       /* Match URL text as data, never as part of a CSS selector. */
       const el = Array.from (section.querySelectorAll ("details[data-section]"))
