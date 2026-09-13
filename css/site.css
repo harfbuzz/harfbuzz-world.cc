@@ -730,6 +730,22 @@ iframe.render {
 }
 .demo ul { margin: 1rem 0 1rem 1.5rem; padding: 0; }
 .demo li { margin-bottom: 0.4rem; }
+.demo ul.demo-links { list-style: none; margin-left: 0; }
+.demo-links li {
+  position: relative;
+  padding-left: 2.35rem;
+  min-height: 1.75rem;
+}
+.demo-links a { white-space: nowrap; }
+.demo-links img {
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 4px;
+  background: #e8c870;
+}
 .demo code {
   font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
   background: var(--soft);
