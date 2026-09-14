@@ -136,7 +136,7 @@ async function fontHash (bytes) {
     try {
       Module.HEAPU8.set (bytes, ptr);
       if (!Module._web_font_face_count (ptr, bytes.length))
-        throw new FontLoadError ("This file is not a font format supported by this demo.");
+        throw new FontLoadError ("This demo does not support this font format.");
       return ptr;
     } catch (e) {
       Module._free (ptr);
@@ -2011,7 +2011,7 @@ hb_blob_destroy (blob);`
     loadFontFromInput (fontUrl, fontUrlLoad, fontUrlError, async (url, request, signal) => {
       if (!url) throw new Error ("Enter a font URL.");
       if (await loadFontUrl (url, null, { reportErrors: true, request, signal }) === false)
-        throw new Error ("Could not load this font URL. Check the address and try again.");
+        throw new Error ("Could not load the font from this URL. Check the address and try again.");
     });
   });
   fontUrl.addEventListener ("keydown", (e) => {

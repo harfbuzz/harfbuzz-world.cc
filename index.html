@@ -341,8 +341,8 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         </select>
       </label>
     </div>
-    <p class="shape-note">Rows list glyphs in visual order, from left
-       to right, regardless of text direction.</p>
+    <p class="shape-note">Rows list glyphs from left to right in visual
+       order, regardless of text direction.</p>
     <div id="shape-glyphs"></div>
     <details class="snippet" data-snippet="shape">
       <summary>
@@ -365,7 +365,8 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
       <p>Text shaping turns a Unicode string and a font into
          positioned glyphs.  HarfBuzz handles complex scripts
          such as Arabic, Indic scripts, and Khmer, along with
-         OpenType features, variable fonts including avar2,
+         OpenType features, variable fonts including version 2
+         of the <code>avar</code> table,
          and Apple Advanced Typography (AAT).</p>
       <p class="learn-link">📖 <a href="https://harfbuzz.github.io/">User manual and API reference</a></p>
       </div>
@@ -438,8 +439,8 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
       <div class="snippet-body">
       <p>Font subsetting removes unused glyphs and font data
          while preserving the layout rules needed for shaping.
-         Common uses include smaller web fonts and subsets for
-         document embedding.  The subsetter can also produce
+         Common uses include creating smaller web fonts and subsets
+         for document embedding.  The subsetter can also produce
          static instances of variable fonts, limit or reshape
          the variation space, and change default axis values.</p>
       <p class="learn-link">📖 <a href="https://harfbuzz.github.io/harfbuzz-hb-subset.html">API reference</a></p>
@@ -449,8 +450,8 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 
   <section class="demo" id="demo-raster" hidden>
     <p>Render text at the chosen size with hb-raster and download
-       the result as a PNG.  The <code>&lt;canvas&gt;</code> displays the
-       rendered pixels.  This demo uses unhinted outlines;
+       the result as a PNG.  The canvas below displays the rendered
+       pixels.  This demo uses unhinted outlines;
        see
        <a href="https://harfbuzz.github.io/integration-freetype.html">hb-ft</a>
        for FreeType integration.</p>
@@ -541,8 +542,8 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
        fragment shader without using a raster atlas.  This demo uses
        WebGL2.  <strong>Click</strong> to animate,
        <strong>drag</strong> to pan, <strong>scroll</strong> to zoom,
-       and <strong>right-drag</strong> to rotate in 3D.  The standalone
-       <a href="https://harfbuzz.github.io/hb-gpu-demo/">demo</a>
+       and <strong>right-drag</strong> to rotate in 3D.  The
+       <a href="https://harfbuzz.github.io/hb-gpu-demo/">standalone hb-gpu demo</a>
        offers more controls and a WebGPU build.</p>
     <div class="gpu-preview">
       <iframe id="gpu-frame" class="render"
@@ -585,7 +586,7 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 <p class="attribution">Powered by
    <a href="https://github.com/harfbuzz/harfbuzz">HarfBuzz</a> <a id="hb-version" title="HarfBuzz release notes"></a>
    <span id="hb-revision-wrap" hidden>(<a id="hb-revision"></a>)</span><br>
-   the <em>ffmpeg</em> of text rendering<br>
+   the <em>FFmpeg</em> of text rendering<br>
    <!-- site-build-date -->
    <a href="https://github.com/harfbuzz/harfbuzz-world.cc/issues">Feedback</a></p>
 
