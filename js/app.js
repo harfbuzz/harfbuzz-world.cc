@@ -887,7 +887,7 @@ hb_blob_destroy (blob);`
     for (const r of rows) {
       const saved = r.before - r.after;
       const cls = saved > 0 ? "" : (r.after > r.before ? " class=\"subset-grew\"" : " class=\"subset-same\"");
-      html += "<tr" + cls + "><td>" + r.tag
+      html += "<tr" + cls + "><td>" + escapeHtml (r.tag)
             + "</td><td>" + fmtBytes (r.before)
             + "</td><td>" + fmtBytes (r.after)
             + "</td><td>" + (saved > 0 ? fmtBytes (saved) : "—")
