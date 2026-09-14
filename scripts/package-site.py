@@ -21,8 +21,13 @@ def site_revision(source):
         revision = subprocess.check_output(
             ["git", "rev-parse", "--verify", "HEAD"], cwd=source,
             text=True, stderr=subprocess.DEVNULL).strip()
+        # build.sh refreshes these from HarfBuzz, whose revision is shown
+        # separately. Their generated changes do not dirty the site's source.
+        generated = ["js/hb-docs.js"] + [
+            f"hb-{library}.png" for library in ("shape", "subset", "raster", "vector", "gpu")]
         dirty = subprocess.run(
-            ["git", "diff", "--quiet", "HEAD", "--"], cwd=source,
+            ["git", "diff", "--quiet", "HEAD", "--", ".",
+             *[f":(exclude){path}" for path in generated]], cwd=source,
             stderr=subprocess.DEVNULL).returncode
         return revision + ("-dirty" if dirty else "")
     except (OSError, subprocess.CalledProcessError):
