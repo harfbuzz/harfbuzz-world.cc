@@ -1211,6 +1211,18 @@ hb_blob_destroy (blob);`
     renderSnippet ("raster");
   }
 
+  function watchRasterPixelRatio () {
+    const dpr = window.devicePixelRatio || 1;
+    const media = matchMedia ("(resolution: " + dpr + "dppx)");
+    media.addEventListener ("change", () => {
+      /* Watch the new density so further zoom or display changes
+       * also trigger a redraw, without redrawing on ordinary resizes. */
+      watchRasterPixelRatio ();
+      if (activeName === "raster") renderActive ();
+    }, { once: true });
+  }
+  watchRasterPixelRatio ();
+
   /* Static tabs (embed, subset, gpu) have no live render --
    * their content is inert HTML.  They still get an entry so
    * activation/hash routing is uniform. */
