@@ -165,7 +165,7 @@
   <section class="demo" id="demo-embed">
     <h2>Welcome to HarfBuzz World</h2>
     <p><a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/harfbuzz-world.cc"><code>harfbuzz-world.cc</code></a>
-       builds HarfBuzz as a single
+       provides HarfBuzz as a single
        C++ translation unit for use in C or C++ projects.
        Explore its shaping, subsetting, and rendering tools
        in your browser:</p>
@@ -191,8 +191,8 @@
         </span>
       </summary>
       <div class="snippet-body">
-    <p>Add HarfBuzz to your project as a submodule or vendor
-       a checkout alongside your code.  Compile
+    <p>Add HarfBuzz to your project as a submodule or as a
+       vendored checkout.  Compile
        <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/harfbuzz-world.cc"><code>src/harfbuzz-world.cc</code></a>, the amalgamation
        that includes the library's source files in a single
        C++ translation unit:</p>
@@ -219,11 +219,9 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 /* …draw the glyphs… */</code></pre>
 
     <h3>Customizing the build</h3>
-    <p>Configure the amalgamation with compile-time
-       <code>#define</code>s.  Pass them on the command line
-       (<code>-DHB_TINY</code>) or via a small wrapper
-       header that <code>#define</code>s them and then
-       <code>#include</code>s
+    <p>Configure the amalgamation with preprocessor definitions.
+       Pass them on the command line (<code>-DHB_TINY</code>) or
+       define them in a small wrapper header that then includes
        <code>harfbuzz-world.cc</code>.</p>
     <ul>
       <li><code>HB_TINY</code> — enable a compact build by
@@ -253,11 +251,11 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
        header.  For example, undefine <code>HB_NO_AAT</code>
        to enable shaping with Apple Advanced Typography
        tables such as <code>morx</code>, <code>kerx</code>,
-       and <code>trak</code>, used by some Mac system fonts.</p>
+       and <code>trak</code>, used by some macOS system fonts.</p>
 
     <h3>Building for the web (Emscripten)</h3>
     <p>The amalgamation also compiles to WebAssembly with
-       <code>em++</code>.  This site enables shaping,
+       <code>em++</code>.  This site's build enables shaping,
        subsetting, raster rendering, vector output, and AAT
        support.  The GPU tab embeds a separate hb-gpu demo.</p>
 <pre class="code"><code class="language-bash">em++ -std=c++11 -Oz -flto \
@@ -333,7 +331,7 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         glyph names
       </label>
       <label class="cluster-level-toggle"
-             title="Graphemes merge combining marks with their base characters. Characters allow those marks to retain separate clusters. Shaping can still merge clusters in either mode.">
+             title="In grapheme mode, combining marks share a cluster with their base characters. In character mode, they can retain separate clusters. Shaping can still merge clusters in either mode.">
         clusters:
         <select id="shape-cluster-level">
           <option value="0">graphemes (default)</option>
@@ -363,8 +361,8 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
       </summary>
       <div class="snippet-body">
       <p>Text shaping turns a Unicode string and a font into
-         positioned glyphs.  HarfBuzz handles complex scripts
-         such as Arabic, Indic scripts, and Khmer, along with
+         positioned glyphs.  HarfBuzz handles complex writing
+         systems, including Arabic, Indic, and Khmer, along with
          OpenType features, variable fonts including version 2
          of the <code>avar</code> table,
          and Apple Advanced Typography (AAT).</p>
@@ -527,9 +525,9 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
       <div class="snippet-body">
       <p>hb-vector produces SVG and PDF output from glyph outlines
          and COLRv1 color paint data.  SVG is useful for previews,
-         web graphics, and debugging.  PDF output can embed color
-         glyphs as Type 3 fonts, preserving scalable outlines
-         in document applications such as LibreOffice.</p>
+         web graphics, and debugging.  PDF output can encode color
+         glyphs in Type 3 fonts while preserving scalable outlines
+         for applications such as LibreOffice.</p>
       <p class="learn-link">📖 <a href="https://harfbuzz.github.io/harfbuzz-hb-vector.html">API reference</a></p>
       </div>
     </details>
