@@ -164,11 +164,10 @@
 
   <section class="demo" id="demo-embed">
     <h2>Welcome to HarfBuzz World</h2>
-    <p><a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/harfbuzz-world.cc"><code>harfbuzz-world.cc</code></a>
-       provides HarfBuzz as a single
-       C++ translation unit for use in C or C++ projects.
-       Explore its shaping, subsetting, and rendering tools
-       in your browser:</p>
+    <p>Explore HarfBuzz shaping, subsetting, and rendering in your
+       browser.  This site also demonstrates how to use
+       <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/harfbuzz-world.cc"><code>harfbuzz-world.cc</code></a>,
+       a single-file amalgamation for C and C++ projects.</p>
     <ul class="demo-links">
       <li><a href="#shape"><img src="hb-shape.png" width="28" height="28" alt="">shape</a> — inspect the glyph
         stream in a table alongside an SVG preview.</li>
@@ -191,16 +190,15 @@
         </span>
       </summary>
       <div class="snippet-body">
-    <p>Add HarfBuzz to your project as a submodule or as a
-       vendored checkout.  Compile
-       <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/harfbuzz-world.cc"><code>src/harfbuzz-world.cc</code></a>, the amalgamation
-       that includes the library's source files in a single
-       C++ translation unit:</p>
+    <p>Add HarfBuzz as a submodule or vendored checkout, then compile
+       <a href="https://github.com/harfbuzz/harfbuzz/blob/main/src/harfbuzz-world.cc"><code>src/harfbuzz-world.cc</code></a>
+       as C++.  The amalgamation combines the library's source files
+       into a single translation unit:</p>
 <pre class="code"><code class="language-bash">c++ -std=c++11 -O2 \
     -c third_party/harfbuzz/src/harfbuzz-world.cc \
     -o harfbuzz-world.o</code></pre>
-    <p>Link <code>harfbuzz-world.o</code> with the rest of
-       your program and call the public C API as usual:</p>
+    <p>Link the resulting object into your application and use
+       HarfBuzz's public C API:</p>
 <pre class="code"><code class="language-c">#include &lt;hb.h&gt;
 #include &lt;hb-ot.h&gt;
 
@@ -333,15 +331,21 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
       <label class="cluster-level-toggle"
              title="In grapheme mode, combining marks share a cluster with their base characters. In character mode, they can retain separate clusters. Shaping can still merge clusters in either mode.">
         clusters:
-        <select id="shape-cluster-level">
+        <select id="shape-cluster-level" aria-describedby="cluster-level-help">
           <option value="0">graphemes (default)</option>
           <option value="1">characters</option>
         </select>
+        <sup class="footnote-marker" aria-hidden="true">1</sup>
       </label>
     </div>
     <p class="shape-note">Rows list glyphs from left to right in visual
        order, regardless of text direction.</p>
     <div id="shape-glyphs"></div>
+    <p class="shape-control-help" id="cluster-level-help">
+      <sup aria-hidden="true">1</sup> Grapheme mode keeps combining
+      marks with their base characters; character mode can keep them
+      separate.  Shaping may still merge clusters in either mode.
+    </p>
     <details class="snippet" data-snippet="shape">
       <summary>
         <span class="snippet-title">Code snippet</span>
@@ -391,14 +395,16 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         <div class="subset-bar-fill" id="subset-bar-fill"></div>
       </div>
       <div class="subset-bar-labels">
-        <span class="subset-bar-kept">
-          subset <strong id="subset-new-size">—</strong>
-        </span>
-        <span class="subset-bar-saved">
-          saved <strong id="subset-saving">—</strong>
-        </span>
         <span class="subset-bar-orig">
-          of <strong id="subset-orig-size">—</strong>
+          Original <strong id="subset-orig-size">—</strong>
+        </span>
+        <span class="subset-stat-separator" aria-hidden="true">→</span>
+        <span class="subset-bar-kept">
+          Subset <strong id="subset-new-size">—</strong>
+        </span>
+        <span class="subset-stat-separator" aria-hidden="true">·</span>
+        <span class="subset-bar-saved">
+          Saved <strong id="subset-saving">—</strong>
         </span>
       </div>
     </div>
@@ -534,15 +540,15 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
   </section>
 
   <section class="demo" id="demo-gpu" hidden>
-    <p>hb-gpu renders text using the Slug algorithm, with shaders for
+    <p>hb-gpu renders text using the Slug algorithm and supports
        DirectX, Metal, OpenGL, OpenGL ES, WebGL2, and WebGPU.
-       The GPU decodes glyph outlines and color data in the
-       fragment shader without using a raster atlas.  This demo uses
-       WebGL2.  <strong>Click</strong> to animate,
-       <strong>drag</strong> to pan, <strong>scroll</strong> to zoom,
-       and <strong>right-drag</strong> to rotate in 3D.  The
+       This demo uses WebGL2 and decodes glyph outlines and color data
+       in the fragment shader—no raster atlas required.  The
        <a href="https://harfbuzz.github.io/hb-gpu-demo/">standalone hb-gpu demo</a>
        offers more controls and a WebGPU build.</p>
+    <p><strong>Click</strong> the preview to animate,
+       <strong>drag</strong> to pan, <strong>scroll</strong> to zoom,
+       and <strong>right-drag</strong> to rotate in 3D.</p>
     <div class="gpu-preview">
       <iframe id="gpu-frame" class="render"
               title="hb-gpu live demo"></iframe>

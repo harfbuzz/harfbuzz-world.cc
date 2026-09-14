@@ -849,6 +849,13 @@ pre.code {
   margin: 0.75rem 0 1rem;
   text-align: center;
 }
+.shape-control-help {
+  margin: 0.5rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: left;
+}
+.footnote-marker { margin-left: 0.1rem; }
 .glyph-id-toggle,
 .cluster-level-toggle {
   font-size: 1rem;
@@ -889,7 +896,9 @@ pre.code {
 }
 .subset-bar-labels {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   margin-top: 0.5rem;
   font-size: 1rem;
   color: var(--muted);
