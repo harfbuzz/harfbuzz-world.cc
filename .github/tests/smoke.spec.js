@@ -4,7 +4,7 @@ const path = require ("node:path");
 
 const root = path.resolve (__dirname, "../..");
 const font = fs.readFileSync (path.join (root, "fonts/NotoSans.ttf"));
-const invalidFont = /not a font format supported/;
+const invalidFont = "This demo does not support this font format.";
 const pageErrors = new WeakMap ();
 
 test.beforeEach (async ({ page }) => {
