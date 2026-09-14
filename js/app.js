@@ -121,9 +121,9 @@ async function fontHash (bytes) {
     if (revision) {
       const [hash, dirty] = revision.split ("-");
       revisionEl.href = "https://github.com/harfbuzz/harfbuzz/commit/" + hash;
-      revisionEl.textContent = "(" + hash.slice (0, 8) + (dirty ? "-dirty" : "") + ")";
+      revisionEl.textContent = hash.slice (0, 8) + (dirty ? "-dirty" : "");
       revisionEl.title = hash + (dirty ? " with local changes" : "");
-      revisionEl.hidden = false;
+      document.getElementById ("hb-revision-wrap").hidden = false;
     }
   }
 

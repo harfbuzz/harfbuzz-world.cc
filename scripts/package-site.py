@@ -7,6 +7,26 @@ import hashlib
 from pathlib import Path
 import re
 import shutil
+import subprocess
+
+
+def site_revision(source):
+    try:
+        # An archive inside another checkout must not inherit its revision.
+        root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"], cwd=source,
+            text=True, stderr=subprocess.DEVNULL).strip()
+        if Path(root).resolve() != source:
+            return ""
+        revision = subprocess.check_output(
+            ["git", "rev-parse", "--verify", "HEAD"], cwd=source,
+            text=True, stderr=subprocess.DEVNULL).strip()
+        dirty = subprocess.run(
+            ["git", "diff", "--quiet", "HEAD", "--"], cwd=source,
+            stderr=subprocess.DEVNULL).returncode
+        return revision + ("-dirty" if dirty else "")
+    except (OSError, subprocess.CalledProcessError):
+        return ""
 
 
 def package_site(source, output):
@@ -33,9 +53,19 @@ def package_site(source, output):
     html = re.sub(r'(\b(?:src|href|data-wasm)=")([^"]+)(")', rewrite,
                   (source / "index.html").read_text())
     build_date = datetime.now(timezone.utc).date().isoformat()
+    revision = site_revision(source)
+    revision_html = ""
+    if revision:
+        commit, _, dirty = revision.partition("-")
+        label = commit[:8] + ("-dirty" if dirty else "")
+        title = commit + (" with local changes" if dirty else "")
+        revision_html = (
+            f' (<a id="site-revision" title="{title}" '
+            f'href="https://github.com/harfbuzz/harfbuzz-world.cc/commit/{commit}">'
+            f'{label}</a>)')
     html = html.replace("<!-- site-build-date -->",
                         f'Built <time datetime="{build_date}" title="Site build date (UTC)">'
-                        f'{build_date}</time><br>')
+                        f'{build_date}</time>{revision_html}<br>')
 
     output.mkdir(parents=True, exist_ok=True)
     for name, data in contents.items():
