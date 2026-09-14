@@ -15,9 +15,16 @@
 const FONT_DB = "hb-font-cache";
 const FONT_STORE = "fonts";
 const FULL_FONT_STORE = "fullFonts";
+let fontDbOpening = null;
 function fontDbOpen () {
-  return new Promise ((resolve, reject) => {
-    const req = indexedDB.open (FONT_DB, 2);
+  /* Share an outstanding open, including a rejected blocked request:
+   * IndexedDB cannot cancel it, and later opens would queue behind it. */
+  if (fontDbOpening) return fontDbOpening;
+  let req;
+  try { req = indexedDB.open (FONT_DB, 2); }
+  catch (e) { return Promise.reject (e); }
+  let blocked = false;
+  fontDbOpening = new Promise ((resolve, reject) => {
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains (FONT_STORE))
@@ -25,9 +32,24 @@ function fontDbOpen () {
       if (!db.objectStoreNames.contains (FULL_FONT_STORE))
         db.createObjectStore (FULL_FONT_STORE);
     };
-    req.onsuccess = () => resolve (req.result);
-    req.onerror = () => reject (req.error);
+    req.onblocked = () => {
+      blocked = true;
+      reject (new Error ("Font cache upgrade is blocked."));
+    };
+    req.onsuccess = () => {
+      fontDbOpening = null;
+      const db = req.result;
+      db.onversionchange = () => db.close ();
+      /* A blocked attempt has already fallen back to uncached loading. */
+      if (blocked) db.close ();
+      else resolve (db);
+    };
+    req.onerror = () => {
+      fontDbOpening = null;
+      reject (req.error);
+    };
   });
+  return fontDbOpening;
 }
 function fontDbPut (db, key, value) {
   return new Promise ((resolve, reject) => {
