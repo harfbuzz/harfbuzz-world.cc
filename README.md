@@ -1,15 +1,16 @@
 # harfbuzz-world.cc
 
 Source for **<https://harfbuzz-world.cc>** — a live, in-browser
-playground for [HarfBuzz](https://github.com/harfbuzz/harfbuzz),
-plus a working example of using `src/harfbuzz-world.cc` (the
-single-file HarfBuzz amalgamation) in a real project.
+playground for [HarfBuzz](https://github.com/harfbuzz/harfbuzz)
+shaping, subsetting, and rendering. The site also demonstrates
+how to use `src/harfbuzz-world.cc`, a single-file amalgamation
+for C and C++ projects.
 
 ## Tabs
 
-- **embed** — build HarfBuzz as a single C++ translation
-  unit for use in C or C++ projects, with configuration
-  flags explained.
+- **embed** — compile and link `src/harfbuzz-world.cc` as a
+  single C++ translation unit, with configuration flags
+  explained.
 - **shape** — inspect the glyph stream in a table alongside
   an SVG preview.
 - **subset** — create and download a font subset for the
@@ -18,9 +19,9 @@ single-file HarfBuzz amalgamation) in a real project.
   download a PNG.
 - **vector** — export shaped text as SVG or PDF with
   `hb-vector`.
-- **gpu** — render text using the Slug algorithm, with
-  shaders for DirectX, Metal, OpenGL, OpenGL ES, WebGL2,
-  and WebGPU. This site's WebGL2 demo is embedded from
+- **gpu** — render text using the Slug algorithm, with support
+  for DirectX, Metal, OpenGL, OpenGL ES, WebGL2, and WebGPU.
+  This site's WebGL2 demo is embedded from
   [hb-gpu-demo](https://harfbuzz.github.io/hb-gpu-demo/)
   and driven by the same shared controls.
 
