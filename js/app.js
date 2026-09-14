@@ -803,16 +803,23 @@ hb_blob_destroy (blob);`
 
   const vectorRender = document.getElementById ("vector-render");
   const vectorStats  = document.getElementById ("vector-stats");
+  const vectorError  = document.getElementById ("vector-error");
   const dlSvg        = document.getElementById ("vector-dl-svg");
   const dlPdf        = document.getElementById ("vector-dl-pdf");
   const svgSizeEl    = document.getElementById ("vector-svg-size");
   const pdfSizeEl    = document.getElementById ("vector-pdf-size");
   let svgUrl = null, pdfUrl = null;
   function renderVector () {
+    if (svgUrl) URL.revokeObjectURL (svgUrl);
+    if (pdfUrl) URL.revokeObjectURL (pdfUrl);
+    svgUrl = pdfUrl = null;
+    dlSvg.removeAttribute ("href");
+    dlPdf.removeAttribute ("href");
+    svgSizeEl.textContent = pdfSizeEl.textContent = "";
     withText ((textPtr) => {
       const svgPtr = Module._web_render_svg (fontPtr, fontBuf.length,
                                               textPtr, currentSize ());
-      const svg = Module.UTF8ToString (svgPtr);
+      const svg = svgPtr ? Module.UTF8ToString (svgPtr) : "";
       Module._web_free_string (svgPtr);
       vectorRender.innerHTML = svg;
       const svgEl = vectorRender.querySelector ("svg");
@@ -821,27 +828,32 @@ hb_blob_destroy (blob);`
         const h = svgEl.getAttribute ("height");
         const vb = svgEl.getAttribute ("viewBox");
         vectorStats.textContent = w + " × " + h + " px (viewBox: " + vb + ")";
+        const svgBlob = new Blob ([svg], { type: "image/svg+xml" });
+        svgUrl = URL.createObjectURL (svgBlob);
+        dlSvg.href = svgUrl;
+        svgSizeEl.textContent = fmtBytes (svgBlob.size);
       } else {
         vectorStats.textContent = "";
       }
-      if (svgUrl) URL.revokeObjectURL (svgUrl);
-      const svgBlob = new Blob ([svg], { type: "image/svg+xml" });
-      svgUrl = URL.createObjectURL (svgBlob);
-      dlSvg.href = svgUrl;
-      svgSizeEl.textContent = fmtBytes (svgBlob.size);
 
       const lenPtr = Module._malloc (4);
       const pdfPtr = Module._web_render_pdf (fontPtr, fontBuf.length,
                                               textPtr, currentSize (), lenPtr);
       const pdfLen = new Uint32Array (Module.HEAPU8.buffer, lenPtr, 1)[0];
-      const pdfBytes = Module.HEAPU8.slice (pdfPtr, pdfPtr + pdfLen);
+      if (pdfPtr && pdfLen) {
+        const pdfBytes = Module.HEAPU8.slice (pdfPtr, pdfPtr + pdfLen);
+        pdfUrl = URL.createObjectURL (new Blob ([pdfBytes], { type: "application/pdf" }));
+        dlPdf.href = pdfUrl;
+        pdfSizeEl.textContent = fmtBytes (pdfLen);
+      }
       Module._web_free_string (pdfPtr);
       Module._free (lenPtr);
-      if (pdfUrl) URL.revokeObjectURL (pdfUrl);
-      pdfUrl = URL.createObjectURL (new Blob ([pdfBytes], { type: "application/pdf" }));
-      dlPdf.href = pdfUrl;
-      pdfSizeEl.textContent = fmtBytes (pdfLen);
     });
+    const failed = [!svgUrl && "SVG", !pdfUrl && "PDF"].filter (Boolean);
+    vectorError.textContent = failed.length
+      ? "Could not create " + failed.join (" or ") + " output. Try changing the text or choosing another font."
+      : "";
+    vectorError.hidden = failed.length === 0;
     renderSnippet ("vector");
   }
 

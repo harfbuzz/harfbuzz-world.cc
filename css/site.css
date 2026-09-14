@@ -937,7 +937,9 @@ pre.code {
   text-align: center;
 }
 #raster-dl-png:not([href]),
-#subset-download:not([href]) {
+#subset-download:not([href]),
+#vector-dl-svg:not([href]),
+#vector-dl-pdf:not([href]) {
   color: var(--muted);
   cursor: default;
   text-decoration: none;
