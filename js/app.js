@@ -787,6 +787,15 @@ hb_blob_destroy (blob);`
     }, 1200);
     buttonFlashes.set (btn, { label, timer });
   }
+  async function copyText (btn, text) {
+    try {
+      /* The Clipboard API can be unavailable, for example over HTTP. */
+      await navigator.clipboard.writeText (text);
+      flash (btn, "✓");
+    } catch {
+      flash (btn, "✗");
+    }
+  }
   document.querySelectorAll ("details.snippet").forEach ((d) => {
     const linkBtn = d.querySelector (".snippet-link");
     const copyBtn = d.querySelector (".snippet-copy");
@@ -807,9 +816,7 @@ hb_blob_destroy (blob);`
         e.preventDefault ();
         e.stopPropagation ();
         syncUrl (true);
-        navigator.clipboard.writeText (linkUrl ()).then (
-          () => flash (linkBtn, "✓"),
-          () => flash (linkBtn, "✗"));
+        copyText (linkBtn, linkUrl ());
       });
     }
     if (copyBtn)
@@ -817,9 +824,7 @@ hb_blob_destroy (blob);`
         e.preventDefault ();
         e.stopPropagation ();
         const code = d.querySelector ("pre code").innerText;
-        navigator.clipboard.writeText (code).then (
-          () => flash (copyBtn, "✓"),
-          () => flash (copyBtn, "✗"));
+        copyText (copyBtn, code);
       });
   });
 
