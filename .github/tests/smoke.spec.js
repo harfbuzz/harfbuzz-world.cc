@@ -139,6 +139,84 @@ test ("local tabs render and produce font, PNG, SVG, and PDF downloads", async (
   })).toBeGreaterThan (0);
 });
 
+test ("code snippets follow shaping controls across tabs and copy as plain C", async ({ page }) => {
+  await page.addInitScript (() => {
+    Object.defineProperty (navigator, "clipboard", {
+      value: { writeText: async text => { window.copiedSnippet = text; } },
+    });
+  });
+  await page.route ("**/snippet.ttc", route => route.fulfill ({ body: collection ([font, font]) }));
+  await page.goto ("/?font=/snippet.ttc&face=1&text=office&size=43.35"
+    + "&variations=wght=625.35,wdth=83.25&features=liga=0,kern=1&cluster-level=1&theme=dark&open=code#shape");
+  await expect (page.locator ("#shape-glyphs tbody tr")).toHaveCount (6);
+  for (const tab of ["shape", "raster", "vector", "gpu", "info"]) {
+    await page.locator (`.tab[data-demo="${tab}"]`).click ();
+    const snippet = page.locator (`#${tab}-snippet`);
+    await expect (snippet).toContainText ("hb_face_create (blob, 1)");
+    await expect (snippet).toContainText ("hb_font_set_variations (font, variations,");
+    await expect (snippet).toContainText ("{ HB_TAG ('w', 'g', 'h', 't'), 625.35f }");
+    await expect (snippet).toContainText ("{ HB_TAG ('w', 'd', 't', 'h'), 83.25f }");
+    if (tab !== "info") {
+      await expect (snippet).toContainText ('hb_feature_from_string ("liga=0", -1, &features[0])');
+      await expect (snippet).toContainText ('hb_feature_from_string ("kern=1", -1, &features[1])');
+      await expect (snippet).toContainText ("hb_shape (font, buf, features, 2)");
+      await expect (snippet).toContainText ('hb_buffer_add_utf8 (buf, "office", -1, 0, -1)');
+    }
+    if (["shape", "raster", "vector"].includes (tab)) {
+      await expect (snippet).toContainText ("#define FONT_SIZE_PX  43.35f");
+      await expect (snippet).toContainText ("hb_font_set_scale (font, FONT_SIZE_PX * SCALE, FONT_SIZE_PX * SCALE)");
+      await expect (snippet).toContainText ("HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS");
+    } else {
+      await expect (snippet).not.toContainText ("FONT_SIZE_PX");
+      await expect (snippet).not.toContainText ("hb_buffer_set_cluster_level");
+    }
+    if (["raster", "vector", "gpu"].includes (tab)) {
+      await expect (snippet).toContainText (`hb_${tab}_paint_set_palette (p, 0)`);
+      await expect (snippet).toContainText ("HB_COLOR (255, 255, 255, 255)");
+      await expect (snippet).toContainText ("HB_COLOR (34, 34, 34, 255)");
+    }
+  }
+  await page.locator ('.tab[data-demo="shape"]').click ();
+  const text = '"\\{shape} hb_shape <&>\u0001' + '7';
+  await page.locator ("#text").fill (text);
+  const snippet = page.locator ("#shape-snippet");
+  await expect (snippet).toContainText ('hb_buffer_add_utf8 (buf, "\\"\\\\{shape} hb_shape <&>\\0017", -1, 0, -1)');
+  await page.locator ('[data-snippet="shape"] .snippet-copy').click ();
+  expect (await page.evaluate (() => window.copiedSnippet)).toBe (await snippet.textContent ());
+
+  await page.locator ("#feat-button").click ();
+  await page.locator ("#feat-reset").click ();
+  await page.locator ("#feat-button").click ();
+  await page.locator ("#var-button").click ();
+  await page.locator ("#var-reset").click ();
+  await page.locator ("#var-button").click ();
+  await page.locator ("#shape-cluster-level").selectOption ("0");
+  await expect (snippet).toContainText ("hb_shape (font, buf, NULL, 0)");
+  await expect (snippet).not.toContainText ("hb_feature_from_string");
+  await expect (snippet).not.toContainText ("hb_font_set_variations");
+  await expect (snippet).not.toContainText ("hb_buffer_set_cluster_level");
+});
+
+test ("subset snippets reflect axis pinning and layout feature retention", async ({ page }) => {
+  await page.goto ("/?preset=english&text=office&variations=wght=625.35"
+    + "&features=liga=0,kern=1&open=code#subset");
+  const snippet = page.locator ("#subset-snippet");
+  await expect (page.locator ("#subset-download")).toHaveAttribute ("href", /^blob:/);
+  await expect (snippet).toContainText ("hb_subset_input_pin_axis_location (input, face, HB_TAG ('w', 'g', 'h', 't'), 625.35f)");
+  await expect (snippet).toContainText ("hb_subset_input_pin_axis_location (input, face, HB_TAG ('w', 'd', 't', 'h'), 100.0f)");
+  await expect (snippet).toContainText ("hb_set_del (layout_features, HB_TAG ('l', 'i', 'g', 'a'))");
+  await expect (snippet).toContainText ("hb_set_add (layout_features, HB_TAG ('k', 'e', 'r', 'n'))");
+  await expect (snippet).toContainText ('hb_buffer_add_utf8 (buf, "office", -1, 0, -1)');
+  await expect (snippet).not.toContainText ("hb_shape (");
+
+  await page.locator ("#subset-instantiate").uncheck ();
+  await expect (snippet).not.toContainText ("hb_subset_input_pin_axis_location");
+  await expect (snippet).not.toContainText ("625.35");
+  await expect (snippet).toContainText ("hb_set_del (layout_features,");
+  await page.locator ("#subset-instantiate").check ();
+  await expect (snippet).toContainText ("625.35f");
+});
+
 test ("Info reports hb-info categories and lazily renders glyph SVG grids", async ({ page }) => {
   await open (page, "english", "info");
   await expect (page.locator ("#info-summary")).toContainText ("Noto Sans");

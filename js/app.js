@@ -791,21 +791,27 @@ async function fontHash (bytes) {
     shape: {
       headline: "hb_shape",
       template:
-`hb_blob_t *blob = hb_blob_create_from_file ("{font}");
-hb_face_t *face = hb_face_create (blob, 0);
+`#define FONT_SIZE_PX  {size}
+#define SUBPIXEL_BITS 6              /* 26.6 fixed-point, like FreeType */
+#define SCALE         (1 << SUBPIXEL_BITS)
+
+hb_blob_t *blob = hb_blob_create_from_file ("{font}");
+hb_face_t *face = hb_face_create (blob, {face});
 hb_font_t *font = hb_font_create (face);
+{variations}hb_font_set_scale (font, FONT_SIZE_PX * SCALE, FONT_SIZE_PX * SCALE);
 
 hb_buffer_t *buf = hb_buffer_create ();
-hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
+{cluster}hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
 hb_buffer_guess_segment_properties (buf);  /* toy: real apps set script/lang/dir explicitly */
 
-hb_shape (font, buf, NULL, 0);
+{shape}
 
 unsigned len = hb_buffer_get_length (buf);
 hb_glyph_info_t     *info = hb_buffer_get_glyph_infos     (buf, NULL);
 hb_glyph_position_t *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 
-/* ... use info[i].codepoint, pos[i].x_advance, etc. ... */
+/* ... use info[i].codepoint, pos[i].x_advance / (float) SCALE, etc.
+ * Divide positions by SCALE to get the glyph table's pixel values. */
 
 hb_buffer_destroy (buf);
 hb_font_destroy (font);
@@ -816,9 +822,9 @@ hb_blob_destroy (blob);`
       headline: ["hb_ot_name_get_utf8", "hb_face_collect_nominal_glyph_mapping"],
       template:
 `hb_blob_t *blob = hb_blob_create_from_file ("{font}");
-hb_face_t *face = hb_face_create (blob, 0);
+hb_face_t *face = hb_face_create (blob, {face});
 hb_font_t *font = hb_font_create (face);
-
+{variations}
 char family[256];
 unsigned family_len = sizeof family;
 hb_ot_name_get_utf8 (face, HB_OT_NAME_ID_FONT_FAMILY,
@@ -850,17 +856,19 @@ hb_blob_destroy (blob);`
       headline: "hb_subset_or_fail",
       template:
 `hb_blob_t *blob = hb_blob_create_from_file ("{font}");
-hb_face_t *face = hb_face_create (blob, 0);
+hb_face_t *face = hb_face_create (blob, {face});
 
 hb_subset_input_t *input = hb_subset_input_create_or_fail ();
+{subset_settings}
+/* Collect Unicode code points before shaping. */
 hb_set_t *unicodes = hb_subset_input_unicode_set (input);
-const char *text = "{text}";
-for (const char *p = text; *p; ) {
-  /* decode next UTF-8 codepoint into 'cp' */
-  hb_codepoint_t cp = /* ... */ 0;
-  hb_set_add (unicodes, cp);
-  /* advance p */
-}
+hb_buffer_t *buf = hb_buffer_create ();
+hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
+unsigned len = hb_buffer_get_length (buf);
+hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
+for (unsigned i = 0; i < len; i++)
+  hb_set_add (unicodes, info[i].codepoint);
+hb_buffer_destroy (buf);
 
 hb_face_t *subset = hb_subset_or_fail (face, input);
 hb_blob_t *out = hb_face_reference_blob (subset);
@@ -880,17 +888,17 @@ hb_blob_destroy (blob);`
 #define SCALE         (1 << SUBPIXEL_BITS)
 
 hb_blob_t *blob = hb_blob_create_from_file ("{font}");
-hb_face_t *face = hb_face_create (blob, 0);
+hb_face_t *face = hb_face_create (blob, {face});
 hb_font_t *font = hb_font_create (face);
-/* Shape positions in pixel*SCALE units for sub-pixel
+{variations}/* Shape positions in pixel*SCALE units for sub-pixel
  * precision; the raster context divides input coords by
  * SCALE to land on pixels at render time. */
 hb_font_set_scale (font, FONT_SIZE_PX * SCALE, FONT_SIZE_PX * SCALE);
 
 hb_buffer_t *buf = hb_buffer_create ();
-hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
+{cluster}hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
 hb_buffer_guess_segment_properties (buf);  /* toy: real apps set script/lang/dir explicitly */
-hb_shape (font, buf, NULL, 0);
+{shape}
 
 hb_raster_extents_t ext = { /*x*/ 0, /*y*/ 0, /*w*/ 0, /*h*/ 0, /*stride*/ 0 };
 /* ... compute ext in pixels from buffer's advances + font h_extents ... */
@@ -903,6 +911,14 @@ hb_bool_t is_color = hb_ot_color_has_paint (face) ||
 hb_raster_paint_t *p = is_color ? hb_raster_paint_create_or_fail () : NULL;
 hb_raster_draw_t  *d = is_color ? NULL : hb_raster_draw_create_or_fail ();
 
+hb_color_t foreground = {foreground};
+hb_color_t background = {background};
+/* ...fill your output with background... */
+if (p) {
+  hb_raster_paint_set_palette (p, {palette});
+  hb_raster_paint_set_foreground (p, foreground);
+}
+
 unsigned len = hb_buffer_get_length (buf);
 hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
 hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, NULL);
@@ -913,16 +929,21 @@ for (unsigned i = 0; i < len; i++) {
   float gy = pen_y + pos[i].y_offset;
   hb_raster_image_t *img;
   if (p) {
+    hb_raster_paint_set_extents (p, &ext);
+    hb_raster_paint_set_scale_factor (p, SCALE, SCALE);
     hb_raster_paint_set_transform (p, 1, 0, 0, 1, gx, gy);
     hb_raster_paint_glyph (p, font, info[i].codepoint);
     img = hb_raster_paint_render (p);  /* BGRA32 premultiplied */
   } else {
     hb_raster_draw_reset (d);
+    hb_raster_draw_set_extents (d, &ext);
+    hb_raster_draw_set_scale_factor (d, SCALE, SCALE);
     hb_raster_draw_set_transform (d, 1, 0, 0, 1, gx, gy);
     hb_raster_draw_glyph (d, font, info[i].codepoint);
     img = hb_raster_draw_render (d);  /* A8 coverage */
   }
-  /* ...SRC_OVER composite img onto your output... */
+  /* ...SRC_OVER composite img onto your output;
+   * for an A8 mask, use foreground as the source color... */
   pen_x += pos[i].x_advance;
   pen_y += pos[i].y_advance;
 }
@@ -942,14 +963,14 @@ hb_blob_destroy (blob);`
 #define SCALE         (1 << SUBPIXEL_BITS)
 
 hb_blob_t *blob = hb_blob_create_from_file ("{font}");
-hb_face_t *face = hb_face_create (blob, 0);
+hb_face_t *face = hb_face_create (blob, {face});
 hb_font_t *font = hb_font_create (face);
-hb_font_set_scale (font, FONT_SIZE_PX * SCALE, FONT_SIZE_PX * SCALE);
+{variations}hb_font_set_scale (font, FONT_SIZE_PX * SCALE, FONT_SIZE_PX * SCALE);
 
 hb_buffer_t *buf = hb_buffer_create ();
-hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
+{cluster}hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
 hb_buffer_guess_segment_properties (buf);  /* toy: real apps set script/lang/dir explicitly */
-hb_shape (font, buf, NULL, 0);
+{shape}
 
 /* Color fonts go through hb_vector_paint_*; mono outline
  * fonts can use the cheaper hb_vector_draw_* path. */
@@ -962,8 +983,16 @@ hb_vector_draw_t  *d = is_color
   ? NULL : hb_vector_draw_create_or_fail (HB_VECTOR_FORMAT_SVG);
 /* Tell vector how many input units fit in one output pixel
  * (matches what hb-vector / hb-raster utils do). */
-if (p) hb_vector_paint_set_scale_factor (p, SCALE, SCALE);
-else   hb_vector_draw_set_scale_factor  (d, SCALE, SCALE);
+if (p) {
+  hb_vector_paint_set_scale_factor (p, SCALE, SCALE);
+  hb_vector_paint_set_palette (p, {palette});
+  hb_vector_paint_set_foreground (p, {foreground});
+  hb_vector_paint_set_background (p, {background});
+} else {
+  hb_vector_draw_set_scale_factor (d, SCALE, SCALE);
+  hb_vector_draw_set_foreground (d, {foreground});
+  hb_vector_draw_set_background (d, {background});
+}
 
 unsigned len = hb_buffer_get_length (buf);
 hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
@@ -1002,8 +1031,14 @@ hb_blob_destroy (blob);`
       headline: ["hb_gpu_paint_encode", "hb_gpu_draw_encode"],
       template:
 `hb_blob_t *blob = hb_blob_create_from_file ("{font}");
-hb_face_t *face = hb_face_create (blob, 0);
+hb_face_t *face = hb_face_create (blob, {face});
 hb_font_t *font = hb_font_create (face);
+{variations}
+/* Shape in font units; the GPU view controls zoom separately. */
+hb_buffer_t *buf = hb_buffer_create ();
+hb_buffer_add_utf8 (buf, "{text}", -1, 0, -1);
+hb_buffer_guess_segment_properties (buf);  /* toy: real apps set script/lang/dir explicitly */
+{shape}
 
 /* Color fonts (COLR layers / paint tree) go through
  * hb_gpu_paint_*; mono outline fonts through the cheaper
@@ -1013,6 +1048,8 @@ hb_bool_t is_color = hb_ot_color_has_paint (face) ||
                      hb_ot_color_has_layers (face);
 hb_gpu_paint_t *p = is_color ? hb_gpu_paint_create_or_fail () : NULL;
 hb_gpu_draw_t  *d = is_color ? NULL : hb_gpu_draw_create_or_fail ();
+if (p) hb_gpu_paint_set_palette (p, {palette});
+/* Shader foreground: {foreground}; clear color: {background}. */
 
 /* HB_GPU_SHADER_LANG_GLSL / _WGSL / _MSL / _HLSL all available --
  * pick the one your backend (OpenGL, WebGPU, Metal, D3D12) needs. */
@@ -1029,7 +1066,7 @@ const char *vert = hb_gpu_shader_source (HB_GPU_SHADER_STAGE_VERTEX, lang);
  * each glyph is encoded + uploaded at most once per font;
  * subsequent draws of the same glyph just emit a quad with
  * the cached atlas offset. */
-unsigned len = hb_buffer_get_length (buf);  /* assume buf is shaped */
+unsigned len = hb_buffer_get_length (buf);
 hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
 hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, NULL);
 for (unsigned i = 0; i < len; i++) {
@@ -1052,6 +1089,7 @@ for (unsigned i = 0; i < len; i++) {
 
 hb_gpu_paint_destroy (p);
 hb_gpu_draw_destroy (d);
+hb_buffer_destroy (buf);
 hb_font_destroy (font);
 hb_face_destroy (face);
 hb_blob_destroy (blob);`
@@ -1070,9 +1108,73 @@ hb_blob_destroy (blob);`
          + name.replace (/_/g, "-");
   }
   function escapeForC (s) {
-    return s.replace (/\\/g, "\\\\")
-            .replace (/"/g, "\\\"")
-            .replace (/\n/g, "\\n");
+    return s.replace (/[\\"\x00-\x1f\x7f]/g, c => {
+      const escapes = { "\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t" };
+      /* Three octal digits cannot consume a following digit in the text. */
+      return escapes[c] || "\\" + c.charCodeAt (0).toString (8).padStart (3, "0");
+    });
+  }
+  function snippetTag (tag) {
+    return "HB_TAG (" + Array.from (tag, c =>
+      "'" + escapeForC (c).replace (/'/g, "\\'") + "'").join (", ") + ")";
+  }
+  function snippetFloat (value) {
+    const s = String (value);
+    return (/[.e]/i.test (s) ? s : s + ".0") + "f";
+  }
+  function snippetSettings () {
+    const features = currentFeatures.filter (f => f.state !== "default");
+    let shape = "hb_shape (font, buf, NULL, 0);";
+    if (features.length) {
+      shape = "hb_feature_t features[" + features.length + "];\n";
+      features.forEach ((f, i) => {
+        const value = f.tag + "=" + (f.state === "on" ? "1" : "0");
+        shape += 'hb_feature_from_string ("' + escapeForC (value) + '", -1, &features[' + i + "]);\n";
+      });
+      shape += "hb_shape (font, buf, features, " + features.length + ");";
+    }
+
+    /* Compare with the font defaults, not the slider's starting values:
+     * for example, the UI starts weight at 400 even in a non-400 font. */
+    const axes = currentAxes.filter (a => a.value !== a.def);
+    let variations = "";
+    if (axes.length) {
+      variations = "\nhb_variation_t variations[] = {\n"
+        + axes.map (a => "  { " + snippetTag (a.tag) + ", " + snippetFloat (a.value) + " },").join ("\n")
+        + "\n};\nhb_font_set_variations (font, variations,\n"
+        + "                        sizeof variations / sizeof variations[0]);\n";
+    }
+
+    let subset = "";
+    if (currentAxes.length) {
+      if (subsetInstantiate.checked) {
+        subset += "\n/* Pin every axis to make a static subset. */\n";
+        for (const a of currentAxes)
+          subset += "hb_subset_input_pin_axis_location (input, face, "
+            + snippetTag (a.tag) + ", " + snippetFloat (a.value) + ");\n";
+      } else {
+        subset += "\n/* Keep the font's variation axes in the subset. */\n";
+      }
+    }
+    if (features.length) {
+      subset += "\nhb_set_t *layout_features = hb_subset_input_set (input, HB_SUBSET_SETS_LAYOUT_FEATURE_TAG);\n";
+      for (const f of features)
+        subset += "hb_set_" + (f.state === "on" ? "add" : "del")
+          + " (layout_features, " + snippetTag (f.tag) + ");\n";
+    }
+    const dark = effectiveTheme () === "dark";
+    return {
+      face: String (fontFaceIndex),
+      size: snippetFloat (currentSize ()),
+      variations,
+      cluster: shapeClusterLvl.value === "1"
+        ? "hb_buffer_set_cluster_level (buf, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);\n" : "",
+      shape,
+      subset_settings: subset,
+      palette: String (parseInt (paletteSelect.value, 10) || 0),
+      foreground: dark ? "HB_COLOR (255, 255, 255, 255)" : "HB_COLOR (0, 0, 0, 255)",
+      background: dark ? "HB_COLOR (34, 34, 34, 255)" : "HB_COLOR (255, 255, 255, 255)",
+    };
   }
   /* Walk over the highlighted HTML and turn known hb_*
    * identifiers into anchors pointing at the official docs.
@@ -1096,8 +1198,9 @@ hb_blob_destroy (blob);`
     const el = document.getElementById (key + "-snippet");
     if (!el) return;
     const fields = { font: escapeForC (fontFileName), text: escapeForC (textInput.value) };
-    const code = def.template.replaceAll ("{size}", String (currentSize ()))
-      .replaceAll ("hb_face_create (blob, 0)", "hb_face_create (blob, " + fontFaceIndex + ")");
+    const settings = snippetSettings ();
+    const code = def.template.replace (/\{(\w+)\}/g,
+      (placeholder, field) => settings[field] ?? placeholder);
     /* hljs may not be loaded yet on first render; in that
      * case just show the raw code, then re-highlight when
      * highlight.js arrives. */

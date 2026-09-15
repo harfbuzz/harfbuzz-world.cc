@@ -39,6 +39,11 @@ The Info tab hides text, size, and variation controls, and the GPU demo
 uses zoom gestures. Empty Info sections are hidden. Open sections and
 the selected collection face are preserved in share URLs.
 
+Code snippets follow the active font face and relevant controls, including
+features, variations, size, cluster level, palette, and theme colors. Subset
+examples include axis pinning and feature retention settings. Application
+steps such as compositing pixels or uploading GPU data remain placeholders.
+
 Nine presets cover emoji, English, Hebrew, Arabic, Urdu,
 Hindi, Thai, Khmer, and Chinese. Presets pair sample text
 with bundled fonts. After you load a custom font, presets
