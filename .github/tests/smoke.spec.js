@@ -37,6 +37,25 @@ async function fontState (page) {
   }));
 }
 
+function collection (fonts) {
+  let next = 12 + 4 * fonts.length;
+  const offsets = fonts.map (bytes => { const offset = next; next += (bytes.length + 3) & ~3; return offset; });
+  const ttc = Buffer.alloc (next);
+  ttc.write ("ttcf");
+  ttc.writeUInt32BE (0x10000, 4);
+  ttc.writeUInt32BE (fonts.length, 8);
+  fonts.forEach ((bytes, index) => {
+    const base = offsets[index];
+    ttc.writeUInt32BE (base, 12 + index * 4);
+    bytes.copy (ttc, base);
+    for (let i = 0; i < bytes.readUInt16BE (4); i++) {
+      const offset = 12 + i * 16 + 8;
+      ttc.writeUInt32BE (bytes.readUInt32BE (offset) + base, base + offset);
+    }
+  });
+  return ttc;
+}
+
 test ("a visit without a tab starts on Embed before wasm loads", async ({ page }) => {
   let release;
   const pending = new Promise (resolve => { release = resolve; });
@@ -80,8 +99,10 @@ test ("all presets have working bundled font entries", async ({ page, request })
 
 test ("local tabs render and produce font, PNG, SVG, and PDF downloads", async ({ page }) => {
   await open (page);
+  await expect (page.locator (".tabs .tab")).toHaveText (["embed", "shape", "subset", "raster", "vector", "gpu", "info"]);
+  await expect (page.locator (".demo-links a")).toHaveText (["shape", "subset", "raster", "vector", "gpu", "info"]);
   await expect (page.locator ("#shape-glyphs tbody tr").first ()).toBeVisible ();
-  for (const tab of ["embed", "subset", "raster", "vector"]) {
+  for (const tab of ["embed", "subset", "raster", "vector", "info"]) {
     await page.locator (`.tab[data-demo="${tab}"]`).click ();
     await expect (page.locator (`#demo-${tab}`)).toBeVisible ();
   }
@@ -107,6 +128,7 @@ test ("local tabs render and produce font, PNG, SVG, and PDF downloads", async (
     expect (files[id].size).toBeGreaterThan (100);
     expect (files[id].name).not.toBe ("");
   }
+  await page.locator ('.tab[data-demo="vector"]').click ();
   await expect (page.locator ("#vector-render svg")).toBeVisible ();
   await page.locator ('.tab[data-demo="subset"]').click ();
   await expect (page.locator ("#subset-preview")).toHaveText ("hello-world!");
@@ -115,6 +137,207 @@ test ("local tabs render and produce font, PNG, SVG, and PDF downloads", async (
     const style = getComputedStyle (preview);
     return (await document.fonts.load (`${style.fontSize} ${style.fontFamily}`)).length;
   })).toBeGreaterThan (0);
+});
+
+test ("Info reports hb-info categories and lazily renders glyph SVG grids", async ({ page }) => {
+  await open (page, "english", "info");
+  await expect (page.locator ("#info-summary")).toContainText ("Noto Sans");
+  await expect (page.locator ("#info-summary")).toContainText ("TrueType outlines");
+  await expect (page.locator ("#info-names-count")).not.toBeEmpty ();
+  await expect (page.locator ("#info-tables-count")).not.toBeEmpty ();
+  await expect (page.locator (".controls-row2")).toBeHidden ();
+  await expect (page.locator ("#feat-picker")).toBeHidden ();
+  await expect (page.locator ("#var-picker")).toBeHidden ();
+  await expect (page.locator ('#demo-info [data-section="palettes"]')).toBeHidden ();
+  await expect (page.locator ('#demo-info [data-section="meta"]')).toBeHidden ();
+  await expect (page.locator ('#demo-info [data-section="variations"]')).toBeVisible ();
+
+  await expect (page.locator ("#info-characters .info-glyph-card")).toHaveCount (0);
+  await page.locator ("#info-characters-wrap > summary").click ();
+  await expect (page.locator ("#info-characters .info-glyph-card")).toHaveCount (48);
+  await expect (page.locator ("#info-characters .info-glyph-art svg").first ()).toBeVisible ();
+  await expect (page.locator ("#info-characters .info-glyph-code").first ()).toContainText ("U+");
+  await page.locator ("#info-characters").evaluate (el => { el.scrollTop = el.scrollHeight; });
+  await expect (page.locator ("#info-characters .info-glyph-card")).toHaveCount (95);
+
+  await page.locator ("#info-glyphs-wrap > summary").click ();
+  await expect (page.locator ("#info-glyphs .info-glyph-card")).toHaveCount (48);
+  await expect (page.locator ("#info-glyphs .info-glyph-art svg").first ()).toBeVisible ();
+  await expect (page.locator ("#info-glyphs .info-glyph-code").first ()).toHaveText ("gid0");
+  await page.locator ("#info-glyphs").evaluate (el => { el.scrollTop = el.scrollHeight; });
+  await expect (page.locator ("#info-glyphs .info-glyph-card")).toHaveCount (96);
+  await page.locator ("#info-glyphs").evaluate (el => { el.scrollTop = el.scrollHeight; });
+  await expect (page.locator ("#info-glyphs .info-glyph-card")).toHaveCount (132);
+  await expect (page.locator ("#info-glyphs .info-glyph-code").last ()).toHaveText ("gid131");
+  await expect (page.getByRole ("button", { name: /Show (all|more)/ })).toHaveCount (0);
+  for (const id of ["info-characters", "info-glyphs"]) {
+    const grid = page.locator ("#" + id);
+    expect (await grid.evaluate (el => el.scrollHeight > el.clientHeight)).toBe (true);
+    await grid.focus ();
+    await page.keyboard.press ("End");
+    await expect.poll (() => grid.evaluate (el => el.scrollTop)).toBeGreaterThan (0);
+  }
+});
+
+test ("Info jumps to characters and glyph IDs in context, without filtering the grid", async ({ page }) => {
+  await open (page, "english", "info");
+  await page.locator ("#info-characters-wrap > summary").click ();
+  const search = page.getByRole ("searchbox", { name: "Search characters" });
+  for (const query of ["U+007E", "0x7e", "007e", "~"]) {
+    await search.fill (query);
+    await expect (page.locator ("#info-characters .info-match .info-glyph-code")).toHaveText ("U+007E");
+    await expect (page.locator ("#info-characters .info-glyph-card").filter ({ hasText: "U+007D" })).toHaveCount (1);
+  }
+  for (const [query, code] of [["A", "U+0041"], [" ", "U+0020"], ["0", "U+0030"]]) {
+    await search.fill (query);
+    await expect (page.locator ("#info-characters .info-match .info-glyph-code")).toHaveText (code);
+  }
+  const beforeMiss = await page.locator ("#info-characters .info-glyph-card").count ();
+  await search.fill ("U+1F600");
+  await expect (page.locator ("#info-characters-status")).toHaveText ("0 matches");
+  await expect (page.locator ("#info-characters-wrap")).toBeVisible ();
+  await expect (page.locator ("#info-characters .info-glyph-card")).toHaveCount (beforeMiss);
+  await expect (page.locator ("#info-characters .info-match")).toHaveCount (0);
+  await search.fill ("");
+  await expect (page.locator ("#info-characters .info-glyph-card")).toHaveCount (beforeMiss);
+
+  await page.locator ("#info-glyphs-wrap > summary").click ();
+  const glyphSearch = page.getByRole ("searchbox", { name: "Search glyphs" });
+  for (const query of ["131", "gid131", "GID131"]) {
+    await glyphSearch.fill (query);
+    await expect (page.locator ("#info-glyphs .info-match .info-glyph-code")).toHaveText ("gid131");
+    await expect (page.locator ('#info-glyphs .info-glyph-code').filter ({ hasText: /^gid130$/ })).toHaveCount (1);
+    await expect.poll (() => page.locator ("#info-glyphs .info-match").evaluate (el => {
+      const a = el.getBoundingClientRect (), b = el.parentElement.getBoundingClientRect ();
+      return a.top >= b.top - 1 && a.bottom <= b.bottom + 1;
+    })).toBe (true);
+    await expect (glyphSearch).toBeFocused ();
+  }
+  await glyphSearch.fill ("gid1");
+  await expect (page.locator ("#info-glyphs .info-match .info-glyph-code")).toHaveText ("gid1");
+  await glyphSearch.fill ("no-such-glyph");
+  await expect (page.locator ("#info-glyphs-status")).toHaveText ("0 matches");
+  await glyphSearch.fill ("");
+  await expect (page.locator ("#info-glyphs .info-glyph-card")).toHaveCount (48);
+  await expect (page.locator ("#info-glyphs-count")).toHaveText ("132");
+});
+
+test ("open sections round-trip in URLs across tabs and closed deep links stay closed", async ({ page }) => {
+  await open (page, "english", "info");
+  const names = page.locator ('#demo-info [data-section="names"]');
+  const glyphs = page.locator ("#info-glyphs-wrap");
+  await names.locator ("summary").click ();
+  await glyphs.locator ("summary").click ();
+  await expect.poll (() => new URL (page.url ()).searchParams.get ("open")).toBe ("info.names,info.glyphs");
+  await page.locator ('.tab[data-demo="shape"]').click ();
+  await page.locator ('#demo-shape [data-snippet] > summary').click ();
+  await expect.poll (() => new URL (page.url ()).searchParams.get ("open")).toContain ("code");
+  await page.reload ();
+  await expect (page.locator ('#demo-shape [data-snippet]')).toHaveAttribute ("open", "");
+  await page.locator ('.tab[data-demo="info"]').click ();
+  await expect (names).toHaveAttribute ("open", "");
+  await expect (glyphs).toHaveAttribute ("open", "");
+  await expect (page.locator ("#info-glyphs .info-glyph-card")).toHaveCount (48);
+  await page.goto ("/?preset=english&open=#info/glyphs");
+  await expect (glyphs).toHaveAttribute ("open", "");
+  await glyphs.locator ("summary").click ();
+  await expect.poll (() => new URL (page.url ()).hash).toBe ("#info");
+  await expect.poll (() => new URL (page.url ()).searchParams.get ("open")).toBe ("");
+  await page.reload ();
+  await expect (page.locator ("#info-summary")).toContainText ("Noto Sans");
+  await expect (glyphs).not.toHaveAttribute ("open", "");
+  await expect (page.locator ("#info-glyphs .info-glyph-card")).toHaveCount (0);
+});
+
+test ("collection face selection drives Info, rendering, subsetting, URLs, and the GPU font", async ({ page }) => {
+  const otf = fs.readFileSync (path.join (root, "fonts/AdobeBlank.otf"));
+  await page.route ("**/faces.ttc", route => route.fulfill ({ body: collection ([font, otf]) }));
+  await page.route ("https://harfbuzz.github.io/hb-gpu-demo/**", route => route.fulfill ({
+    contentType: "text/html",
+    body: `<body><script>
+      window.addEventListener('message', async e => {
+        if (e.data.kind !== 'font') return;
+        const bytes = new Uint8Array(e.data.bytes);
+        document.body.dataset.signature = String.fromCharCode(...bytes.slice(0, 4));
+        try { await new FontFace('selected', e.data.bytes).load(); document.body.dataset.valid = 'yes'; }
+        catch { document.body.dataset.valid = 'no'; }
+      });
+      parent.postMessage({kind:'ready'}, '*');
+    </script></body>`,
+  }));
+  await page.goto ("/?font=/faces.ttc&face=1&open=info.glyphs#info");
+  await expect (page.locator ("#font-face")).toHaveValue ("1");
+  await expect (page.locator ("#font-face option")).toHaveCount (2);
+  await expect (page.locator ("#info-summary")).toContainText ("PostScript outlines");
+  await expect (page.locator ('#demo-info [data-section="variations"]')).toBeHidden ();
+  await expect (page.locator ("#info-glyphs .info-glyph-card")).toHaveCount (48);
+  await page.getByRole ("searchbox", { name: "Search glyphs" }).fill ("2048");
+  await expect (page.locator ("#info-glyphs .info-match .info-glyph-code")).toHaveText ("gid2048");
+  expect (await page.locator ("#info-glyphs .info-glyph-card").count ()).toBeLessThan (150);
+  const firstIndex = await page.locator ("#info-glyphs .info-glyph-card").first ().getAttribute ("data-index");
+  await page.locator ("#info-glyphs").evaluate (el => { el.scrollTop = 0; });
+  await expect.poll (async () => Number (await page.locator ("#info-glyphs .info-glyph-card").first ().getAttribute ("data-index")))
+    .toBeLessThan (Number (firstIndex));
+  await page.getByRole ("searchbox", { name: "Search glyphs" }).fill ("GID");
+  await expect (page.locator ("#info-glyphs-status")).toHaveText ("2,049 matches");
+  await page.locator ('.tab[data-demo="shape"]').click ();
+  await expect (page.locator ("body")).toHaveAttribute ("data-active", "shape");
+  const cffShape = await page.locator ("#shape-render").innerHTML ();
+  await page.locator ("#font-face").selectOption ("0");
+  await expect (page.locator ("#shape-render")).not.toHaveJSProperty ("innerHTML", cffShape);
+  await page.locator ("#font-face").selectOption ("1");
+  await expect (page.locator ("#shape-render")).toHaveJSProperty ("innerHTML", cffShape);
+  await page.locator ('.tab[data-demo="subset"]').click ();
+  await expect (page.locator ("#subset-download")).toHaveAttribute ("href", /^blob:/);
+  expect (await page.evaluate (async () => {
+    const bytes = new Uint8Array (await (await fetch (document.getElementById ("subset-download").href)).arrayBuffer ());
+    return String.fromCharCode (...bytes.slice (0, 4));
+  })).toBe ("OTTO");
+  await page.locator ('.tab[data-demo="gpu"]').click ();
+  const frame = page.frameLocator ("#gpu-frame").locator ("body");
+  await expect (frame).toHaveAttribute ("data-signature", "OTTO");
+  await expect (frame).toHaveAttribute ("data-valid", "yes");
+  await page.locator ("#font-face").selectOption ("0");
+  await expect (frame).not.toHaveAttribute ("data-signature", "OTTO");
+  await page.locator ("#font-face").selectOption ("1");
+  await expect (frame).toHaveAttribute ("data-signature", "OTTO");
+  await expect.poll (() => new URL (page.url ()).searchParams.get ("face")).toBe ("1");
+  await page.reload ();
+  await expect (page.locator ("#font-face")).toHaveValue ("1");
+  await picker (page);
+  await page.locator ("#font-shipped").selectOption ("fonts/NotoSans.ttf");
+  await expect (page.locator ("#font-face-label")).toBeHidden ();
+  await expect.poll (() => new URL (page.url ()).searchParams.get ("face")).toBe (null);
+});
+
+test ("Info searches named glyphs and supplementary or variation-sequence characters", async ({ page }) => {
+  await open (page, "hebrew", "info");
+  await page.locator ("#info-glyphs-wrap > summary").click ();
+  await page.getByRole ("searchbox", { name: "Search glyphs" }).fill (".NOTDEF");
+  await expect (page.locator ("#info-glyphs .info-glyph-code")).toHaveText ("gid0");
+  await open (page, "emoji", "info");
+  await page.locator ("#info-characters-wrap > summary").click ();
+  const search = page.getByRole ("searchbox", { name: "Search characters" });
+  for (const query of ["🥰", "U+1F970"]) {
+    await search.fill (query);
+    await expect (page.locator ("#info-characters .info-match .info-glyph-code")).toHaveText ("U+1F970");
+    await expect (page.locator ("#info-characters .info-match .info-glyph-art svg")).toBeVisible ();
+  }
+  for (const query of ["❤️", "U+2764 U+FE0F"]) {
+    await search.fill (query);
+    await expect (page.locator ("#info-characters .info-match .info-glyph-code")).toHaveText ("U+2764 U+FE0F");
+  }
+  await search.fill ("U+2764");
+  await expect (page.locator ("#info-characters-status")).toHaveText ("1 of 2 matches");
+  await search.press ("Enter");
+  await expect (page.locator ("#info-characters .info-match .info-glyph-code")).toHaveText ("U+2764 U+FE0F");
+  await expect (page.locator ("#info-characters-status")).toHaveText ("2 of 2 matches");
+  await search.press ("Shift+Enter");
+  await expect (page.locator ("#info-characters .info-match .info-glyph-code")).toHaveText ("U+2764");
+  await page.getByRole ("button", { name: "Previous character match" }).click ();
+  await expect (page.locator ("#info-characters-status")).toHaveText ("2 of 2 matches");
+  await page.getByRole ("button", { name: "Next character match" }).click ();
+  await expect (page.locator ("#info-characters-status")).toHaveText ("1 of 2 matches");
 });
 
 test ("GPU tab passes the font and text to its embedded demo", async ({ page }) => {
@@ -174,17 +397,7 @@ test ("invalid uploads and drops preserve the font; valid TTF, OTF, and TTC load
   await expect (page.locator ("#font-file-error")).toHaveText (invalidFont);
   expect (await fontState (page)).toEqual (before);
 
-  // Wrap the bundled TTF in a one-face collection, adjusting table offsets.
-  const ttc = Buffer.alloc (16 + font.length);
-  ttc.write ("ttcf");
-  ttc.writeUInt32BE (0x10000, 4);
-  ttc.writeUInt32BE (1, 8);
-  ttc.writeUInt32BE (16, 12);
-  font.copy (ttc, 16);
-  for (let i = 0; i < font.readUInt16BE (4); i++) {
-    const offset = 12 + i * 16 + 8;
-    ttc.writeUInt32BE (font.readUInt32BE (offset) + 16, 16 + offset);
-  }
+  const ttc = collection ([font]);
   for (const [name, buffer] of [["valid.ttf", font], ["valid.otf",
     fs.readFileSync (path.join (root, "fonts/NotoSansCJKsc-subset.otf"))], ["valid.ttc", ttc]]) {
     await picker (page);

@@ -24,10 +24,18 @@ for C and C++ projects.
   This site's WebGL2 demo is embedded from
   [hb-gpu-demo](https://harfbuzz.github.io/hb-gpu-demo/)
   and driven by the same shared controls.
+- **info** — inspect technical font information in the style
+  of `hb-info`, including searchable character and glyph grids
+  rendered to SVG with `hb-vector`, loaded as you scroll. Character searches
+  and exact glyph IDs jump to a highlighted entry with its neighbors;
+  glyph-name searches filter by substring (including prefixes).
 
-The demos share text, font, variation, and OpenType feature
-controls. Size applies to shape, subset, raster, and vector;
-the GPU demo uses zoom gestures.
+The demos share font, collection-face, variation, and palette controls where
+they apply. Text and OpenType features drive shaping, subsetting,
+and rendering; size applies to shape, subset, raster, and vector.
+The Info tab hides text, size, and variation controls, and the GPU demo
+uses zoom gestures. Empty Info sections are hidden. Open sections and
+the selected collection face are preserved in share URLs.
 
 Nine presets cover emoji, English, Hebrew, Arabic, Urdu,
 Hindi, Thai, Khmer, and Chinese. Presets pair sample text
@@ -113,6 +121,7 @@ dist/                  generated site published to GitHub Pages
 fonts/                 bundled OFL font subsets
 js/app.js              SPA shell + per-demo render code
 css/site.css           styles
+hb-info.png            Info tab logo
 index.html             single page, all tabs
 .github/workflows/     CI
 ```

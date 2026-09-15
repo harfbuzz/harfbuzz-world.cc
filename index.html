@@ -57,6 +57,7 @@
     <a href="#raster" class="tab" data-demo="raster">raster</a>
     <a href="#vector" class="tab" data-demo="vector">vector</a>
     <a href="#gpu"    class="tab" data-demo="gpu">gpu</a>
+    <a href="#info"   class="tab" data-demo="info">info</a>
     <button id="theme-toggle" type="button"
             title="Switch between light and dark themes"
             aria-label="Toggle theme"></button>
@@ -125,6 +126,9 @@
         <p class="font-menu-hint">Or drop a font file anywhere on the page while this menu is open.</p>
       </div>
     </div>
+    <label class="face-label" id="font-face-label" hidden>Face:
+      <select id="font-face" aria-label="Font face"></select>
+    </label>
     <div class="var-picker" id="var-picker" hidden>
       <button class="var-button" type="button" id="var-button">
         Variations <span class="font-arrow">▾</span>
@@ -179,6 +183,8 @@
         as SVG or PDF.</li>
       <li><a href="#gpu"><img src="hb-gpu.png" width="28" height="28" alt="">gpu</a> — render text on the GPU
         using the Slug algorithm, with shaders for all platforms.</li>
+      <li><a href="#info"><img src="hb-info.png" width="28" height="28" alt="">info</a> — query names, metrics,
+        tables, characters, glyphs, layout data, variations, and palettes.</li>
     </ul>
     <p>Each tab includes code examples and further reading.</p>
 
@@ -414,7 +420,7 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
         Download subset <span class="size-tag" id="subset-dl-size"></span>
       </a>
     </div>
-    <details class="snippet" id="subset-tables-wrap" hidden>
+    <details class="snippet" id="subset-tables-wrap" data-section="tables" hidden>
       <summary>
         <span class="snippet-title">Font table sizes</span>
         <span class="snippet-actions">
@@ -582,6 +588,98 @@ hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
          rasterizes glyphs at the requested scale.  Shader
          sources are available in GLSL, WGSL, MSL, and HLSL.</p>
       <p class="learn-link">📖 <a href="https://harfbuzz.github.io/harfbuzz-hb-gpu.html">API reference</a></p>
+      </div>
+    </details>
+  </section>
+
+  <section class="demo" id="demo-info" hidden>
+    <p>Inspect technical information about the current font.</p>
+    <div class="info-summary" id="info-summary" aria-live="polite"></div>
+
+    <details class="snippet info-section" data-section="names">
+      <summary><span class="snippet-title">Names</span><span class="info-count" id="info-names-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body" id="info-names"></div>
+    </details>
+    <details class="snippet info-section" data-section="style">
+      <summary><span class="snippet-title">Style</span><span class="info-count" id="info-style-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body" id="info-style"></div>
+    </details>
+    <details class="snippet info-section" data-section="metrics">
+      <summary><span class="snippet-title">Metrics</span><span class="info-count" id="info-metrics-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body" id="info-metrics"></div>
+    </details>
+    <details class="snippet info-section" data-section="baselines">
+      <summary><span class="snippet-title">Baselines</span><span class="info-count" id="info-baselines-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body" id="info-baselines"></div>
+    </details>
+    <details class="snippet info-section" data-section="tables">
+      <summary><span class="snippet-title">Tables</span><span class="info-count" id="info-tables-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body" id="info-tables"></div>
+    </details>
+    <details class="snippet info-section" id="info-characters-wrap" data-section="characters">
+      <summary><span class="snippet-title">Characters</span><span class="info-count" id="info-characters-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body">
+        <div class="info-grid-tools">
+          <input type="search" id="info-characters-search" aria-label="Search characters" placeholder="Character or U+…" spellcheck="false" autocomplete="off">
+          <span id="info-characters-status" role="status"></span>
+          <span class="info-find-nav" id="info-characters-nav" hidden>
+            <button type="button" id="info-characters-prev" aria-label="Previous character match" title="Previous match (Shift+Enter)">‹</button>
+            <button type="button" id="info-characters-next" aria-label="Next character match" title="Next match (Enter)">›</button>
+          </span>
+        </div>
+        <div class="info-glyph-grid" id="info-characters" tabindex="0" role="region" aria-label="Characters"></div>
+      </div>
+    </details>
+    <details class="snippet info-section" id="info-glyphs-wrap" data-section="glyphs">
+      <summary><span class="snippet-title">Glyphs</span><span class="info-count" id="info-glyphs-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body">
+        <div class="info-grid-tools">
+          <input type="search" id="info-glyphs-search" aria-label="Search glyphs" placeholder="Name filter or glyph ID" spellcheck="false" autocomplete="off">
+          <span id="info-glyphs-status" role="status"></span>
+          <span class="info-find-nav" id="info-glyphs-nav" hidden>
+            <button type="button" id="info-glyphs-prev" aria-label="Previous glyph match" title="Previous match (Shift+Enter)">‹</button>
+            <button type="button" id="info-glyphs-next" aria-label="Next glyph match" title="Next match (Enter)">›</button>
+          </span>
+        </div>
+        <div class="info-glyph-grid" id="info-glyphs" tabindex="0" role="region" aria-label="Glyphs"></div>
+      </div>
+    </details>
+    <details class="snippet info-section" data-section="scripts">
+      <summary><span class="snippet-title">Layout scripts</span><span class="info-count" id="info-scripts-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body" id="info-scripts"></div>
+    </details>
+    <details class="snippet info-section" data-section="features">
+      <summary><span class="snippet-title">Layout features</span><span class="info-count" id="info-features-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body" id="info-features"></div>
+    </details>
+    <details class="snippet info-section" data-section="variations">
+      <summary><span class="snippet-title">Variations</span><span class="info-count" id="info-variations-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body" id="info-variations"></div>
+    </details>
+    <details class="snippet info-section" data-section="palettes">
+      <summary><span class="snippet-title">Color palettes</span><span class="info-count" id="info-palettes-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body" id="info-palettes"></div>
+    </details>
+    <details class="snippet info-section" data-section="meta">
+      <summary><span class="snippet-title">Meta</span><span class="info-count" id="info-meta-count"></span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="info-body" id="info-meta"></div>
+    </details>
+
+    <details class="snippet" data-snippet="info">
+      <summary>
+        <span class="snippet-title">Code snippet</span>
+        <span class="snippet-actions">
+          <button type="button" class="snippet-link" title="Copy link to this view">🔗</button>
+          <button type="button" class="snippet-copy" title="Copy snippet to clipboard">📋</button>
+        </span>
+      </summary>
+      <pre><code class="language-c" id="info-snippet"></code></pre>
+    </details>
+    <details class="snippet" data-section="learn-more">
+      <summary><span class="snippet-title">Learn more</span><span class="snippet-actions"><button type="button" class="snippet-link" title="Copy link">🔗</button></span></summary>
+      <div class="snippet-body">
+        <p><code>hb-info</code> reports names and technology by default, and can enumerate the font's tables, cmap, glyph set, OpenType layout, variation, palette, and metadata records. This view exposes those same categories through HarfBuzz's public C APIs.</p>
+        <p class="learn-link">📖 <a href="https://github.com/harfbuzz/harfbuzz/blob/main/util/hb-info.cc">hb-info source</a></p>
       </div>
     </details>
   </section>

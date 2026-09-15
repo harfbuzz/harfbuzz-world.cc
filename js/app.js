@@ -147,6 +147,8 @@ async function fontHash (bytes) {
    * old buffer once the replacement has passed validation. */
   let fontBuf = null;
   let fontPtr = 0;
+  let fontFaceIndex = 0;
+  let fontFaceCount = 1;
   let fontFileName = "font.ttf";
   let currentBundledFont = "";
   /* Custom fonts make preset buttons text-only, so users can
@@ -158,9 +160,24 @@ async function fontHash (bytes) {
   let fontLoadGeneration = 0;
   function setFontBytes (bytes, displayName, { custom = false, full = false, fileName = "", sourceUrl = "" } = {}) {
     const nextPtr = prepareFontBytes (bytes);
+    const requestedFace = !fontBuf ? Number (new URLSearchParams (location.search).get ("face")) : 0;
     if (fontPtr) Module._free (fontPtr);
     fontBuf = bytes;
     fontPtr = nextPtr;
+    fontFaceCount = Module._web_font_face_count (fontPtr, fontBuf.length);
+    fontFaceIndex = Number.isInteger (requestedFace) && requestedFace >= 0 && requestedFace < fontFaceCount
+      ? requestedFace : 0;
+    Module._web_set_face_index (fontFaceIndex);
+    fontFace.replaceChildren ();
+    fontFaceLabel.hidden = fontFaceCount < 2;
+    if (fontFaceCount > 1) {
+      const ptr = Module._web_font_faces (fontPtr, fontBuf.length);
+      let names;
+      try { names = JSON.parse (Module.UTF8ToString (ptr)); }
+      finally { Module._web_free_string (ptr); }
+      names.forEach ((name, index) => fontFace.add (new Option (index + " · " + (name || "Unnamed face"), String (index))));
+      fontFace.value = String (fontFaceIndex);
+    }
     customFontActive = custom;
     currentIsPresetFull = full;
     /* Track the installed font independently of pending picker choices.
@@ -187,7 +204,7 @@ async function fontHash (bytes) {
      * recreate the demo_font with default state and silently
      * drop our previously-pushed configuration. */
     if (gpuReady)
-      postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
+      postGpuFont ();
     refreshAxes ();
     refreshPalettes ();
     refreshFeatures ();
@@ -201,6 +218,8 @@ async function fontHash (bytes) {
   const fontButton    = document.getElementById ("font-button");
   const fontMenu      = document.getElementById ("font-menu");
   const fontShipped   = document.getElementById ("font-shipped");
+  const fontFace      = document.getElementById ("font-face");
+  const fontFaceLabel = document.getElementById ("font-face-label");
   const fontInput     = document.getElementById ("font-input");
   const fontFileError = document.getElementById ("font-file-error");
   const fontRestoreWarning = document.getElementById ("font-restore-warning");
@@ -216,6 +235,23 @@ async function fontHash (bytes) {
   const dropOverlay   = document.getElementById ("drop-overlay");
   const paletteLabel  = document.getElementById ("palette-label");
   const paletteSelect = document.getElementById ("palette");
+
+  fontFace.addEventListener ("change", () => {
+    fontFaceIndex = Number (fontFace.value);
+    Module._web_set_face_index (fontFaceIndex);
+    /* Cancel queued grid work, including when the Info tab is inactive. */
+    resetInfoGrid ("characters");
+    resetInfoGrid ("glyphs");
+    const ptr = Module._web_font_family (fontPtr, fontBuf.length);
+    try { fontNameEl.textContent = Module.UTF8ToString (ptr) || fontFileName; }
+    finally { Module._web_free_string (ptr); }
+    if (gpuReady) postGpuFont ();
+    refreshAxes ();
+    refreshPalettes ();
+    refreshFeatures ();
+    renderActive ();
+    syncUrl (true);
+  });
 
   /* Helper: marshal current text into wasm memory.  Caller frees. */
   function withText (fn) {
@@ -257,8 +293,8 @@ async function fontHash (bytes) {
    * and glyph name -- gid is what most APIs return; names are
    * what humans recognize while authoring fonts. */
   function escapeHtml (s) {
-    return String (s).replace (/[&<>]/g, (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+    return String (s).replace (/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
   function renderGlyphTable (glyphs) {
     lastShapeGlyphs = glyphs;
@@ -368,6 +404,387 @@ async function fontHash (bytes) {
     renderSnippet ("shape");
   }
 
+  /* Fetch character and glyph artwork as each scroll box approaches the
+   * end of its loaded rows. Large fonts only render the portion visited. */
+  const infoSummary = document.getElementById ("info-summary");
+  const infoCharactersWrap = document.getElementById ("info-characters-wrap");
+  const infoGlyphsWrap = document.getElementById ("info-glyphs-wrap");
+  const INFO_PAGE_SIZE = 48;
+  const infoGridState = {
+    characters: { next: 0, more: true, loading: false },
+    glyphs: { next: 0, more: true, loading: false },
+  };
+  const nameIdLabels = {
+    0: "copyright", 1: "font-family", 2: "font-subfamily",
+    3: "unique-id", 4: "full-name", 5: "version-string",
+    6: "postscript-name", 7: "trademark", 8: "manufacturer",
+    9: "designer", 10: "description", 11: "vendor-url",
+    12: "designer-url", 13: "license", 14: "license-url",
+    16: "typographic-family", 17: "typographic-subfamily",
+    21: "wws-family", 22: "wws-subfamily", 25: "variations-postscript-prefix",
+  };
+
+  function infoEmpty (label) {
+    return "<p class=\"info-empty\">No " + escapeHtml (label) + ".</p>";
+  }
+  function infoCount (id, count) {
+    const el = document.getElementById (id);
+    if (el) {
+      el.textContent = count.toLocaleString ();
+      el.closest ("details").hidden = count === 0;
+    }
+  }
+  function infoTable (headers, rows, classes = "") {
+    if (!rows.length) return "";
+    let html = "<div class=\"info-table-scroll\"><table class=\"glyph-table info-table "
+             + classes + "\"><thead><tr>";
+    html += headers.map ((h) => "<th>" + escapeHtml (h) + "</th>").join ("");
+    html += "</tr></thead><tbody>";
+    for (const row of rows)
+      html += "<tr>" + row.map ((cell) => "<td>" + cell + "</td>").join ("") + "</tr>";
+    return html + "</tbody></table></div>";
+  }
+  function infoTag (tag) {
+    return "<code>" + escapeHtml (tag) + "</code>";
+  }
+  function infoMetricRows (items) {
+    return items.map ((item) => [
+      infoTag (item.tag), escapeHtml (item.name),
+      escapeHtml (String (item.value)) + (item.fallback
+        ? " <abbr class=\"info-fallback\" title=\"Fallback value\">*</abbr>" : ""),
+    ]);
+  }
+  function infoLayoutGroups (groups, renderItems) {
+    let html = "";
+    for (const group of groups) {
+      html += "<section class=\"info-group\"><h3>" + infoTag (group.table) + "</h3>";
+      html += group.items.length ? renderItems (group.items) : infoEmpty ("entries");
+      html += "</section>";
+    }
+    return html;
+  }
+
+  function glyphNameFilter (kind, query) {
+    return kind === "glyphs" && !!query && !/^(?:gid)?\d+$/i.test (query);
+  }
+  function resetInfoGrid (kind, keepGrid = false) {
+    /* Replacing the state also invalidates any queued batch. */
+    const previous = infoGridState[kind];
+    clearTimeout (previous.timer);
+    const query = document.getElementById ("info-" + kind + "-search").value;
+    const filter = glyphNameFilter (kind, query);
+    infoGridState[kind] = {
+      start: keepGrid ? previous.start : 0,
+      next: keepGrid ? previous.next : 0,
+      more: keepGrid ? previous.more : true,
+      loading: false, query, filter, pendingFind: !!query && !filter,
+      match: 0, matchTotal: 0, target: null,
+    };
+    const grid = document.getElementById ("info-" + kind);
+    if (!keepGrid) {
+      grid.textContent = "";
+      grid.scrollTop = 0;
+    }
+    grid.setAttribute ("aria-busy", "false");
+    document.getElementById ("info-" + kind + "-status").textContent = "";
+    document.getElementById ("info-" + kind + "-nav").hidden = true;
+    highlightInfoMatch (kind);
+  }
+  function unicodeLabel (cp) {
+    return "U+" + cp.toString (16).toUpperCase ().padStart (4, "0");
+  }
+  function displayCharacter (item) {
+    const sequence = String.fromCodePoint (item.unicode)
+                   + (item.selector == null ? "" : String.fromCodePoint (item.selector));
+    /* Make whitespace and controls occupy a selectable slot without asking
+     * the browser to render the authoritative glyph artwork. */
+    if (/^[\p{C}\p{Z}]$/u.test (sequence)) return "&#x2423;";
+    return escapeHtml (sequence);
+  }
+  function appendInfoGridItems (kind, items, prepend = false) {
+    const grid = document.getElementById ("info-" + kind);
+    let html = "";
+    for (const item of items) {
+      const code = kind === "characters"
+        ? unicodeLabel (item.unicode) + (item.selector == null ? "" : " " + unicodeLabel (item.selector))
+        : "gid" + item.gid;
+      const character = kind === "characters"
+        ? "<span class=\"info-char\" title=\"Browser label only\">" + displayCharacter (item) + "</span>"
+        : "";
+      html += "<article class=\"info-glyph-card\" data-index=\"" + item.index + "\">"
+            + "<div class=\"info-glyph-art\">" + item.svg + "</div>"
+            + character
+            + "<code class=\"info-glyph-code\">" + escapeHtml (code) + "</code>"
+            + "<span class=\"info-glyph-name\" title=\"" + escapeHtml (item.name) + "\">"
+            + escapeHtml (item.name) + "</span>"
+            + (kind === "characters" ? "<small>gid" + item.gid + "</small>" : "")
+            + "</article>";
+    }
+    grid.insertAdjacentHTML (prepend ? "afterbegin" : "beforeend", html);
+  }
+  function readInfoPage (kind, start, limit, query = "", locate = false) {
+    const fn = kind === "characters" ? Module._web_font_info_unicodes : Module._web_font_info_glyphs;
+    const len = Module.lengthBytesUTF8 (query) + 1;
+    const queryPtr = Module._malloc (len);
+    let ptr = 0;
+    try {
+      Module.stringToUTF8 (query, queryPtr, len);
+      ptr = fn (fontPtr, fontBuf.length, start, limit, queryPtr, locate ? 1 : 0);
+      return JSON.parse (Module.UTF8ToString (ptr));
+    } finally {
+      Module._web_free_string (ptr);
+      Module._free (queryPtr);
+    }
+  }
+  function updateInfoFindStatus (kind) {
+    const state = infoGridState[kind];
+    const count = state.matchTotal;
+    document.getElementById ("info-" + kind + "-status").textContent = !state.query ? ""
+      : !count ? "0 matches" : count === 1 ? "1 match"
+      : (state.filter ? "" : (state.match + 1).toLocaleString () + " of ") + count.toLocaleString () + " matches";
+    document.getElementById ("info-" + kind + "-nav").hidden = state.filter || count < 2;
+  }
+  function highlightInfoMatch (kind, scroll = false) {
+    const grid = document.getElementById ("info-" + kind);
+    const state = infoGridState[kind];
+    grid.querySelectorAll (".info-match").forEach (el => {
+      el.classList.remove ("info-match");
+      el.removeAttribute ("aria-current");
+    });
+    const card = state.target == null ? null : grid.querySelector ('[data-index="' + state.target + '"]');
+    if (!card) return;
+    card.classList.add ("info-match");
+    card.setAttribute ("aria-current", "true");
+    /* Only move the inner grid, not the page or the focused search field. */
+    if (scroll) {
+      const rect = card.getBoundingClientRect ();
+      grid.scrollTop += rect.top - grid.getBoundingClientRect ().top - (grid.clientHeight - rect.height) / 2;
+    }
+  }
+  function infoGridColumns (grid) {
+    return getComputedStyle (grid).gridTemplateColumns.split (" ").length;
+  }
+  function maybeLoadInfoGrid (kind) {
+    const grid = document.getElementById ("info-" + kind);
+    const wrap = document.getElementById ("info-" + kind + "-wrap");
+    const state = infoGridState[kind];
+    if (activeName !== "info" || !wrap.open || wrap.hidden || state.loading || state.timer) return;
+    if (state.pendingFind) findInfoGrid (kind);
+    else if (state.start > 0 && grid.scrollTop < 120) loadInfoGrid (kind, true);
+    else if (grid.scrollHeight - grid.scrollTop - grid.clientHeight < 120)
+      loadInfoGrid (kind);
+  }
+  async function loadInfoGrid (kind, prepend = false) {
+    const state = infoGridState[kind];
+    if (!fontBuf || state.loading || state.timer || (!prepend && !state.more)) return;
+    if (state.pendingFind) { findInfoGrid (kind); return; }
+    state.loading = true;
+    const sourceFont = fontBuf;
+    const grid = document.getElementById ("info-" + kind);
+    const wrap = document.getElementById ("info-" + kind + "-wrap");
+    grid.setAttribute ("aria-busy", "true");
+    try {
+      await new Promise (resolve => requestAnimationFrame (() => setTimeout (resolve, 0)));
+      if (state !== infoGridState[kind] || sourceFont !== fontBuf ||
+          activeName !== "info" || !wrap.open || wrap.hidden) return;
+      /* Prepend whole rows so existing cards keep their columns. */
+      const columns = infoGridColumns (grid);
+      const rowBatch = Math.max (1, Math.floor (INFO_PAGE_SIZE / columns)) * columns;
+      const start = prepend ? Math.max (0, state.start - rowBatch) : state.next;
+      const page = readInfoPage (kind, start, prepend ? state.start - start : INFO_PAGE_SIZE,
+                                 state.filter ? state.query : "");
+      const gridTop = grid.getBoundingClientRect ().top;
+      const visible = el => {
+        const rect = el.getBoundingClientRect ();
+        return rect.bottom > gridTop && rect.top < gridTop + grid.clientHeight;
+      };
+      const match = grid.querySelector (".info-match");
+      const anchor = !prepend ? null : match && visible (match) ? match
+        : Array.from (grid.children).find (visible);
+      const anchorTop = anchor?.getBoundingClientRect ().top;
+      appendInfoGridItems (kind, page.items, prepend);
+      if (prepend) {
+        state.start = start;
+        if (anchor) grid.scrollTop += anchor.getBoundingClientRect ().top - anchorTop;
+      } else {
+        state.next = page.next;
+        state.more = page.more && page.items.length > 0;
+      }
+      infoCount ("info-" + kind + "-count", page.unfiltered_total);
+      if (state.filter) {
+        state.matchTotal = page.total;
+        updateInfoFindStatus (kind);
+      }
+      if (!page.total) grid.innerHTML = infoEmpty ("matching " + kind);
+      highlightInfoMatch (kind);
+    } finally {
+      if (state === infoGridState[kind]) {
+        state.loading = false;
+        grid.setAttribute ("aria-busy", "false");
+      }
+    }
+    maybeLoadInfoGrid (kind);
+  }
+  async function findInfoGrid (kind, direction = 0) {
+    const state = infoGridState[kind];
+    if (!fontBuf || state.loading || state.timer || !state.query || state.filter) return;
+    state.loading = true;
+    const sourceFont = fontBuf;
+    const grid = document.getElementById ("info-" + kind);
+    const wrap = document.getElementById ("info-" + kind + "-wrap");
+    grid.setAttribute ("aria-busy", "true");
+    try {
+      await new Promise (resolve => requestAnimationFrame (() => setTimeout (resolve, 0)));
+      if (state !== infoGridState[kind] || sourceFont !== fontBuf ||
+          activeName !== "info" || !wrap.open || wrap.hidden) return;
+      if (!state.pendingFind && state.matchTotal)
+        state.match = (state.match + direction + state.matchTotal) % state.matchTotal;
+      const found = readInfoPage (kind, state.match, 1, state.query, true);
+      state.pendingFind = false;
+      state.matchTotal = found.total;
+      state.target = found.items[0]?.index ?? null;
+      if (state.target != null && !grid.querySelector ('[data-index="' + state.target + '"]')) {
+        /* Load a neighborhood directly for distant matches. Scrolling up or
+         * down then extends this same unfiltered sequence in either direction. */
+        const columns = infoGridColumns (grid);
+        state.start = Math.floor (Math.max (0, state.target - INFO_PAGE_SIZE / 2) / columns) * columns;
+        const page = readInfoPage (kind, state.start, INFO_PAGE_SIZE);
+        grid.replaceChildren ();
+        appendInfoGridItems (kind, page.items);
+        state.next = page.next;
+        state.more = page.more;
+        infoCount ("info-" + kind + "-count", page.unfiltered_total);
+      }
+      updateInfoFindStatus (kind);
+      highlightInfoMatch (kind, true);
+    } finally {
+      if (state === infoGridState[kind]) {
+        state.loading = false;
+        grid.setAttribute ("aria-busy", "false");
+      }
+    }
+    maybeLoadInfoGrid (kind);
+  }
+  for (const kind of ["characters", "glyphs"]) {
+    const grid = document.getElementById ("info-" + kind);
+    const search = document.getElementById ("info-" + kind + "-search");
+    search.title = kind === "characters" ? "Find a character or Unicode code point; Enter for the next match"
+      : "Filter glyph names by substring, or jump to a glyph ID";
+    search.addEventListener ("input", () => {
+      const keepGrid = !infoGridState[kind].filter && !glyphNameFilter (kind, search.value);
+      resetInfoGrid (kind, keepGrid);
+      const state = infoGridState[kind];
+      state.timer = setTimeout (() => {
+        state.timer = 0;
+        maybeLoadInfoGrid (kind);
+      }, 150);
+    });
+    search.addEventListener ("keydown", e => {
+      if (e.key === "Enter" && !infoGridState[kind].filter) {
+        e.preventDefault ();
+        clearTimeout (infoGridState[kind].timer);
+        infoGridState[kind].timer = 0;
+        findInfoGrid (kind, e.shiftKey ? -1 : 1);
+      }
+    });
+    document.getElementById ("info-" + kind + "-prev").addEventListener ("click", () => findInfoGrid (kind, -1));
+    document.getElementById ("info-" + kind + "-next").addEventListener ("click", () => findInfoGrid (kind, 1));
+    document.getElementById ("info-" + kind + "-wrap").addEventListener ("toggle", () => maybeLoadInfoGrid (kind));
+    grid.addEventListener ("scroll", () => maybeLoadInfoGrid (kind), { passive: true });
+    new ResizeObserver (() => maybeLoadInfoGrid (kind)).observe (grid);
+  }
+
+  function renderInfo () {
+    const ptr = Module._web_font_info (fontPtr, fontBuf.length);
+    const data = JSON.parse (Module.UTF8ToString (ptr));
+    Module._web_free_string (ptr);
+    const summary = data.summary;
+    const summaryRows = [
+      ["Face count", summary.face_count], ["Family", summary.family],
+      ["Subfamily", summary.subfamily], ["Unique name", summary.unique_name],
+      ["Full name", summary.full_name], ["PostScript name", summary.postscript_name],
+      ["Version", summary.version], ["Technology", summary.technologies.join (", ") || "—"],
+      ["Unicode count", summary.unicode_count.toLocaleString ()],
+      ["Glyph count", summary.glyph_count.toLocaleString ()], ["Units per EM", summary.upem],
+      ["Extents", summary.ascender + " / " + summary.descender + " / " + summary.line_gap
+        + " (ascender / descender / line gap)"],
+    ];
+    infoSummary.innerHTML = "<dl>" + summaryRows.map (([label, value]) =>
+      "<div><dt>" + escapeHtml (label) + "</dt><dd>" + escapeHtml (value || "—") + "</dd></div>"
+    ).join ("") + "</dl>";
+
+    const names = data.names.map ((n) => [
+      escapeHtml (String (n.id)),
+      escapeHtml (nameIdLabels[n.id] || (n.id >= 256 ? "font-specific" : "")),
+      escapeHtml (n.language), escapeHtml (n.text),
+    ]);
+    document.getElementById ("info-names").innerHTML = names.length
+      ? infoTable (["id", "name", "language", "text"], names) : infoEmpty ("names");
+    infoCount ("info-names-count", data.names.length);
+
+    document.getElementById ("info-style").innerHTML = infoTable (["tag", "name", "value"],
+      data.styles.map ((s) => [infoTag (s.tag), escapeHtml (s.name), escapeHtml (String (s.value))]));
+    infoCount ("info-style-count", data.styles.length);
+    document.getElementById ("info-metrics").innerHTML = infoTable (["tag", "name", "value"], infoMetricRows (data.metrics));
+    infoCount ("info-metrics-count", data.metrics.length);
+    document.getElementById ("info-baselines").innerHTML = infoTable (["tag", "name", "value"], infoMetricRows (data.baselines));
+    infoCount ("info-baselines-count", data.baselines.length);
+    document.getElementById ("info-tables").innerHTML = data.tables.length
+      ? infoTable (["tag", "size"], data.tables.map ((t) => [infoTag (t.tag), escapeHtml (fmtBytes (t.size))]))
+      : infoEmpty ("tables");
+    infoCount ("info-tables-count", data.tables.length);
+
+    document.getElementById ("info-scripts").innerHTML = infoLayoutGroups (data.scripts, (items) =>
+      infoTable (["script", "OpenType tag", "languages"], items.map ((s) => [
+        infoTag (s.iso), infoTag (s.tag),
+        s.languages.length ? s.languages.map ((l) => infoTag (l.tag) + " " + escapeHtml (l.language)).join (", ") : "Default",
+      ])));
+    infoCount ("info-scripts-count", data.scripts.reduce ((n, g) => n + g.items.length, 0));
+    document.getElementById ("info-features").innerHTML = infoLayoutGroups (data.features, (items) =>
+      infoTable (["tag", "name"], items.map ((f) => [infoTag (f.tag), escapeHtml (f.name)])));
+    infoCount ("info-features-count", data.features.reduce ((n, g) => n + g.items.length, 0));
+
+    const axes = data.variations.axes;
+    const instances = data.variations.instances;
+    let variationsHtml = axes.length
+      ? "<h3>Variation axes</h3>" + infoTable (["tag", "name", "minimum", "default", "maximum"], axes.map ((a) => [
+          infoTag (a.tag) + (a.hidden ? " <abbr title=\"Hidden axis\">*</abbr>" : ""),
+          escapeHtml (a.name), escapeHtml (String (a.min)), escapeHtml (String (a.default)), escapeHtml (String (a.max)),
+        ]))
+      : infoEmpty ("variation axes");
+    if (instances.length)
+      variationsHtml += "<h3>Named instances</h3>" + infoTable (["index", "name", "position"], instances.map ((instance) => [
+        escapeHtml (String (instance.index)), escapeHtml (instance.name), escapeHtml (instance.coords.join (", ")),
+      ]));
+    document.getElementById ("info-variations").innerHTML = variationsHtml;
+    infoCount ("info-variations-count", axes.length + instances.length);
+
+    let palettesHtml = "";
+    for (const palette of data.palettes) {
+      const flags = palette.flags === 3 ? "light + dark" : palette.flags === 1 ? "light" : palette.flags === 2 ? "dark" : "";
+      palettesHtml += "<section class=\"info-palette\"><h3>" + palette.index + (palette.name ? " · " + escapeHtml (palette.name) : "")
+        + (flags ? " <small>(" + flags + ")</small>" : "") + "</h3><div class=\"info-colors\">";
+      for (const color of palette.colors)
+        palettesHtml += "<span class=\"info-color\" title=\"" + escapeHtml (color.index + (color.name ? " · " + color.name : "") + " · " + color.rgba)
+          + "\"><i style=\"--swatch:" + escapeHtml (color.rgba) + "\"></i><small>" + color.index + "</small></span>";
+      palettesHtml += "</div></section>";
+    }
+    document.getElementById ("info-palettes").innerHTML = palettesHtml || infoEmpty ("color palettes");
+    infoCount ("info-palettes-count", data.palettes.length);
+    document.getElementById ("info-meta").innerHTML = data.meta.length
+      ? infoTable (["tag", "data"], data.meta.map ((m) => [infoTag (m.tag), "<span class=\"info-meta-data\">" + escapeHtml (m.data) + "</span>"]))
+      : infoEmpty ("meta entries");
+    infoCount ("info-meta-count", data.meta.length);
+
+    resetInfoGrid ("characters");
+    resetInfoGrid ("glyphs");
+    infoCount ("info-characters-count", summary.unicode_count);
+    infoCount ("info-glyphs-count", summary.glyph_count);
+    if (infoCharactersWrap.open) loadInfoGrid ("characters");
+    if (infoGlyphsWrap.open) loadInfoGrid ("glyphs");
+    renderSnippet ("info");
+  }
+
   /* ---- Code snippets ---- */
   const SNIPPETS = {
     shape: {
@@ -390,6 +807,40 @@ hb_glyph_position_t *pos  = hb_buffer_get_glyph_positions (buf, NULL);
 /* ... use info[i].codepoint, pos[i].x_advance, etc. ... */
 
 hb_buffer_destroy (buf);
+hb_font_destroy (font);
+hb_face_destroy (face);
+hb_blob_destroy (blob);`
+    },
+    info: {
+      headline: ["hb_ot_name_get_utf8", "hb_face_collect_nominal_glyph_mapping"],
+      template:
+`hb_blob_t *blob = hb_blob_create_from_file ("{font}");
+hb_face_t *face = hb_face_create (blob, 0);
+hb_font_t *font = hb_font_create (face);
+
+char family[256];
+unsigned family_len = sizeof family;
+hb_ot_name_get_utf8 (face, HB_OT_NAME_ID_FONT_FAMILY,
+                     HB_LANGUAGE_INVALID, &family_len, family);
+
+unsigned glyph_count = hb_face_get_glyph_count (face);
+unsigned upem = hb_face_get_upem (face);
+hb_font_extents_t extents;
+hb_font_get_h_extents (font, &extents);
+
+/* Equivalent to hb-info --list-unicodes: cmap mappings, not shaping. */
+hb_set_t *unicodes = hb_set_create ();
+hb_map_t *cmap = hb_map_create ();
+hb_face_collect_nominal_glyph_mapping (face, cmap, unicodes);
+for (hb_codepoint_t u = HB_SET_VALUE_INVALID; hb_set_next (unicodes, &u);) {
+  hb_codepoint_t gid = hb_map_get (cmap, u);
+  char glyph_name[128];
+  hb_font_glyph_to_string (font, gid, glyph_name, sizeof glyph_name);
+  /* ...report u, gid, and glyph_name... */
+}
+
+hb_map_destroy (cmap);
+hb_set_destroy (unicodes);
 hb_font_destroy (font);
 hb_face_destroy (face);
 hb_blob_destroy (blob);`
@@ -644,7 +1095,8 @@ hb_blob_destroy (blob);`
     const el = document.getElementById (key + "-snippet");
     if (!el) return;
     const fields = { font: escapeForC (fontFileName), text: escapeForC (textInput.value) };
-    const code = def.template.replaceAll ("{size}", String (currentSize ()));
+    const code = def.template.replaceAll ("{size}", String (currentSize ()))
+      .replaceAll ("hb_face_create (blob, 0)", "hb_face_create (blob, " + fontFaceIndex + ")");
     /* hljs may not be loaded yet on first render; in that
      * case just show the raw code, then re-highlight when
      * highlight.js arrives. */
@@ -692,6 +1144,23 @@ hb_blob_destroy (blob);`
   function postGpu (msg) {
     if (gpuFrame.contentWindow)
       gpuFrame.contentWindow.postMessage (msg, GPU_ORIGIN);
+  }
+  function postGpuFont () {
+    if (fontFaceCount === 1 && String.fromCharCode (...fontBuf.subarray (0, 4)) !== "ttcf") {
+      postGpu ({ kind: "font", bytes: fontBuf.slice ().buffer });
+      return;
+    }
+    const lenPtr = Module._malloc (4);
+    let ptr = 0;
+    try {
+      ptr = Module._web_font_face_data (fontPtr, fontBuf.length, lenPtr);
+      const len = new Uint32Array (Module.HEAPU8.buffer, lenPtr, 1)[0];
+      if (!ptr || !len) throw new Error ("Could not read the selected font face.");
+      postGpu ({ kind: "font", bytes: Module.HEAPU8.slice (ptr, ptr + len).buffer });
+    } finally {
+      Module._web_free_string (ptr);
+      Module._free (lenPtr);
+    }
   }
   let gpuReady = false;
   let gpuDark = false;
@@ -774,6 +1243,29 @@ hb_blob_destroy (blob);`
       });
     });
   });
+  /* Remember disclosure state across tabs and in shared URLs. Code and
+   * Learn more are shared; all other sections belong to their demo. */
+  const sectionDetails = Array.from (document.querySelectorAll (".demo details.snippet"));
+  function sectionKey (d) {
+    if (d.dataset.snippet) return "code";
+    if (d.dataset.section === "learn-more") return "learn-more";
+    return d.closest (".demo").id.replace ("demo-", "") + "." + d.dataset.section;
+  }
+  const openParam = new URLSearchParams (location.search).get ("open");
+  if (openParam !== null) {
+    const openSections = new Set (openParam.split (","));
+    sectionDetails.forEach (d => { d.open = openSections.has (sectionKey (d)); });
+  }
+  sectionDetails.forEach (d => d.addEventListener ("toggle", () => {
+    const url = new URL (location.href);
+    const keys = [...new Set (sectionDetails.filter (el => el.open).map (sectionKey))];
+    url.searchParams.set ("open", keys.join (","));
+    /* A closed deep-linked section must not reopen on reload. */
+    const tab = d.closest (".demo").id.replace ("demo-", "");
+    const sub = d.dataset.snippet ? "code" : d.dataset.section;
+    if (!d.open && url.hash === "#" + tab + "/" + sub) url.hash = tab;
+    history.replaceState (null, "", url);
+  }));
   /* Wire up buttons on all .snippet details (code + tables). */
   const buttonFlashes = new WeakMap ();
   function flash (btn, msg) {
@@ -903,8 +1395,8 @@ hb_blob_destroy (blob);`
   const subsetCounts  = document.getElementById ("subset-counts");
   const subsetTablesWrap = document.getElementById ("subset-tables-wrap");
   const subsetTables  = document.getElementById ("subset-tables");
-  function fontStats (ptr, len) {
-    const p = Module._web_font_stats (ptr, len);
+  function fontStats (ptr, len, faceIndex = fontFaceIndex) {
+    const p = Module._web_font_stats (ptr, len, faceIndex);
     const s = JSON.parse (Module.UTF8ToString (p));
     Module._web_free_string (p);
     return s;
@@ -1001,7 +1493,7 @@ hb_blob_destroy (blob);`
       const origStats = fontStats (fontPtr, fontBuf.length);
       const subPtr = Module._malloc (sublen);
       Module.HEAPU8.set (bytes, subPtr);
-      const subStats = fontStats (subPtr, sublen);
+      const subStats = fontStats (subPtr, sublen, 0);
       Module._free (subPtr);
       subsetCounts.textContent =
         "Kept " + subStats.num_glyphs + " of " + origStats.num_glyphs + " glyphs"
@@ -1135,7 +1627,7 @@ hb_blob_destroy (blob);`
       gpuReady = true;
       clearTimeout (gpuLoadTimer);
       clearTimeout (gpuNudgeTimer);
-      if (fontBuf) postGpu ({ kind: "font", bytes: fontBuf.buffer.slice (0) });
+      if (fontBuf) postGpuFont ();
       postGpu ({ kind: "variations", value: variationsString () });
       /* Resend every setting, including defaults, on each connection. */
       const pIdx = parseInt (paletteSelect.value, 10) || 0;
@@ -1273,6 +1765,7 @@ hb_blob_destroy (blob);`
     raster: { section: document.getElementById ("demo-raster"), render: renderRaster  },
     vector: { section: document.getElementById ("demo-vector"), render: renderVector  },
     gpu:    { section: document.getElementById ("demo-gpu"),    render: renderGpu     },
+    info:   { section: document.getElementById ("demo-info"),   render: renderInfo    },
   };
   const tabs = document.querySelectorAll (".tab");
 
@@ -1292,7 +1785,7 @@ hb_blob_destroy (blob);`
       t.classList.toggle ("active", t.dataset.demo === name);
     const logoMap = { embed: "hb-world.png", shape: "hb-shape.png",
                       subset: "hb-subset.png", raster: "hb-raster.png",
-                      vector: "hb-vector.png", gpu: "hb-gpu.png" };
+                      vector: "hb-vector.png", gpu: "hb-gpu.png", info: "hb-info.png" };
     const logo = document.getElementById ("site-logo");
     if (logo) {
       const newSrc = logoMap[name] || "hb-world.png";
@@ -1373,6 +1866,8 @@ hb_blob_destroy (blob);`
       const size = currentSize ();
       if (size !== 72) url.searchParams.set ("size", String (size));
       else             url.searchParams.delete ("size");
+      if (fontFaceIndex) url.searchParams.set ("face", String (fontFaceIndex));
+      else               url.searchParams.delete ("face");
       if (shapeClusterLvl.value === "1") url.searchParams.set ("cluster-level", "1");
       else                               url.searchParams.delete ("cluster-level");
       if (!subsetInstantiate.checked) url.searchParams.set ("instantiate", "0");

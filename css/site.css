@@ -283,6 +283,14 @@ body[data-active="embed"] .controls-row2,
 body[data-active="embed"] .script-warning,
 body[data-active="embed"] .presets { display: none; }
 
+/* Info exposes font and face selection; axes are listed in its report. */
+body[data-active="info"] .controls-row2,
+body[data-active="info"] #script-warning,
+body[data-active="info"] .presets,
+body[data-active="info"] #var-picker,
+body[data-active="info"] #feat-picker { display: none; }
+body[data-active="info"] .demo > p:first-child { min-height: 0; }
+
 /* GPU has no font-size concept -- zoom is a user gesture
  * on the canvas -- so hide the Size input on the gpu tab. */
 body[data-active="gpu"] .size-label { display: none; }
@@ -565,6 +573,8 @@ body[data-active="gpu"] .size-label { display: none; }
 /* Font picker: button + dropdown menu with three sources. */
 .font-picker { position: relative; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 .font-label { color: var(--muted); font-size: 0.95rem; }
+.face-label { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.face-label select { max-width: min(20rem, 65vw); text-overflow: ellipsis; }
 .font-button {
   font: inherit;
   font-size: 0.95rem;
@@ -937,6 +947,180 @@ pre.code {
   color: var(--accent-hi);
 }
 .subset-table { margin-top: 0; }
+
+/* Info tab — hb-info's terse report followed by its long-list categories. */
+.info-summary {
+  margin: 1rem 0 1.4rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--bg-card);
+}
+.info-summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+}
+.info-summary dl > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.45fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.info-summary dl > div:nth-last-child(-n + 2) { border-bottom: 0; }
+.info-summary dt { color: var(--muted); }
+.info-summary dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.info-section { margin-top: 0.55rem; }
+.info-section[hidden] { display: none; }
+.info-count {
+  margin-left: 0.55rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.info-count:not(:empty)::before { content: "("; }
+.info-count:not(:empty)::after { content: ")"; }
+.info-body {
+  padding: 0.75rem 0.9rem 0.9rem;
+  border-top: 1px solid var(--rule);
+}
+.info-empty {
+  margin: 0.25rem 0;
+  color: var(--muted);
+  font-style: italic;
+}
+.info-table-scroll { max-width: 100%; overflow-x: auto; }
+.info-table { width: 100%; margin: 0; }
+.info-table th, .info-table td { text-align: left; vertical-align: top; }
+.info-table td:last-child { overflow-wrap: anywhere; }
+.info-table code, .info-group h3 code { white-space: pre; }
+.info-fallback { color: var(--accent); text-decoration: none; }
+.info-group + .info-group,
+.info-palette + .info-palette { margin-top: 1rem; }
+.info-group h3,
+.info-palette h3,
+#info-variations > h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+#info-variations > h3:not(:first-child) { margin-top: 1rem; }
+.info-meta-data { white-space: pre-wrap; }
+.info-grid-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; margin-bottom: 0.75rem; }
+.info-grid-tools input {
+  font: inherit;
+  width: min(100%, 20rem);
+  min-width: 0;
+  padding: 0.35rem 0.55rem;
+  color: var(--fg);
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+.info-grid-tools input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.info-grid-tools [role="status"] { font-size: 0.85rem; color: var(--muted); }
+.info-find-nav { display: inline-flex; gap: 0.3rem; }
+.info-find-nav[hidden] { display: none; }
+.info-find-nav button {
+  font: inherit;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--accent-hi);
+  background: var(--bg-card);
+  cursor: pointer;
+}
+.info-find-nav button:disabled { opacity: 0.4; cursor: default; }
+.info-find-nav button:focus-visible { outline: 2px solid var(--accent); }
+.info-glyph-grid > .info-empty { grid-column: 1 / -1; }
+.info-glyph-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: 0.55rem;
+  max-height: min(32rem, 65vh);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior-y: contain;
+  overflow-anchor: none;
+  align-content: start;
+}
+.info-glyph-grid:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.info-glyph-card {
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--soft);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.14rem;
+}
+.info-glyph-art {
+  height: 68px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.info-glyph-card.info-match {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--highlight);
+}
+.info-glyph-art svg { max-width: 100%; max-height: 64px; width: auto; height: auto; }
+.info-char { font-size: 1.05rem; min-height: 1.35em; white-space: pre; }
+.info-glyph-code { font-size: 0.72rem; white-space: nowrap; }
+#info-characters .info-glyph-code { white-space: normal; }
+.info-glyph-name {
+  display: block;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.info-glyph-card small { color: var(--muted); font-size: 0.7rem; }
+.info-colors { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.info-color {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  color: var(--muted);
+}
+.info-color i {
+  display: block;
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background-color: var(--swatch);
+  background-image: linear-gradient(45deg, #bbb 25%, transparent 25%),
+                    linear-gradient(-45deg, #bbb 25%, transparent 25%),
+                    linear-gradient(45deg, transparent 75%, #bbb 75%),
+                    linear-gradient(-45deg, transparent 75%, #bbb 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  box-shadow: inset 0 0 0 2rem var(--swatch);
+}
+.info-color small { font-size: 0.65rem; }
+
+@media (max-width: 700px) {
+  .info-summary dl { grid-template-columns: 1fr; }
+  .info-summary dl > div:nth-last-child(2) { border-bottom: 1px solid var(--rule); }
+  .info-summary dl > div:last-child { border-bottom: 0; }
+}
 
 /* Raster tab pixel-buffer caption. */
 .raster-stats {
