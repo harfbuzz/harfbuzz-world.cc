@@ -515,9 +515,9 @@ async function fontHash (bytes) {
             + "<div class=\"info-glyph-art\">" + item.svg + "</div>"
             + character
             + "<code class=\"info-glyph-code\">" + escapeHtml (code) + "</code>"
+            + (kind === "characters" ? "<small class=\"info-glyph-id\">gid" + item.gid + "</small>" : "")
             + "<span class=\"info-glyph-name\" title=\"" + escapeHtml (item.name) + "\">"
             + escapeHtml (item.name) + "</span>"
-            + (kind === "characters" ? "<small>gid" + item.gid + "</small>" : "")
             + "</article>";
     }
     grid.insertAdjacentHTML (prepend ? "afterbegin" : "beforeend", html);
@@ -668,7 +668,8 @@ async function fontHash (bytes) {
   for (const kind of ["characters", "glyphs"]) {
     const grid = document.getElementById ("info-" + kind);
     const search = document.getElementById ("info-" + kind + "-search");
-    search.title = kind === "characters" ? "Find a character or Unicode code point; Enter for the next match"
+    search.title = kind === "characters"
+      ? "Find a character, U+0041, gid123, or name:A.alt (exact, case-sensitive glyph name); Enter for the next match"
       : "Filter glyph names by substring, or jump to a glyph ID";
     search.addEventListener ("input", () => {
       const keepGrid = !infoGridState[kind].filter && !glyphNameFilter (kind, search.value);

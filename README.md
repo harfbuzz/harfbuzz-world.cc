@@ -29,6 +29,8 @@ for C and C++ projects.
   rendered to SVG with `hb-vector`, loaded as you scroll. Character searches
   and exact glyph IDs jump to a highlighted entry with its neighbors;
   glyph-name searches filter by substring (including prefixes).
+  In the character map, `gid123` or `name:A.alt` finds characters mapped
+  to that glyph. Explicit names are exact and case-sensitive.
 
 The demos share font, collection-face, variation, and palette controls where
 they apply. Text and OpenType features drive shaping, subsetting,

@@ -340,6 +340,71 @@ test ("Info searches named glyphs and supplementary or variation-sequence charac
   await expect (page.locator ("#info-characters-status")).toHaveText ("1 of 2 matches");
 });
 
+test ("character-map searches resolve explicit glyph IDs and exact glyph names", async ({ page }) => {
+  await open (page, "hebrew", "info");
+  await page.locator ("#info-characters-wrap > summary").click ();
+  const search = page.getByRole ("searchbox", { name: "Search characters" });
+  const match = page.locator ("#info-characters .info-match .info-glyph-code");
+  for (const [query, code] of [["name:A", "U+0041"], ["name:a", "U+0061"],
+                              ["name:uni05D0", "U+05D0"], ["gid3", "U+05D0"],
+                              ["GID3", "U+05D0"], ["3", "U+0033"]]) {
+    await search.fill (query);
+    await expect (match).toHaveText (code);
+    await expect (page.locator ("#info-characters-status")).toHaveText ("1 match");
+  }
+  // Explicit name matching must not become a substring search, or admit
+  // unencoded glyphs into the character map. Bad IDs must not select gid0.
+  for (const query of ["name:", "name:uni05", "name:UNI05D0", "name:.notdef", "gid0",
+                       "gid", "gid-1", "gid3x", "gid999999999999999999999999999999"]) {
+    await search.fill (query);
+    await expect (page.locator ("#info-characters-status")).toHaveText ("0 matches");
+    await expect (match).toHaveCount (0);
+    expect (await page.locator ("#info-characters .info-glyph-card").count ()).toBeGreaterThan (1);
+  }
+  await page.locator ("#info-glyphs-wrap > summary").click ();
+  await page.getByRole ("searchbox", { name: "Search glyphs" }).fill (".notdef");
+  await expect (page.locator ("#info-glyphs .info-glyph-code")).toHaveText ("gid0");
+
+  await open (page, "emoji", "info");
+  await page.locator ("#info-characters-wrap > summary").click ();
+  await search.fill ("gid29");
+  await expect (page.locator ("#info-characters-status")).toHaveText ("1 of 2 matches");
+  await expect (match).toHaveText ("U+2764");
+  await page.getByRole ("button", { name: "Next character match" }).click ();
+  await expect (match).toHaveText ("U+2764 U+FE0F");
+  await expect (page.locator ("#info-characters-status")).toHaveText ("2 of 2 matches");
+  // Switching fonts re-resolves the query against the newly selected face.
+  await picker (page);
+  await page.locator ("#font-shipped").selectOption ("fonts/NotoSansHebrew.ttf");
+  await search.fill ("name:A");
+  await expect (match).toHaveText ("U+0041");
+});
+
+test ("Info cards show glyph IDs before real names and leave missing names blank", async ({ page }) => {
+  await open (page, "emoji", "info");
+  await page.locator ("#info-characters-wrap > summary").click ();
+  const first = page.locator ("#info-characters .info-glyph-card").first ();
+  await expect (first.locator (".info-glyph-id")).toHaveText ("gid1");
+  await expect (first.locator (".info-glyph-id + .info-glyph-name")).toHaveText ("");
+  expect (await first.locator (".info-glyph-name").evaluate (el => el.getBoundingClientRect ().height)).toBeGreaterThan (0);
+  await expect (first).toContainText ("U+200D");
+  await page.locator ("#info-glyphs-wrap > summary").click ();
+  const glyph = page.locator ("#info-glyphs .info-glyph-card").first ();
+  await expect (glyph.locator (".info-glyph-code")).toHaveText ("gid0");
+  await expect (glyph.locator (".info-glyph-code + .info-glyph-name")).toHaveText ("");
+  await expect (glyph.locator (".info-glyph-id")).toHaveCount (0);
+
+  await open (page, "hebrew", "info");
+  await page.locator ("#info-characters-wrap > summary").click ();
+  await page.getByRole ("searchbox", { name: "Search characters" }).fill ("name:A");
+  const named = page.locator ("#info-characters .info-match");
+  await expect (named.locator (".info-glyph-code")).toHaveText ("U+0041");
+  await expect (named.locator (".info-glyph-id")).toHaveText (/^gid\d+$/);
+  await expect (named.locator (".info-glyph-id + .info-glyph-name")).toHaveText ("A");
+  await page.locator ("#info-glyphs-wrap > summary").click ();
+  await expect (page.locator ("#info-glyphs .info-glyph-card").first ().locator (".info-glyph-name")).toHaveText (".notdef");
+});
+
 test ("GPU tab passes the font and text to its embedded demo", async ({ page }) => {
   await page.route ("https://harfbuzz.github.io/hb-gpu-demo/**", route => route.fulfill ({
     contentType: "text/html",

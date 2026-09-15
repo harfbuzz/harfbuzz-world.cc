@@ -1084,6 +1084,8 @@ pre.code {
 .info-glyph-name {
   display: block;
   max-width: 100%;
+  min-height: 1.5em;
+  line-height: 1.5;
   color: var(--muted);
   font-size: 0.76rem;
   white-space: nowrap;

@@ -819,10 +819,15 @@ font_info_grid (const uint8_t *font_bytes, unsigned font_len,
     return s;
   };
   std::string search = lowercase (query ? query : "");
+  /* Character-map searches default to Unicode. Explicit glyph queries
+   * find every nominal or variation mapping to that glyph. Preserve case
+   * in names: A and a may name different glyphs. */
+  bool search_by_name = characters && search.compare (0, 5, "name:") == 0;
+  bool search_by_gid = characters && search.compare (0, 3, "gid") == 0;
   /* Single characters (including spaces and supplementary characters) are
    * literal. Longer queries accept hexadecimal code points or a sequence. */
   std::vector<hb_codepoint_t> codepoints;
-  if (characters && !search.empty ())
+  if (characters && !search.empty () && !search_by_name && !search_by_gid)
   {
     hb_buffer_t *buf = hb_buffer_create ();
     hb_buffer_add_utf8 (buf, query, -1, 0, -1);
@@ -853,7 +858,12 @@ font_info_grid (const uint8_t *font_bytes, unsigned font_len,
     }
   }
   hb_codepoint_t search_gid = HB_CODEPOINT_INVALID;
-  if (!characters && !search.empty ())
+  if (search_by_name)
+  {
+    if (!hb_font_get_glyph_from_name (font, query + 5, -1, &search_gid))
+      search_gid = HB_CODEPOINT_INVALID;
+  }
+  else if ((!characters || search_by_gid) && !search.empty ())
   {
     const char *p = search.c_str ();
     if (!strncmp (p, "gid", 3)) p += 3;
@@ -872,7 +882,11 @@ font_info_grid (const uint8_t *font_bytes, unsigned font_len,
     unfiltered_total++;
     if (!search.empty ())
     {
-      if (characters)
+      if (search_by_name || search_by_gid)
+      {
+        if (search_gid == HB_CODEPOINT_INVALID || gid != search_gid) return;
+      }
+      else if (characters)
       {
         if (codepoints.empty () || codepoints.size () > 2 || codepoints[0] != unicode ||
             (codepoints.size () == 2 && codepoints[1] != selector)) return;
@@ -927,7 +941,7 @@ font_info_grid (const uint8_t *font_bytes, unsigned font_len,
     if (emitted) out += ',';
     hb_codepoint_t gid = item.gid, unicode = item.unicode, selector = item.selector;
     char name[128] = {0};
-    hb_font_glyph_to_string (font, gid, name, sizeof name);
+    if (!hb_font_get_glyph_name (font, gid, name, sizeof name)) name[0] = '\0';
     /* Searches locate entries in the full grid; only visible grid pages
      * need artwork. In particular, a distant match must not draw everything
      * preceding it. */
