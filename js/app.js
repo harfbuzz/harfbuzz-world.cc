@@ -942,8 +942,13 @@ for (unsigned i = 0; i < len; i++) {
     hb_raster_draw_glyph (d, font, info[i].codepoint);
     img = hb_raster_draw_render (d);  /* A8 coverage */
   }
-  /* ...SRC_OVER composite img onto your output;
-   * for an A8 mask, use foreground as the source color... */
+  if (img) {
+    /* ...SRC_OVER composite img onto your output;
+     * for an A8 mask, use foreground as the source color... */
+    /* Recycling transfers ownership of img to the context. */
+    if (p) hb_raster_paint_recycle_image (p, img);
+    else   hb_raster_draw_recycle_image (d, img);
+  }
   pen_x += pos[i].x_advance;
   pen_y += pos[i].y_advance;
 }
@@ -998,6 +1003,17 @@ unsigned len = hb_buffer_get_length (buf);
 hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, NULL);
 hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, NULL);
 
+/* Include the logical line box, even when the text is only spaces.
+ * EXPAND below also includes any ink outside this box. */
+float total_x = 0;
+for (unsigned i = 0; i < len; i++) total_x += pos[i].x_advance;
+hb_font_extents_t fe;
+hb_font_get_h_extents (font, &fe);
+hb_vector_extents_t logical = {0, (float) fe.ascender, total_x,
+                              (float) fe.descender - fe.ascender};
+if (p) hb_vector_paint_set_extents (p, &logical);
+else   hb_vector_draw_set_extents (d, &logical);
+
 float pen_x = 0, pen_y = 0;
 for (unsigned i = 0; i < len; i++) {
   float gx = pen_x + pos[i].x_offset;
@@ -1017,7 +1033,9 @@ for (unsigned i = 0; i < len; i++) {
 
 hb_blob_t *out = p ? hb_vector_paint_render (p)
                    : hb_vector_draw_render  (d);
-/* ...write hb_blob_get_data(out, NULL) somewhere... */
+if (out) {
+  /* ...write hb_blob_get_data(out, NULL) somewhere... */
+}
 
 hb_blob_destroy (out);
 hb_vector_paint_destroy (p);
@@ -1054,11 +1072,16 @@ if (p) hb_gpu_paint_set_palette (p, {palette});
 /* HB_GPU_SHADER_LANG_GLSL / _WGSL / _MSL / _HLSL all available --
  * pick the one your backend (OpenGL, WebGPU, Metal, D3D12) needs. */
 hb_gpu_shader_lang_t lang = HB_GPU_SHADER_LANG_GLSL;
-const char *frag = is_color
-  ? hb_gpu_paint_shader_source (HB_GPU_SHADER_STAGE_FRAGMENT, lang)
-  : hb_gpu_draw_shader_source  (HB_GPU_SHADER_STAGE_FRAGMENT, lang);
 const char *vert = hb_gpu_shader_source (HB_GPU_SHADER_STAGE_VERTEX, lang);
-/* ...compile {vert,frag} into your renderer's pipeline... */
+const char *shared_frag = hb_gpu_shader_source (HB_GPU_SHADER_STAGE_FRAGMENT, lang);
+const char *draw_frag = hb_gpu_draw_shader_source (HB_GPU_SHADER_STAGE_FRAGMENT, lang);
+const char *paint_frag = is_color
+  ? hb_gpu_paint_shader_source (HB_GPU_SHADER_STAGE_FRAGMENT, lang) : "";
+/* ...prepend the backend's preamble (e.g. GLSL #version), then
+ * concatenate shared_frag + draw_frag + paint_frag in that order,
+ * and append your fragment entry point. For the vertex shader,
+ * use preamble + vert + your vertex entry point. Compile the
+ * assembled shaders into your renderer's pipeline... */
 
 /* Per-glyph: encode the outline / paint tree into a compact
  * blob that the GPU shader decodes + rasterizes.  Cache the
@@ -1081,9 +1104,11 @@ for (unsigned i = 0; i < len; i++) {
     hb_gpu_draw_glyph (d, font, gid);
     enc = hb_gpu_draw_encode (d, &ext);
   }
-  /* ...upload enc bytes to atlas, store offset in cache,
-   *    emit a quad at the glyph's pen position with the
-   *    atlas offset as a vertex attribute... */
+  if (enc && hb_blob_get_length (enc)) {
+    /* ...upload enc bytes to atlas, store offset in cache,
+     *    emit a quad at the glyph's pen position with the
+     *    atlas offset as a vertex attribute... */
+  }
   hb_blob_destroy (enc);
 }
 

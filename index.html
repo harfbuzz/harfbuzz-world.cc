@@ -220,7 +220,12 @@ hb_shape (font, buf, NULL, 0);
 unsigned len;
 hb_glyph_info_t      *info = hb_buffer_get_glyph_infos     (buf, &amp;len);
 hb_glyph_position_t  *pos  = hb_buffer_get_glyph_positions (buf, NULL);
-/* …draw the glyphs… */</code></pre>
+/* …draw the glyphs… */
+
+hb_buffer_destroy (buf);
+hb_font_destroy (font);
+hb_face_destroy (face);
+hb_blob_destroy (blob);</code></pre>
 
     <h3>Customizing the build</h3>
     <p>Configure the amalgamation with preprocessor definitions.
